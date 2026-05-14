@@ -1,0 +1,31 @@
+{
+  "name": "copycenter2000",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/auth-ui-react": "^0.4.7",
+    "@supabase/auth-ui-shared": "^0.1.8",
+    "@supabase/supabase-js": "^2.90.1",
+    "lucide-react": "^0.553.0",
+    "multer": "^2.0.2",
+    "pdfjs-dist": "^5.4.296",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.12.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.15",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.21",
+    "pg": "^8.20.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "3",
+    "vite": "^5.4.3"
+  }
+}

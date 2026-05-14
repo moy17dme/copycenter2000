@@ -1,0 +1,15 @@
+{
+  "agent_id": "agent_01eb73f3fecba42920f2094970",
+  "llm_id": "llm_b8752396eaa68649b771887af8d4",
+  "agent_name": "Sofia - Copy Center 2000",
+  "voice": "cartesia-Hailey-Spanish-latin-america",
+  "language": "es-419",
+  "modal_endpoints": {
+    "search_services": "https://alex-bomasplotan--quote-service.modal.run",
+    "register_lead": "https://alex-bomasplotan--create-or-update-lead.modal.run",
+    "schedule_appointment": "https://alex-bomasplotan--schedule-appointment.modal.run",
+    "update_lead_status": "https://alex-bomasplotan--update-lead-status.modal.run"
+  },
+  "twilio_number_pending": "7713531668",
+  "status": "agent_created_twilio_pending"
+}

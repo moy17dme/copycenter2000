@@ -1,0 +1,209 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Variables de color — Paleta COPYCENTER2000
+   ============================================================ */
+:root {
+  --background:          #0A0E14;
+  --foreground:          #F5F7FA;
+  --card:                #111827;
+  --card-foreground:     #F5F7FA;
+  --primary:             #1F4AA8;
+  --primary-hover:       #2554BF;
+  --primary-foreground:  #FFFFFF;
+  --secondary:           #1B2433;
+  --secondary-foreground:#E5ECF6;
+  --muted:               #202938;
+  --muted-foreground:    #9AA6B2;
+  --accent:              #C61C1C;
+  --accent-hover:        #D92020;
+  --accent-foreground:   #FFFFFF;
+  --destructive:         #991B1B;
+  --border:              #273449;
+  --input-bg:            #162030;
+  --ring:                #2F5FC1;
+
+  /* Legacy aliases (mantiene compatibilidad con código existente) */
+  --color-ink:           #F5F7FA;
+  --color-accent-500:    #C61C1C;
+}
+
+/* ============================================================
+   Base global
+   ============================================================ */
+@layer base {
+  html, body, #root { height: 100%; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scrollbar personalizada */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--background); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3a4f6e; }
+}
+
+/* ============================================================
+   Componentes
+   ============================================================ */
+@layer components {
+
+  /* ── Card ─────────────────────────────────────────────────── */
+  .card, article.card {
+    background-color: var(--card);
+    color: var(--card-foreground);
+    border-color: var(--border);
+    @apply rounded-2xl shadow-lg border;
+  }
+
+  .interactive-card {
+    @apply transition-all duration-200 ease-out hover:shadow-2xl hover:-translate-y-0.5;
+  }
+
+  .card--glass {
+    background: rgba(17, 24, 39, 0.6);
+    color: var(--card-foreground);
+    border-color: var(--border);
+    backdrop-filter: blur(12px);
+    @apply border rounded-2xl;
+  }
+
+  /* ── Inputs / Selects ─────────────────────────────────────── */
+  .input {
+    @apply w-full rounded-xl px-3 py-2 text-sm outline-none transition;
+    background-color: var(--input-bg);
+    color: var(--foreground);
+    border: 1px solid var(--border);
+  }
+  .input:focus {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px rgba(47, 95, 193, 0.25);
+  }
+  .input::placeholder { color: var(--muted-foreground); }
+
+  .select {
+    @apply w-full rounded-xl px-3 py-2 text-sm outline-none transition;
+    background-color: var(--input-bg);
+    color: var(--foreground);
+    border: 1px solid var(--border);
+  }
+  .select:focus {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px rgba(47, 95, 193, 0.25);
+  }
+
+  /* ── Labels / Tipografía de formulario ────────────────────── */
+  .label {
+    @apply block text-sm font-medium mb-1;
+    color: var(--secondary-foreground);
+  }
+  .kpi {
+    @apply text-xs uppercase tracking-wide;
+    color: var(--muted-foreground);
+  }
+
+  /* ── Chips / Tags ─────────────────────────────────────────── */
+  .chips { @apply flex flex-wrap gap-2; }
+  .chip {
+    @apply px-3 py-1.5 rounded-full text-sm transition;
+    background-color: var(--secondary);
+    color: var(--secondary-foreground);
+    border: 1px solid var(--border);
+  }
+  .chip:hover { background-color: #243050; }
+  .chip-active {
+    background-color: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+    border-color: transparent !important;
+  }
+
+  /* ── Botones ──────────────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded-full px-5 py-2.5
+           font-semibold shadow-lg transition active:scale-[.98];
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+  }
+  .btn-primary:hover { background-color: var(--accent-hover); }
+
+  .btn-blue {
+    @apply inline-flex items-center gap-2 rounded-full px-5 py-2.5
+           font-semibold shadow-lg transition active:scale-[.98];
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+  }
+  .btn-blue:hover { background-color: var(--primary-hover); }
+
+  .btn-outline {
+    @apply inline-flex items-center gap-2 rounded-full px-5 py-2.5
+           font-medium transition;
+    border: 1px solid var(--border);
+    color: var(--secondary-foreground);
+  }
+  .btn-outline:hover {
+    background-color: var(--secondary);
+    border-color: var(--ring);
+    color: var(--foreground);
+  }
+
+  /* ── Iconos / Utilidades ──────────────────────────────────── */
+  .icon-btn {
+    @apply h-8 w-8 grid place-items-center rounded-lg transition;
+    background-color: var(--secondary);
+    color: var(--secondary-foreground);
+  }
+  .icon-btn:hover { background-color: var(--muted); }
+
+  .divider {
+    @apply my-4 h-px;
+    background-color: var(--border);
+  }
+
+  /* ── Dropzone ─────────────────────────────────────────────── */
+  .dropzone {
+    @apply rounded-2xl p-6 grid place-items-center cursor-pointer transition;
+    background-color: var(--secondary);
+    color: var(--secondary-foreground);
+    border: 2px dashed var(--border);
+  }
+  .dropzone:hover { border-color: var(--ring); }
+  .dropzone-hover {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px rgba(47, 95, 193, 0.15);
+  }
+
+  /* ── Nav link ─────────────────────────────────────────────── */
+  .nav-link { @apply transition-colors; color: var(--secondary-foreground); }
+  .nav-link:hover { color: var(--foreground); }
+
+  /* ── Section wrapper ─────────────────────────────────────── */
+  .section { @apply card p-4 md:p-6; }
+
+  /* ── Item list ────────────────────────────────────────────── */
+  .item {
+    @apply w-full text-left p-3 rounded-xl transition;
+    background-color: var(--secondary);
+    color: var(--secondary-foreground);
+  }
+  .item:hover { background-color: var(--muted); }
+  .item-active {
+    background-color: var(--muted);
+    box-shadow: 0 0 0 2px var(--ring);
+  }
+}
+
+/* ============================================================
+   Cursor personalizado
+   ============================================================ */
+body, button, a, input, textarea, select {
+  cursor: none !important;
+}

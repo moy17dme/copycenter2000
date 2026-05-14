@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Seed 15 Pedidos — Copy Center 2000</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    body { font-family: monospace; background: #0f1117; color: #e5ecf6; padding: 24px; max-width: 700px; margin: auto; }
+    h1   { color: #4e7bda; font-size: 18px; }
+    p    { color: #9aa6b2; font-size: 13px; }
+    button {
+      margin-top: 16px;
+      padding: 12px 28px;
+      background: #c61c1c;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    #log {
+      margin-top: 20px;
+      background: #1b2433;
+      border: 1px solid #273449;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 12px;
+      line-height: 1.8;
+      min-height: 60px;
+      white-space: pre-wrap;
+    }
+    .ok  { color: #34d399; }
+    .err { color: #fca5a5; }
+    .inf { color: #9aa6b2; }
+  </style>
+</head>
+<body>
+
+<h1>🛒 Seed — 15 Pedidos de Prueba</h1>
+<p>Inserta 15 pedidos inventados en Supabase para poblar el panel de administrador.<br>
+   Haz clic en el botón y espera a que terminen los 15 inserts.</p>
+
+<button id="btn" onclick="run()">▶ Insertar 15 pedidos</button>
+
+<div id="log" class="inf">Listo. Haz clic en el botón para comenzar.</div>
+
+<script>
+// ── Credenciales ─────────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://zdebbsyuoqsttqfwvxlg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_zWpiQf_AvzeA3fpq8V0OBw_l8X7l6v7";
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── Helpers de fechas ─────────────────────────────────────────────────────────
+function ts(daysAgo, h=10, m=0) {
+  const d = new Date("2026-05-06T12:00:00Z");
+  d.setDate(d.getDate() - daysAgo);
+  d.setHours(h, m, 0, 0);
+  return d.toISOString();
+}
+
+// ── 15 Pedidos ────────────────────────────────────────────────────────────────
+const ORDERS = [
+  // 1 — Impresión Digital B/N carta 60 pág → transferencia → pending_payment
+  {
+    customer_name:  "María García Romero",
+    customer_phone: "7712345601",
+    customer_email: null,
+    user_id:        null,
+    notes:          "Necesito las 60 hojas a doble cara si es posible.",
+    payment_method: "transfer",
+    payment_status: "pending",
+    status:         "pending_payment",
+    created_at:     ts(14, 9, 15),
+    items: [{
+      id: "itm001", serviceKey: "impresion", serviceLabel: "Impresión Digital",
+      fileName: "informe_anual_2025.pdf", quantity: 1, pageCount: 60, note: "",
+      options: { colorMode:"bn", paper:"Bond 75 g", size:"Carta", printSets:1,
+                 printTech:"laser", duplex:"doble", nUp:1, pageMode:"todas" }
+    }],
+  },
+  // 2 — Copias B/N carta 200 copias → tarjeta → in_progress
+  {
+    customer_name:  "Carlos Ramírez Vega",
+    customer_phone: "7718901202",
+    customer_email: "carlos.rv@gmail.com",
+    user_id:        null,
+    notes:          "Urgente para mañana por la mañana.",
+    payment_method: "card",
+    payment_status: "approved",
+    status:         "in_progress",
+    created_at:     ts(13, 10, 30),
+    items: [{
+      id: "itm002", serviceKey: "copias", serviceLabel: "Copias y Engargolados",
+      fileName: "manual_procedimientos.pdf", quantity: 1, note: "",
+      options: { copyColorMode:"bn", copySize:"Carta", copyQtyApprox:200,
+                 copySides:"simple", copyFinish:"ninguno" }
+    }],
+  },
+  // 3 — Tarjetas PVC ambos lados 15 piezas → transferencia → payment_approved
+  {
+    customer_name:  "Laura Mendoza Pérez",
+    customer_phone: "7723456703",
+    customer_email: null,
+    user_id:        null,
+    notes:          "Logo en alta resolución enviado por correo.",
+    payment_method: "transfer",
+    payment_status: "approved",
+    status:         "payment_approved",
+    created_at:     ts(12, 11, 0),
+    items: [{
+      id: "itm003", serviceKey: "pvc", serviceLabel: "Tarjetas PVC",
+      fileName: "diseno_credencial_empresa.pdf", quantity: 1, note: "",
+      options: { pvcSides:"ambos", pvcVariant:"normal", pvcVariableData:false,
+                 pvcPortaGafete:false, pvcCordon:false, gamesQty:15 }
+    }],
+  },
+  // 4 — Sublimación tazas blancas 10 piezas → tarjeta → printing
+  {
+    customer_name:  "Javier Torres Juárez",
+    customer_phone: "7734567804",
+    customer_email: "jtorres@outlook.com",
+    user_id:        null,
+    notes:          "Son de regalo, envolver individualmente si es posible.",
+    payment_method: "card",
+    payment_status: "approved",
+    status:         "printing",
+    created_at:     ts(11, 14, 45),
+    items: [{
+      id: "itm004", serviceKey: "sublimacion", serviceLabel: "Sublimación",
+      fileName: "arte_taza_logo.png", quantity: 1, note: "Foto de mascota en cada taza",
+      options: { subProductType:"taza-blanca", subBaseColor:"blanco", subRush:false, gamesQty:10 }
+    }],
+  },
+  // 5 — Fotobotones pines 5.8 cm, 25 piezas → transferencia → pending_payment
+  {
+    customer_name:  "Ana López Martínez",
+    customer_phone: "7745678905",
+    customer_email: null,
+    user_id:        null,
+    notes:          "Para evento de empresa el viernes.",
+    payment_method: "transfer",
+    payment_status: "pending",
+    status:         "pending_payment",
+    created_at:     ts(10, 9, 0),
+    items: [{
+      id: "itm005", serviceKey: "fotobotones", serviceLabel: "Fotobotones y Pines",
+      fileName: "foto_pin_empresa.jpg", quantity: 1, note: "Fondo rojo con logo blanco",
+      options: { pinSizeCm:"5.8", pinFinish:"brillante", pinType:"pin", gamesQty:25 }
+    }],
+  },
+  // 6 — Impresión Digital color carta 30 pág × 3 juegos → tarjeta → ready
+  {
+    customer_name:  "Roberto Sánchez Cruz",
+    customer_phone: "7756789006",
+    customer_email: "rsanchez@empresa.mx",
+    user_id:        null,
+    notes:          "Material para presentación corporativa.",
+    payment_method: "card",
+    payment_status: "approved",
+    status:         "ready",
+    created_at:     ts(9, 16, 20),
+    items: [{
+      id: "itm006", serviceKey: "impresion", serviceLabel: "Impresión Digital",
+      fileName: "presentacion_ventas_q1.pdf", quantity: 1, pageCount: 30, note: "",
+      options: { colorMode:"color", paper:"Bond 75 g", size:"Carta", printSets:3,
+                 printTech:"laser", duplex:"simple", nUp:1, pageMode:"todas" }
+    }],
+  },
+  // 7 — Escaneos carta 75 hojas → tarjeta → completed
+  {
+    customer_name:  "Gabriela Flores Ríos",
+    customer_phone: "7767890107",
+    customer_email: "gabflores@gmail.com",
+    user_id:        null,
+    notes:          "Digitalizar expediente médico. PDF ordenado por página.",
+    payment_method: "card",
+    payment_status: "approved",
+    status:         "completed",
+    created_at:     ts(9, 11, 0),
+    items: [{
+      id: "itm007", serviceKey: "escaneo", serviceLabel: "Escaneos y Digitalización",
+      fileName: null, quantity: 1, note: "",
+      options: { scanColorMode:"bn", scanSize:"Carta", scanQtyApprox:75,
+                 scanDuplex:"simple", scanDpi:"300", scanOutput:"PDF" }
+    }],
+  },
+  // 8 — Copias B/N oficio 300 + engargolado metálico → transferencia → in_progress
+  {
+    customer_name:  "Miguel Hernández Luna",
+    customer_phone: "7778901208",
+    customer_email: null,
+    user_id:        null,
+    notes:          "3 juegos de copias, cada uno engargolado por separado.",
+    payment_method: "transfer",
+    payment_status: "approved",
+    status:         "in_progress",
+    created_at:     ts(8, 13, 30),
+    items: [{
+      id: "itm008", serviceKey: "copias", serviceLabel: "Copias y Engargolados",
+      fileName: "tesis_ingenieria.pdf", quantity: 1, note: "Dividir en 3 juegos de 100 páginas",
+      options: { copyColorMode:"bn", copySize:"Oficio", copyQtyApprox:300,
+                 copySides:"doble", copyFinish:"engargolado-metalico" }
+    }],
+  },
+  // 9 — Credenciales PVC un lado con perforación, 30 piezas → tarjeta → payment_approved
+  {
+    customer_name:  "Patricia Ruiz Morales",
+    customer_phone: "7789012309",
+    customer_email: "patriruiz@hotmail.com",
+    user_id:        null,
+    notes:          "Para toda la plantilla del colegio. Perforación para porta gafete.",
+    payment_method: "card",
+    payment_status: "approved",
+    status:         "payment_approved",
+    created_at:     ts(7, 10, 0),
+    items: [{
+      id: "itm009", serviceKey: "pvc", serviceLabel: "Tarjetas PVC",
+      fileName: "plantilla_credencial_colegio.pdf", quantity: 1, note: "",
+      options: { pvcSides:"frente", pvcVariant:"perforacion", pvcVariableData:true,
+                 pvcPortaGafete:true, pvcCordon:false, gamesQty:30 }
+    }],
+  },
+  // 10 — Sublimación playeras M×4 + G×3 → transferencia → ready
+  {
+    customer_name:  "Diego Morales Castillo",
+    customer_phone: "7790123410",
+    customer_email: null,
+    user_id:        null,
+    notes:          "Uniformes equipo de fútbol. Logo al frente, número en espalda.",
+    payment_method: "transfer",
+    payment_status: "approved",
+    status:         "ready",
+    created_at:     ts(7, 15, 45),
+    items: [{
+      id: "itm010", serviceKey: "sublimacion", serviceLabel: "Sublimación",
+      fileName: "diseno_playera_equipo.png", quantity: 1,
+      note: "Fondo azul marino, letras blancas",
+      options: { subProductType:"playera", subBaseColor:"blanco",
+                 subSizeM:4, subSizeG:3, subRush:false }
+    }],
+  },
+  // 11 — Impresión color Opalina 115g carta 50 pág → transferencia → pending_payment
+  {
+    customer_name:  "Sofía Castro Díaz",
+    customer_phone: "7701234511",
+    customer_email: "sofia.castro@gmail.com",
+    user_id:        null,
+    notes:          "Catálogo de productos. Alta calidad de color.",
+    payment_method: "transfer",
+    payment_status: "pending",
+    status:         "pending_payment",
+    created_at:     ts(5, 9, 30),
+    items: [{
+      id: "itm011", serviceKey: "impresion", serviceLabel: "Impresión Digital",
+      fileName: "catalogo_productos_2026.pdf", quantity: 1, pageCount: 50, note: "",
+      options: { colorMode:"color", paper:"Opalina 115 g", size:"Carta", printSets:1,
+                 printTech:"inkjet", duplex:"simple", nUp:1, pageMode:"todas" }
+    }],
+  },
+  // 12 — Enmicados carta 12 piezas → tarjeta → in_progress
+  {
+    customer_name:  "Fernando Jiménez Alba",
+    customer_phone: "7712345612",
+    customer_email: "fjimenez@empresa.com",
+    user_id:        null,
+    notes:          "Menús de restaurante. Enmicado brillante ambos lados.",
+    payment_method: "card",
+    payment_status: "approved",
+    status:         "in_progress",
+    created_at:     ts(4, 12, 0),
+    items: [{
+      id: "itm012", serviceKey: "enmicado", serviceLabel: "Enmicados",
+      fileName: "menu_restaurante.pdf", quantity: 12,
+      note: "Enmicado brillante doble cara",
+      options: { enmicadoSize:"Carta", enmicadoSides:"doble", gamesQty:12 }
+    }],
+  },
+  // 13 — Fotobotones destapadores 5.8 cm, 15 piezas → tarjeta → ready
+  {
+    customer_name:  "Isabel Vega Ocampo",
+    customer_phone: "7723456713",
+    customer_email: null,
+    user_id:        null,
+    notes:          "Destapadores con foto de graduación.",
+    payment_method: "card",
+    payment_status: "approved",
+    status:         "ready",
+    created_at:     ts(3, 10, 15),
+    items: [{
+      id: "itm013", serviceKey: "fotobotones", serviceLabel: "Fotobotones y Pines",
+      fileName: "foto_graduacion.jpg", quantity: 1,
+      note: "Foto de graduación 2024",
+      options: { pinSizeCm:"5.8", pinFinish:"brillante", pinType:"destapador", gamesQty:15 }
+    }],
+  },
+  // 14 — Sublimación termos metálicos 5 piezas → transferencia → payment_approved
+  {
+    customer_name:  "Arturo Moreno Salinas",
+    customer_phone: "7734567814",
+    customer_email: "amoreno@negocios.mx",
+    user_id:        null,
+    notes:          "Regalo para directivos. Logo corporativo en negro.",
+    payment_method: "transfer",
+    payment_status: "approved",
+    status:         "payment_approved",
+    created_at:     ts(2, 14, 0),
+    items: [{
+      id: "itm014", serviceKey: "sublimacion", serviceLabel: "Sublimación",
+      fileName: "logo_corporativo_vector.png", quantity: 1,
+      note: "Termos plateados, logo en negro",
+      options: { subProductType:"termo-metalico", subBaseColor:"plateado", subRush:false, gamesQty:5 }
+    }],
+  },
+  // 15 — Impresión B/N oficio 50 pág × 10 juegos → tarjeta → completed
+  {
+    customer_name:  "Carmen Delgado Ibarra",
+    customer_phone: "7745678915",
+    customer_email: "carmen.d@gmail.com",
+    user_id:        null,
+    notes:          "Material de curso. Entregar engargolado en 10 juegos.",
+    payment_method: "card",
+    payment_status: "approved",
+    status:         "completed",
+    created_at:     ts(1, 11, 30),
+    items: [{
+      id: "itm015", serviceKey: "impresion", serviceLabel: "Impresión Digital",
+      fileName: "material_curso_administracion.pdf", quantity: 1, pageCount: 50, note: "",
+      options: {
+        colorMode:"bn", paper:"Bond 75 g", size:"Oficio", printSets:10,
+        printTech:"laser", duplex:"doble", nUp:1, pageMode:"todas",
+        finishes: { engargolado: { enabled: true, type: "metalico" } }
+      }
+    }],
+  },
+];
+
+const STATUS_LABELS = {
+  pending_payment:  "Pendiente de pago",
+  payment_approved: "Pago confirmado — En cola",
+  in_progress:      "Trabajando en tu pedido",
+  printing:         "Terminando de imprimir",
+  ready:            "Listo para recoger",
+  completed:        "Entregado",
+};
+
+const logEl = document.getElementById("log");
+const btn   = document.getElementById("btn");
+
+function log(msg, cls = "inf") {
+  const span = document.createElement("span");
+  span.className = cls;
+  span.textContent = msg + "\n";
+  logEl.appendChild(span);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+async function run() {
+  btn.disabled = true;
+  logEl.textContent = "";
+  log("Iniciando inserción de 15 pedidos…\n");
+
+  let ok = 0;
+  for (let i = 0; i < ORDERS.length; i++) {
+    const order = ORDERS[i];
+    const num = String(i + 1).padStart(2, "0");
+    try {
+      // Insertar pedido
+      const { data, error } = await db
+        .from("orders")
+        .insert(order)
+        .select()
+        .single();
+
+      if (error) {
+        log(`[${num}] ❌  ${order.customer_name}: ${error.message}`, "err");
+        continue;
+      }
+
+      const shortId = String(data.id).slice(0, 8).toUpperCase();
+      log(`[${num}] ✅  ${order.customer_name} → #${shortId} (${order.status})`, "ok");
+      ok++;
+
+      // Insertar historial
+      await db.from("order_status_history").insert({
+        order_id:   data.id,
+        status:     order.status,
+        message:    STATUS_LABELS[order.status] || order.status,
+        created_at: order.created_at,
+      });
+
+    } catch (e) {
+      log(`[${num}] ❌  ${order.customer_name}: ${e.message}`, "err");
+    }
+  }
+
+  log(`\n✔ Listo: ${ok}/15 pedidos insertados correctamente.`, ok === 15 ? "ok" : "err");
+  btn.disabled = false;
+  btn.textContent = "↺ Volver a insertar";
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "office-to-pdf",
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0",
+    "express": "^4.19.2"
+  }
+}
