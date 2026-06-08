@@ -451,7 +451,8 @@ function isMissingOptionalOrderColumn(error) {
   const text = String(error?.message || error?.details || "");
   return error?.code === "PGRST204" ||
     text.includes("pricing_summary") ||
-    text.includes("coupon_code");
+    text.includes("coupon_code") ||
+    text.includes("billing_info");
 }
 
 export async function createOrder({
@@ -504,6 +505,7 @@ export async function createOrder({
     ...orderData,
     pricing_summary: pricingSummary,
     coupon_code:     couponCode || null,
+    billing_info:    billingInfo || null,
   };
 
   // RLS permite al cliente crear su pedido y al admin gestionarlo desde su cuenta.

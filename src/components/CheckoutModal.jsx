@@ -33,7 +33,7 @@ const STEPS = {
   SUCCESS:   "success",
 };
 const UPLOAD_FOREGROUND_BUDGET_MS = 2200;
-const MIN_ONLINE_PAYMENT_MXN = 10;
+const MIN_CHECKOUT_OPTION_MXN = 50;
 
 // ── Validaciones ─────────────────────────────────────────────────────────────
 function validateName(raw) {
@@ -258,6 +258,16 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
     return { lines, sum, hasUnknown, discount, total };
   }, [items, couponApplied, couponState, ticketData, ticketTotal]);
 
+  useEffect(() => {
+    if (orderSummary.total >= MIN_CHECKOUT_OPTION_MXN) return;
+
+    if (payment === "mercadopago") setPayment("transfer");
+    if (requiresInvoice) {
+      setRequiresInvoice(false);
+      setBillingError("");
+    }
+  }, [orderSummary.total, payment, requiresInvoice]);
+
   if (!open) return null;
 
   const hasItems = items.length > 0;
@@ -286,8 +296,14 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
     setPhoneError(phoneErr || "");
     if (nameErr || phoneErr) return;
 
-    // Validar facturación
+    // Validar facturacion
     if (requiresInvoice) {
+      if (orderSummary.total < MIN_CHECKOUT_OPTION_MXN) {
+        setBillingError(
+          `La factura esta disponible en pedidos desde $${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN.`
+        );
+        return;
+      }
       const rfcErr = validateRfc(billingRfc);
       if (rfcErr) { setBillingError(rfcErr); return; }
       if (!billingRazonSocial.trim()) {
@@ -301,9 +317,9 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       }
     }
 
-    if (payment === "mercadopago" && orderSummary.total < MIN_ONLINE_PAYMENT_MXN) {
+    if (payment === "mercadopago" && orderSummary.total < MIN_CHECKOUT_OPTION_MXN) {
       setError(
-        `El pago en linea requiere un total minimo de $${fmtMXN(MIN_ONLINE_PAYMENT_MXN)} MXN. ` +
+        `El pago en linea requiere un total minimo de $${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN. ` +
         "Agrega productos o selecciona transferencia."
       );
       return;
@@ -478,7 +494,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
           const message = isQuoteRequired
             ? "Este pedido necesita cotizacion antes de pagar en linea. Ya quedo registrado y te contactaremos para confirmar el total."
             : isBelowMinimum
-              ? `El total confirmado es menor a $${fmtMXN(MIN_ONLINE_PAYMENT_MXN)} MXN. El pedido quedo registrado y puedes pagarlo por transferencia.`
+              ? `El total confirmado es menor a $${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN. El pedido quedo registrado y puedes pagarlo por transferencia.`
               : `Pedido registrado, pero no se pudo abrir Mercado Pago: ${paymentErr.message}`;
 
           setError(message);
@@ -744,23 +760,37 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { key: "transfer", icon: "🏦", label: "Transferencia", sub: "El pedido inicia al confirmar comprobante" },
-                    { key: "mercadopago", icon: "💳", label: "Pago en linea", sub: "Mercado Pago valida el total" },
-                  ].map((opt) => (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      onClick={() => setPayment(opt.key)}
-                      className="rounded-2xl p-3 text-left transition"
-                      style={payment === opt.key
-                        ? { border: '1px solid #1F4AA8', backgroundColor: 'rgba(31,74,168,0.15)', color: '#F5F7FA' }
-                        : { border: '1px solid #273449', backgroundColor: '#1B2433', color: '#9AA6B2' }
-                      }
-                    >
-                      <div className="text-base mb-1">{opt.icon}</div>
-                      <div className="text-sm font-medium" style={{ color: '#E5ECF6' }}>{opt.label}</div>
-                      <div className="text-[11px] mt-0.5" style={{ color: '#9AA6B2' }}>{opt.sub}</div>
-                    </button>
-                  ))}
+                    {
+                      key: "mercadopago",
+                      icon: "💳",
+                      label: "Pago en linea",
+                      sub: orderSummary.total >= MIN_CHECKOUT_OPTION_MXN
+                        ? "Mercado Pago valida el total"
+                        : `Disponible desde $${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN`,
+                    },
+                  ].map((opt) => {
+                    const isUnavailable =
+                      opt.key === "mercadopago" &&
+                      orderSummary.total < MIN_CHECKOUT_OPTION_MXN;
+
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        disabled={isUnavailable}
+                        onClick={() => setPayment(opt.key)}
+                        className="rounded-2xl p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50"
+                        style={payment === opt.key
+                          ? { border: '1px solid #1F4AA8', backgroundColor: 'rgba(31,74,168,0.15)', color: '#F5F7FA' }
+                          : { border: '1px solid #273449', backgroundColor: '#1B2433', color: '#9AA6B2' }
+                        }
+                      >
+                        <div className="text-base mb-1">{opt.icon}</div>
+                        <div className="text-sm font-medium" style={{ color: '#E5ECF6' }}>{opt.label}</div>
+                        <div className="text-[11px] mt-0.5" style={{ color: '#9AA6B2' }}>{opt.sub}</div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -796,9 +826,9 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                       Este pedido incluye servicios por cotizar. Si no hay precio calculable, quedara registrado y te contactaremos antes de cobrar.
                     </p>
                   )}
-                  {!orderSummary.hasUnknown && orderSummary.total < MIN_ONLINE_PAYMENT_MXN && (
+                  {!orderSummary.hasUnknown && orderSummary.total < MIN_CHECKOUT_OPTION_MXN && (
                     <p className="mt-2 text-[11px]" style={{ color: '#FCA5A5' }}>
-                      El pago en linea esta disponible desde ${fmtMXN(MIN_ONLINE_PAYMENT_MXN)} MXN.
+                      El pago en linea esta disponible desde ${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN.
                       Agrega productos o selecciona transferencia.
                     </p>
                   )}
@@ -808,11 +838,17 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
               {/* ── FACTURACIÓN ─────────────────────────────── */}
               <div>
                 {/* Toggle */}
-                <label className="flex items-center gap-3 cursor-pointer rounded-2xl px-3 py-2.5 transition"
-                  style={{ border: '1px solid #273449', backgroundColor: requiresInvoice ? 'rgba(31,74,168,0.08)' : '#1B2433' }}>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={requiresInvoice}
+                  disabled={orderSummary.total < MIN_CHECKOUT_OPTION_MXN}
+                  onClick={() => { setRequiresInvoice((v) => !v); setBillingError(""); }}
+                  className="w-full flex items-center gap-3 text-left rounded-2xl px-3 py-2.5 transition disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ border: '1px solid #273449', backgroundColor: requiresInvoice ? 'rgba(31,74,168,0.08)' : '#1B2433' }}
+                >
                   <div
-                    onClick={() => { setRequiresInvoice((v) => !v); setBillingError(""); }}
-                    className="relative shrink-0 w-9 h-5 rounded-full transition-colors cursor-pointer"
+                    className="relative shrink-0 w-9 h-5 rounded-full transition-colors"
                     style={{ backgroundColor: requiresInvoice ? '#1F4AA8' : '#273449' }}
                   >
                     <span
@@ -822,9 +858,13 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                   </div>
                   <div>
                     <p className="text-sm font-medium" style={{ color: '#E5ECF6' }}>¿Requieres factura?</p>
-                    <p className="text-[11px]" style={{ color: '#6B7280' }}>Factura CFDI al correo indicado</p>
+                    <p className="text-[11px]" style={{ color: '#6B7280' }}>
+                      {orderSummary.total >= MIN_CHECKOUT_OPTION_MXN
+                        ? "Factura CFDI al correo indicado"
+                        : `Disponible desde $${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN`}
+                    </p>
                   </div>
-                </label>
+                </button>
 
                 {requiresInvoice && (
                   <div className="mt-3 rounded-2xl p-4 space-y-3"
@@ -969,7 +1009,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                 type="submit"
                 disabled={
                   !hasItems ||
-                  (payment === "mercadopago" && orderSummary.total < MIN_ONLINE_PAYMENT_MXN)
+                  (payment === "mercadopago" && orderSummary.total < MIN_CHECKOUT_OPTION_MXN)
                 }
                 className="w-full py-3 rounded-2xl font-semibold text-sm transition-all hover:scale-[1.01] active:scale-[.99] disabled:opacity-40"
                 style={{ backgroundColor: '#C61C1C', color: '#FFFFFF' }}

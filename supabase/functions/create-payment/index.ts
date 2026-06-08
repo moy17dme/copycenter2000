@@ -9,7 +9,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const APP_BASE_URL = Deno.env.get("APP_BASE_URL") || "";
 const MP_WEBHOOK_URL = Deno.env.get("MP_WEBHOOK_URL") || "";
 const MP_CHECKOUT_MODE = (Deno.env.get("MP_CHECKOUT_MODE") || "").toLowerCase();
-const MIN_ONLINE_PAYMENT_MXN = 10;
+const MIN_ONLINE_PAYMENT_MXN = 50;
 
 if (!MP_TOKEN) throw new Error("Missing MP_ACCESS_TOKEN secret");
 if (!SUPABASE_URL) throw new Error("Missing SUPABASE_URL secret");
