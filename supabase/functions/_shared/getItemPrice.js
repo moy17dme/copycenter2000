@@ -11,8 +11,8 @@ import {
   ENGARGOLADO,
   lookupPrice,
   getPrintPrice,
-} from "../data/priceList";
-import { calculatePlotPrice } from "./plotPrice";
+} from "./priceList.js";
+import { calculatePlotPrice } from "./plotPrice.js";
 
 // ── Impresión Offset — tabla de precios por millar (+50%) ───────────────────
 const OFFSET_MAT = {

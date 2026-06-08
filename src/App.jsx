@@ -7,9 +7,7 @@ import Section from "./components/Section";
 import Hero from "./components/Hero";
 import Servicios from "./components/Servicios";
 import Precios from "./components/Precios";
-import FabPedido from "./components/FabPedido";
 import Footer from "./components/Footer";
-import CustomCursor from "./components/CustomCursor";
 import { CartProvider } from "./components/CartContext";
 import CartOverlay from "./components/CartOverlay";
 import AuthModal from "./components/AuthModal";
@@ -35,6 +33,14 @@ function formatShortName(fullName) {
   return parts.join(" ");
 }
 
+function withTimeout(promise, ms, fallback) {
+  let timeoutId;
+  const timeout = new Promise((resolve) => {
+    timeoutId = window.setTimeout(() => resolve(fallback), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
+}
+
 function ScrollToHash() {
   const { pathname, hash } = useLocation();
 
@@ -55,13 +61,9 @@ function ScrollToHash() {
 
 function HomePage({ openCart }) {
   return (
-    <main className="flex-1 w-full px-4 sm:px-8 lg:px-16 2xl:px-32 pt-6 md:pt-10 pb-24 relative z-10">
+    <main className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 pb-20 pt-28 sm:px-6 md:pt-24 lg:px-8">
       <Section id="inicio">
         <Hero />
-      </Section>
-
-      <Section id="precios" label="Precios (referencia)">
-        <Precios />
       </Section>
 
       <Section id="servicios">
@@ -70,13 +72,15 @@ function HomePage({ openCart }) {
           onDirectCheckout={() => openCart({ tab: "pedido", autoCheckout: true })}
         />
       </Section>
+
+      <Section id="precios">
+        <Precios />
+      </Section>
     </main>
   );
 }
 
 export default function App() {
-  const location = useLocation();
-
   // carrito
   const [cartOpen, setCartOpen] = useState(false);
   const [cartTab, setCartTab] = useState("pedido");
@@ -112,7 +116,16 @@ export default function App() {
   const openAuth = () => setAuthOpen(true);
   const closeAuth = () => setAuthOpen(false);
 
-  const showFab = location.pathname === "/";
+  const buildProfileFallback = (u) => ({
+    id: u.id,
+    full_name: u.user_metadata?.full_name || "",
+    phone: u.user_metadata?.phone || u.user_metadata?.whatsapp || "",
+    whatsapp: u.user_metadata?.whatsapp || "",
+    address: u.user_metadata?.address || "",
+    company: u.user_metadata?.company || "",
+    _supportsBillingProfile: false,
+    role: u.app_metadata?.role || u.user_metadata?.role || "customer",
+  });
 
   const loadProfile = async (u) => {
     if (!u) {
@@ -120,38 +133,42 @@ export default function App() {
       return;
     }
 
+    const fallbackProfile = buildProfileFallback(u);
+
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, phone, whatsapp, address, company, role")
-        .eq("id", u.id)
-        .single();
+      const { data, error } = await withTimeout(
+        supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", u.id)
+          .single(),
+        7000,
+        { data: null, error: new Error("profiles timeout") }
+      );
 
       if (!error && data) {
-        setProfile(data);
+        setProfile({
+          ...data,
+          _supportsBillingProfile:
+            Object.prototype.hasOwnProperty.call(data, "rfc") &&
+            Object.prototype.hasOwnProperty.call(data, "razon_social") &&
+            Object.prototype.hasOwnProperty.call(data, "constancia_path"),
+        });
         return;
       }
 
-      setProfile({
-        id: u.id,
-        full_name: u.user_metadata?.full_name || "",
-        phone: u.user_metadata?.phone || u.user_metadata?.whatsapp || "",
-        whatsapp: u.user_metadata?.whatsapp || "",
-        address: u.user_metadata?.address || "",
-        company: u.user_metadata?.company || "",
-        role: "customer",
-      });
+      if (error?.message === "profiles timeout") {
+        setProfile((current) => (current?.id === u.id ? current : fallbackProfile));
+        return;
+      }
+
+      setProfile(fallbackProfile);
     } catch (e) {
-      console.warn("[profiles] fallback:", e?.message || e);
-      setProfile({
-        id: u.id,
-        full_name: u.user_metadata?.full_name || "",
-        phone: u.user_metadata?.phone || u.user_metadata?.whatsapp || "",
-        whatsapp: u.user_metadata?.whatsapp || "",
-        address: u.user_metadata?.address || "",
-        company: u.user_metadata?.company || "",
-        role: "customer",
-      });
+      const message = e?.message || e;
+      if (message !== "profiles timeout") {
+        console.warn("[profiles] fallback:", message);
+      }
+      setProfile((current) => (current?.id === u.id ? current : fallbackProfile));
     }
   };
 
@@ -181,7 +198,7 @@ export default function App() {
 
         const s = data?.session ?? null;
         setSession(s);
-        await loadProfile(s?.user ?? null);
+        loadProfile(s?.user ?? null);
       } catch (e) {
         console.warn("[boot] error:", e?.message || e);
         setSession(null);
@@ -191,15 +208,19 @@ export default function App() {
 
     boot();
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession ?? null);
-      await loadProfile(newSession?.user ?? null);
 
       // Si se salió, limpia UI
       if (event === "SIGNED_OUT") {
         setProfile(null);
         setAuthOpen(false);
+        return;
       }
+
+      window.setTimeout(() => {
+        if (alive) loadProfile(newSession?.user ?? null);
+      }, 0);
     });
 
     return () => {
@@ -211,7 +232,6 @@ export default function App() {
   return (
     <CartProvider>
       <div className="relative min-h-screen flex flex-col bg-background text-foreground">
-        <CustomCursor />
         <ScrollToHash />
 
         <div className="relative z-10 flex flex-col min-h-screen">
@@ -228,15 +248,13 @@ export default function App() {
             <Route path="/" element={<HomePage openCart={openCart} />} />
             <Route path="/productos" element={<ProductosPage />} />
             <Route path="/equipos" element={<EquiposPage />} />
-            <Route path="/mis-pedidos" element={<MisPedidos user={user} />} />
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/mis-pedidos" element={<MisPedidos user={user} session={session} />} />
+            <Route path="/admin" element={<Admin user={user} accessToken={session?.access_token || null} profile={profile} />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
 
           <Footer />
-
-          {showFab && <FabPedido onClick={() => openCart({ tab: "pedido" })} />}
 
           <CartOverlay
             open={cartOpen}
@@ -245,6 +263,7 @@ export default function App() {
             focusItemId={cartFocusId}
             autoCheckout={cartAutoCheckout}
             user={user}
+            session={session}
             profile={profile}
           />
 

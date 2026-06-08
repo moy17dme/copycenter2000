@@ -16,7 +16,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+const supabaseSingletonKey = "__copycenter2000_supabase_client__";
+
+export const supabase = globalThis[supabaseSingletonKey] || createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -25,6 +27,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storageKey: AUTH_STORAGE_KEY, // ✅ ok, pero ahora hay que limpiarlo al logout
   },
 });
+
+globalThis[supabaseSingletonKey] = supabase;
 
 export async function pingSupabase() {
   const url = `${supabaseUrl}/auth/v1/health`;

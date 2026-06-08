@@ -122,14 +122,22 @@ export default function PloteoOptionsEditor({ opts, onChangeOptions, item }) {
   const cadOverride = opts.plotCadOverride ?? false;
 
   useEffect(() => {
+    const inkPatch = {
+      plotCoveragePct: ink.coveragePct ?? null,
+      plotCadLike: Boolean(ink.cadLike),
+      plotSaturationAuto: ink.saturationRange ?? null,
+    };
+
     if (cadOverride) {
       // Manual override: force CAD tier regardless of auto-detection
-      update({ plotSaturation: "0-10" });
+      update({ ...inkPatch, plotSaturation: "0-10" });
     } else if (ink.saturationRange) {
-      update({ plotSaturation: ink.saturationRange });
+      update({ ...inkPatch, plotSaturation: ink.saturationRange });
+    } else if (ink.coveragePct != null || ink.cadLike != null) {
+      update(inkPatch);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ink.saturationRange, cadOverride]);
+  }, [ink.coveragePct, ink.saturationRange, ink.cadLike, cadOverride]);
 
   // ── Validación de ancho ───────────────────────────────────
   const widthCm       = widthToCm(width, unit);

@@ -31,14 +31,14 @@ export default function Footer() {
               </div>
               <div className="flex gap-3">
                 <a
-                  href="#servicios"
+                  href="/#servicios"
                   className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold transition"
                   style={{ backgroundColor: '#C61C1C', color: '#FFFFFF' }}
                 >
                   ¡Realiza tu pedido!
                 </a>
                 <a
-                  href="#precios"
+                  href="/#precios"
                   className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-medium transition"
                   style={{ border: '1px solid rgba(255,255,255,0.2)', color: '#E5ECF6' }}
                 >
@@ -87,11 +87,11 @@ export default function Footer() {
                 Servicios
               </h3>
               <ul className="mt-4 space-y-2 text-sm">
-                <Li href="/servicios#impresion-digital">Impresión Digital</Li>
-                <Li href="/servicios#copias">Copias B/N y Color</Li>
-                <Li href="/servicios#planos">Ploteo de Planos</Li>
-                <Li href="/servicios#artes">Artes Gráficas</Li>
-                <Li href="/servicios#acabados">Engargolados y Laminados</Li>
+                <Li href="/#servicios">Impresión Digital</Li>
+                <Li href="/#servicios">Copias B/N y Color</Li>
+                <Li href="/#servicios">Ploteo de Planos</Li>
+                <Li href="/#servicios">Artes Gráficas</Li>
+                <Li href="/#servicios">Engargolados y Laminados</Li>
               </ul>
             </div>
 
@@ -102,9 +102,9 @@ export default function Footer() {
               </h3>
               <ul className="mt-4 space-y-2 text-sm">
                 <Li href="/">Inicio</Li>
-                <Li href="/servicios">Servicios</Li>
-                <Li href="/precios">Precios</Li>
-                <Li href="#pedido">Realiza tu pedido</Li>
+                <Li href="/#servicios">Servicios</Li>
+                <Li href="/#precios">Precios</Li>
+                <Li href="/#servicios">Realiza tu pedido</Li>
                 <Li href="/aviso-privacidad">Aviso de privacidad</Li>
               </ul>
             </div>

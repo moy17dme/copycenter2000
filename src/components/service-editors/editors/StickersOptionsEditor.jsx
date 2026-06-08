@@ -1,4 +1,165 @@
-import { useMemo } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
+
+// ── Precios de materiales (por metro lineal, rollo de 50 cm de ancho) ──
+const PRECIO_MATERIAL = {
+  "vinil-mate":         200,
+  "vinil-brillante":    250,
+  "vinil-transparente": 400,
+};
+const LABEL_MATERIAL = {
+  "vinil-mate":         "Vinil mate",
+  "vinil-brillante":    "Vinil brillante",
+  "vinil-transparente": "Vinil transparente",
+};
+
+// ── Hoja de vinil mate ────────────────────────────────────────────────────────
+const HOJA_ANCHO_CM   = 28;   // ancho físico de la hoja (cm)
+const HOJA_LARGO_CM   = 43;   // largo físico de la hoja (cm)
+const HOJA_MARGEN_CM  = 5;    // margen por cada lado
+const HOJA_USABLE_W   = HOJA_ANCHO_CM - HOJA_MARGEN_CM * 2; // 18 cm
+const HOJA_USABLE_H   = HOJA_LARGO_CM - HOJA_MARGEN_CM * 2; // 33 cm
+const HOJA_PRECIO     = 28;   // $ por hoja
+
+function calcPrecioHoja({ widthCm, heightCm, qty, cutType }) {
+  if (!widthCm || !heightCm || !qty || widthCm <= 0 || heightCm <= 0 || qty <= 0) return null;
+
+  const wEfectivo = widthCm  + 0.2 * 2;
+  const hEfectivo = heightCm + 0.2 * 2;
+
+  const xPorHoja = Math.floor(HOJA_USABLE_W / wEfectivo);
+  const yPorHoja = Math.floor(HOJA_USABLE_H / hEfectivo);
+
+  if (xPorHoja === 0 || yPorHoja === 0) return null; // no cabe → no ofrecer hoja
+
+  const porHoja        = xPorHoja * yPorHoja;
+  const hojas          = Math.ceil(qty / porHoja);
+  const precioVinil    = hojas * HOJA_PRECIO;
+  const precioPorCorte = cutType === "individual" ? 0.50 : 0.40;
+  const precioCorte    = qty * precioPorCorte;
+  const total          = precioVinil + precioCorte;
+
+  return { xPorHoja, yPorHoja, porHoja, hojas, precioVinil, precioPorCorte, precioCorte, total };
+}
+
+// ── Dimensiones del equipo ────────────────────────────────────────────────────
+const PLOTTER_ANCHO_CM  = 50;   // ancho usable para stickers (cm)
+const ROLLO_ANCHO_CM    = 150;  // ancho del rollo de vinil → 3 tiras de 50 cm
+const USABLE_LARGO_CM   = 140;  // alto usable para stickers por tira (cm)
+const GRIP_CM           = 10;   // cm de agarre que necesita el plotter al inicio
+const MARGEN_STK_CM     = 0.2;  // 2 mm de margen por cada lado entre stickers
+const MIN_LARGO_CM      = 60;   // mínimo de largo que siempre se cobra (cm)
+const TIRA_TOTAL_CM     = USABLE_LARGO_CM + GRIP_CM; // 150 cm — largo cobrado por tira de laminado
+
+// Tiras de 50 cm que salen del rollo de 150 cm (se imprimen juntas)
+const TIRAS_POR_ROLLO = Math.floor(ROLLO_ANCHO_CM / PLOTTER_ANCHO_CM); // 3
+
+// ── Precios de laminado ($/metro lineal de tira) ──────────────────────────────
+const LAMINADO_M = {
+  brillante: 60,   // → $90 por tira de 150 cm
+  mate:      107,  // → $160 por tira de 150 cm
+};
+
+function calcPrecioStickers({ widthCm, heightCm, qty, material, cutType, laminadoTipo }) {
+  if (!widthCm || !heightCm || !qty || widthCm <= 0 || heightCm <= 0 || qty <= 0) return null;
+  if (widthCm > PLOTTER_ANCHO_CM)
+    return { error: `El ancho (${widthCm} cm) supera los ${PLOTTER_ANCHO_CM} cm del plotter.` };
+
+  const wEfectivo = widthCm  + MARGEN_STK_CM * 2;
+  const hEfectivo = heightCm + MARGEN_STK_CM * 2;
+
+  // ── Capacidad por tira (50 × 140 cm usables) ──────────────────────────────
+  const xPorTira = Math.floor(PLOTTER_ANCHO_CM / wEfectivo);
+  const yPorTira = Math.floor(USABLE_LARGO_CM  / hEfectivo);
+
+  if (xPorTira === 0 || yPorTira === 0)
+    return { error: `El sticker (${widthCm}×${heightCm} cm) no cabe en el área usable de ${PLOTTER_ANCHO_CM}×${USABLE_LARGO_CM} cm.` };
+
+  const porTira    = xPorTira * yPorTira;
+  const tirasCorte = Math.ceil(qty / porTira);
+
+  // ── Consumo de vinil (3 tiras simultáneas del rollo de 150 cm) ────────────
+  const porFilaRollo    = xPorTira * TIRAS_POR_ROLLO;
+  const filasNecesarias = Math.ceil(qty / porFilaRollo);
+  const largoCmReal     = filasNecesarias * hEfectivo + GRIP_CM;
+  const largoCmFactura  = Math.max(largoCmReal, MIN_LARGO_CM);
+  const metrosLineales  = largoCmFactura / 100;
+  const minimoAplicado  = largoCmReal < MIN_LARGO_CM;
+
+  const precioVinil    = metrosLineales * (PRECIO_MATERIAL[material] ?? 200);
+  const precioPorCorte = cutType === "individual" ? 0.50 : 0.40;
+  const precioCorte    = qty * precioPorCorte;
+
+  // ── Laminado (por tira que pasa por la laminadora, largo fijo 150 cm) ─────
+  const precioLaminado = laminadoTipo
+    ? tirasCorte * (TIRA_TOTAL_CM / 100) * (LAMINADO_M[laminadoTipo] ?? 0)
+    : 0;
+
+  const total = precioVinil + precioCorte + precioLaminado;
+
+  return {
+    xPorTira, yPorTira, porTira, tirasCorte,
+    porFilaRollo, filasNecesarias,
+    largoCmReal, largoCmFactura, minimoAplicado,
+    metrosLineales, precioVinil, precioPorCorte, precioCorte,
+    precioLaminado, total,
+  };
+}
+
+// ── Tooltip de imagen ─────────────────────────────────────────────────────────
+function CutTooltip() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div className="relative inline-block" ref={ref}>
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        className="w-4 h-4 rounded-full bg-white/15 hover:bg-white/25 text-[10px] text-slate-300 font-bold leading-none flex items-center justify-center transition">
+        ?
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-6 z-50 w-64 rounded-2xl border border-white/15 bg-slate-900 shadow-2xl p-3 space-y-3">
+          <div>
+            <p className="text-[11px] font-semibold text-white mb-1">Corte completo</p>
+            <div className="rounded-xl bg-white/5 border border-white/10 p-2 flex items-center justify-center h-20 mb-1">
+              {/* Representación visual: stickers separados */}
+              <div className="flex gap-2">
+                {[0,1,2].map(i => (
+                  <div key={i} className="w-10 h-10 rounded border-2 border-orange-400 bg-orange-400/10 flex items-center justify-center">
+                    <div className="w-6 h-6 rounded-sm bg-orange-400/40" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-400">Cada sticker queda recortado individualmente (troquelado). Listo para despegar y pegar.</p>
+          </div>
+
+          <div className="h-px bg-white/10" />
+
+          <div>
+            <p className="text-[11px] font-semibold text-white mb-1">Medio corte</p>
+            <div className="rounded-xl bg-white/5 border border-white/10 p-2 flex items-center justify-center h-20 mb-1">
+              {/* Representación visual: stickers en hoja */}
+              <div className="border-2 border-slate-500 rounded p-1 flex gap-1.5 flex-wrap w-full max-w-[120px]">
+                {[0,1,2,3,4,5].map(i => (
+                  <div key={i} className="w-7 h-7 rounded-sm border border-dashed border-blue-400 bg-blue-400/10" />
+                ))}
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-400">Los stickers vienen en hoja. El corte llega hasta el adhesivo pero no corta el papel de respaldo. Se despegan fácil.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function StickersOptionsEditor({ opts, onChangeOptions }) {
   const update = (patch) => onChangeOptions({ ...patch });
@@ -52,43 +213,42 @@ export default function StickersOptionsEditor({ opts, onChangeOptions }) {
     update({ stkHeightCm: clamp(n, 1, 999) });
   };
 
+  // ====== Laminado ======
+  const laminadoTipo = laminado ? (opts.stkLaminadoTipo || "brillante") : null;
+
   // ====== UI helpers ======
   const isCustomQty = qtyPreset === "custom";
   const isCustomSize = sizePreset === "custom";
 
+  // ====== Precios estimados ======
+  const precioTira = useMemo(() => calcPrecioStickers({
+    widthCm:  Number(width)  || 0,
+    heightCm: Number(height) || 0,
+    qty:      qtyEffective   || 0,
+    material,
+    cutType,
+    laminadoTipo,
+  }), [width, height, qtyEffective, material, cutType, laminadoTipo]);
+
+  const precioHoja = useMemo(() => calcPrecioHoja({
+    widthCm:  Number(width)  || 0,
+    heightCm: Number(height) || 0,
+    qty:      qtyEffective   || 0,
+    cutType,
+  }), [width, height, qtyEffective, cutType]);
+
+  // Auto-seleccionar hoja cuando sea más barato (y no haya laminado — la hoja no se lamina)
+  const modoAuto = useMemo(() => {
+    if (laminado) return "tira"; // laminado solo en tira
+    if (!precioHoja || !precioTira || precioTira.error) return "hoja";
+    if (precioHoja.error) return "tira";
+    return precioHoja.total <= precioTira.total ? "hoja" : "tira";
+  }, [precioHoja, precioTira, laminado]);
+
+  const precio = modoAuto === "hoja" ? precioHoja : precioTira;
+
   return (
     <div className="space-y-4 text-[13px] leading-snug">
-      {/* Forma */}
-      <section>
-        <label className="label text-[11px] uppercase tracking-[0.16em] text-slate-300/80 mb-1">
-          Forma del sticker
-        </label>
-        <div className="chips flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={`chip text-[11px] py-1.5 ${shape === "redondo" ? "chip-active" : ""}`}
-            onClick={() => update({ stkShape: "redondo" })}
-          >
-            Redondos
-          </button>
-          <button
-            type="button"
-            className={`chip text-[11px] py-1.5 ${shape === "cuadrado" ? "chip-active" : ""}`}
-            onClick={() => update({ stkShape: "cuadrado" })}
-          >
-            Cuadrados / rectangulares
-          </button>
-          <button
-            type="button"
-            className={`chip text-[11px] py-1.5 ${shape === "contorno" ? "chip-active" : ""}`}
-            onClick={() => update({ stkShape: "contorno" })}
-          >
-            Corte al contorno (figura)
-          </button>
-        </div>
-      </section>
-
-      <div className="h-px bg-white/10" />
 
       {/* Tamaño + Cantidad */}
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -204,60 +364,47 @@ export default function StickersOptionsEditor({ opts, onChangeOptions }) {
 
       <div className="h-px bg-white/10" />
 
-      {/* Material + Uso */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="label text-[11px] uppercase tracking-[0.16em] text-slate-300/80 mb-1">
-            Material
-          </label>
-          <select
-            className="select text-[13px] h-9 py-1.5"
-            value={material}
-            onChange={(e) => update({ stkMaterial: e.target.value })}
-          >
-            <option value="vinil-mate">Vinil blanco mate</option>
-            <option value="vinil-brillante">Vinil blanco brillante</option>
-            <option value="vinil-transparente">Vinil transparente</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="label text-[11px] uppercase tracking-[0.16em] text-slate-300/80 mb-1">
-            Uso
-          </label>
-          <select
-            className="select text-[13px] h-9 py-1.5"
-            value={usage}
-            onChange={(e) => update({ stkUsage: e.target.value })}
-          >
-            <option value="interior">Interior</option>
-            <option value="exterior">Exterior</option>
-          </select>
-        </div>
+      {/* Material */}
+      <section>
+        <label className="label text-[11px] uppercase tracking-[0.16em] text-slate-300/80 mb-1">
+          Material
+        </label>
+        <select
+          className="select text-[13px] h-9 py-1.5"
+          value={material}
+          onChange={(e) => update({ stkMaterial: e.target.value })}
+        >
+          <option value="vinil-mate">Vinil blanco mate</option>
+          <option value="vinil-brillante">Vinil blanco brillante</option>
+          <option value="vinil-transparente">Vinil transparente</option>
+        </select>
       </section>
 
       <div className="h-px bg-white/10" />
 
       {/* Corte y protección */}
       <section>
-        <label className="label text-[11px] uppercase tracking-[0.16em] text-slate-300/80 mb-1">
-          Corte y protección
-        </label>
+        <div className="flex items-center gap-2 mb-1">
+          <label className="label text-[11px] uppercase tracking-[0.16em] text-slate-300/80">
+            Tipo de corte
+          </label>
+          <CutTooltip />
+        </div>
 
         <div className="chips flex flex-wrap gap-2 mb-2">
-          <button
-            type="button"
-            className={`chip text-[11px] py-1.5 ${cutType === "hoja" ? "chip-active" : ""}`}
-            onClick={() => update({ stkCutType: "hoja" })}
-          >
-            En hoja (muchos por página)
-          </button>
           <button
             type="button"
             className={`chip text-[11px] py-1.5 ${cutType === "individual" ? "chip-active" : ""}`}
             onClick={() => update({ stkCutType: "individual" })}
           >
-            Individuales (troquelados)
+            Corte completo
+          </button>
+          <button
+            type="button"
+            className={`chip text-[11px] py-1.5 ${cutType === "hoja" ? "chip-active" : ""}`}
+            onClick={() => update({ stkCutType: "hoja" })}
+          >
+            Medio corte
           </button>
         </div>
 
@@ -265,11 +412,65 @@ export default function StickersOptionsEditor({ opts, onChangeOptions }) {
           <input
             type="checkbox"
             checked={laminado}
-            onChange={(e) => update({ stkLaminado: e.target.checked })}
+            onChange={(e) => update({ stkLaminado: e.target.checked, stkLaminadoTipo: e.target.checked ? (opts.stkLaminadoTipo || "brillante") : undefined })}
           />
           Agregar laminado de protección (recomendado para exterior)
         </label>
+
+        {laminado && (
+          <div className="mt-2 pl-1 space-y-1">
+            <p className="text-[11px] text-slate-400">Tipo de laminado:</p>
+            <div className="chips flex flex-wrap gap-2">
+              <button type="button"
+                className={`chip text-[11px] py-1.5 ${laminadoTipo === "brillante" ? "chip-active" : ""}`}
+                onClick={() => update({ stkLaminadoTipo: "brillante" })}>
+                Brillante
+              </button>
+              <button type="button"
+                className={`chip text-[11px] py-1.5 ${laminadoTipo === "mate" ? "chip-active" : ""}`}
+                onClick={() => update({ stkLaminadoTipo: "mate" })}>
+                Mate
+              </button>
+            </div>
+          </div>
+        )}
       </section>
+
+      <div className="h-px bg-white/10" />
+
+      {/* Precio estimado */}
+      {precio?.error ? (
+        <section className="rounded-xl bg-red-500/10 border border-red-400/25 px-4 py-3 text-[12px] text-red-300">
+          ⚠️ {precio.error}
+        </section>
+      ) : precio ? (
+        <section className="rounded-xl bg-orange-500/8 border border-orange-400/20 px-4 py-3">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400 mb-3">Estimado de precio</p>
+
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[11px] text-slate-500 mb-0.5">Por unidad</p>
+              <p className="text-xl font-bold text-white tabular-nums">
+                ${(precio.total / qtyEffective).toFixed(2)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] text-slate-500 mb-0.5">Total ({qtyEffective} pzas.)</p>
+              <p className="text-2xl font-bold text-orange-300 tabular-nums">
+                ${precio.total.toFixed(2)}
+              </p>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-slate-500 mt-3">
+            * Incluye impresión{laminado ? `, laminado ${laminadoTipo}` : ""} y corte. Precio de referencia, confirmamos antes de producir.
+          </p>
+        </section>
+      ) : (
+        <section className="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-[12px] text-slate-500 text-center">
+          Completa tamaño, cantidad y material para ver el precio estimado.
+        </section>
+      )}
 
       <div className="h-px bg-white/10" />
 

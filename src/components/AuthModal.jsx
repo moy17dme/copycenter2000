@@ -289,13 +289,11 @@ export default function AuthModal({ open, onClose, onSignedOut, user: userProp, 
   };
 
   // ── Logout ─────────────────────────────────────────────────────────────────
-  const handleLogout = async () => {
+  const handleLogout = () => {
     setLoading(true);
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // ignorar errores de red
-    }
+    // Fire-and-forget: no esperamos respuesta del servidor para evitar
+    // que un timeout de red deje el botón bloqueado en "Cerrando..."
+    supabase.auth.signOut().catch(() => {});
     clearAuthStorageHard();
     window.location.reload();
   };

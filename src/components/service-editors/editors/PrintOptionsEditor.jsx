@@ -831,6 +831,34 @@ export default function PrintOptionsEditor({ opts, pageCount, onChangeOptions, i
         </div>
       </div>
 
+      {/* ── Aviso: considera Impresos Comerciales ────────── */}
+      {sets >= 100 && ["volantes", "tripticos", "menus"].includes(jobType) && (
+        <div className="rounded-2xl px-4 py-3 text-[12px] space-y-2"
+          style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.25)" }}>
+          <p className="font-semibold" style={{ color: "#FDE047" }}>
+            ¿{sets}+ juegos del mismo diseño?
+          </p>
+          <p style={{ color: "#D4B94A" }}>
+            A partir de 1,000 piezas del mismo diseño, <strong>Impresos Comerciales</strong> (impresión offset)
+            ofrece couché premium (115g / 150g / 300g) con acabados profesionales y mejor costo por pieza.
+          </p>
+          <div className="mt-1 grid grid-cols-2 gap-2 text-[11px]">
+            <div className="rounded-xl px-3 py-2" style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
+              <p className="font-semibold mb-0.5" style={{ color: "#34D399" }}>Impresión Digital</p>
+              <p style={{ color: "#6EE7B7" }}>Desde 1 pieza</p>
+              <p style={{ color: "#6EE7B7" }}>Datos variables posibles</p>
+              <p style={{ color: "#6EE7B7" }}>Entrega rápida</p>
+            </div>
+            <div className="rounded-xl px-3 py-2" style={{ background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)" }}>
+              <p className="font-semibold mb-0.5" style={{ color: "#FDE047" }}>Impresos Comerciales</p>
+              <p style={{ color: "#D4B94A" }}>Mín. 1,000 piezas</p>
+              <p style={{ color: "#D4B94A" }}>Un solo diseño</p>
+              <p style={{ color: "#D4B94A" }}>Couché premium</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Desglose de precio ───────────────────────────── */}
       {breakdown.lines.length > 0 && (
         <>

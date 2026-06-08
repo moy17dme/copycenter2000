@@ -1,62 +1,90 @@
+import { useRef } from "react";
+import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
+import { ArrowRight, Clock, MapPin } from "lucide-react";
 import fondo from "../assets/fon.png";
 
+gsap.registerPlugin(useGSAP);
+
 export default function Hero() {
+  const containerRef = useRef(null);
+
+  useGSAP(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+    tl.fromTo(".hero-badge", { y: -10 }, { y: 0, duration: 0.35, clearProps: "transform" })
+      .fromTo(".hero-title", { y: 18 }, { y: 0, duration: 0.45, clearProps: "transform" }, "-=0.15")
+      .fromTo(".hero-desc", { y: 12 }, { y: 0, duration: 0.35, clearProps: "transform" }, "-=0.2")
+      .fromTo(".hero-btn", { y: 10 }, { y: 0, stagger: 0.06, duration: 0.3, clearProps: "transform" }, "-=0.15")
+      .fromTo(".hero-stat", { y: 8 }, { y: 0, stagger: 0.06, duration: 0.3, clearProps: "transform" }, "-=0.1");
+  }, { scope: containerRef });
+
+  const stats = [
+    { label: "Servicios", value: "9+" },
+    { label: "Lun-Vie", value: "8:00-19:30" },
+    { label: "Sabado", value: "9:00-15:00" },
+  ];
+
   return (
     <div
-      className="relative rounded-3xl overflow-hidden p-8 md:p-12 shadow-2xl"
+      ref={containerRef}
+      className="relative min-h-[420px] overflow-hidden rounded-lg border border-border bg-card shadow-[var(--shadow-soft)] md:min-h-[500px]"
       style={{ backgroundImage: `url(${fondo})`, backgroundSize: "cover", backgroundPosition: "center" }}
     >
-      {/* Overlay */}
       <div
         className="absolute inset-0"
-        style={{ background: "linear-gradient(135deg, rgba(10,14,20,0.92) 0%, rgba(10,14,20,0.65) 60%, rgba(31,74,168,0.25) 100%)" }}
+        style={{
+          background:
+            "linear-gradient(90deg, rgba(10,14,20,0.98) 0%, rgba(10,14,20,0.86) 54%, rgba(10,14,20,0.44) 100%)",
+        }}
       />
 
-      <div className="relative z-10 max-w-2xl">
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-widest rounded-full px-3 py-1 mb-5"
-          style={{ color: '#9AA6B2', background: 'rgba(27,36,51,0.8)', border: '1px solid #273449' }}>
-          Copy Center 2000 · Pachuca, Hidalgo
+      <div className="relative z-10 flex min-h-[420px] max-w-3xl flex-col justify-center p-5 sm:p-7 md:min-h-[500px] md:p-10">
+        <span className="hero-badge mb-5 inline-flex w-fit items-center gap-2 rounded-lg border border-border bg-secondary/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          <MapPin className="h-3.5 w-3.5" />
+          Copy Center 2000 - Pachuca
         </span>
 
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold leading-tight"
-          style={{ color: '#F5F7FA' }}>
-          Impresiones digitales,{" "}
-          <span style={{ color: '#4E7BDA' }}>
-            acabados profesionales
-          </span>
+        <h1 className="hero-title max-w-2xl text-3xl font-extrabold leading-tight text-white md:text-5xl">
+          Sube tus archivos y haz tu pedido de impresion en minutos
         </h1>
 
-        <p className="mt-4 text-base md:text-lg max-w-lg" style={{ color: '#9AA6B2' }}>
-          Copias, ploteo de planos y artes gráficas con calidad y rapidez.
-          Sube tus archivos y realiza tu pedido en segundos.
+        <p className="hero-desc mt-4 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
+          Copias, ploteo de planos, stickers, tarjetas PVC y artes graficas.
+          Elige el servicio, adjunta tu archivo y confirma el pedido sin vueltas.
         </p>
 
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-slate-300">
+          <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1">PDF e imagenes</span>
+          <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1">Precios de referencia</span>
+          <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1">Atencion por WhatsApp</span>
+        </div>
+
+        <div className="mt-7 flex flex-wrap gap-3">
           <a
             href="#servicios"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm shadow-lg transition-all hover:scale-[1.03] active:scale-[.98]"
-            style={{ backgroundColor: '#C61C1C', color: '#FFFFFF' }}
+            className="hero-btn inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-600 active:scale-[.99]"
           >
-            ¡Realiza tu pedido ahora!
+            Realizar pedido
+            <ArrowRight className="h-4 w-4" />
           </a>
           <a
             href="#precios"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-medium text-sm transition-all"
-            style={{ border: '1px solid #273449', color: '#E5ECF6', backgroundColor: 'rgba(27,36,51,0.6)' }}
+            className="hero-btn inline-flex items-center gap-2 rounded-lg border border-border bg-secondary/70 px-5 py-3 text-sm font-semibold text-secondary-foreground transition hover:bg-muted hover:text-white"
           >
             Ver precios
           </a>
         </div>
 
-        <div className="mt-10 flex flex-wrap gap-8">
-          {[
-            { label: "Servicios disponibles", value: "9+" },
-            { label: "Lun–Vie", value: "8–19:30" },
-            { label: "Sáb", value: "9–15:00" },
-          ].map((s) => (
-            <div key={s.label}>
-              <div className="text-2xl font-bold" style={{ color: '#F5F7FA' }}>{s.value}</div>
-              <div className="text-xs mt-0.5" style={{ color: '#9AA6B2' }}>{s.label}</div>
+        <div className="mt-9 grid max-w-2xl grid-cols-1 border-t border-border/80 pt-5 sm:grid-cols-3">
+          {stats.map((s) => (
+            <div key={s.label} className="hero-stat flex items-start gap-3 py-2 sm:border-r sm:border-border/70 sm:px-4 first:sm:pl-0 last:sm:border-r-0">
+              <Clock className="mt-1 h-4 w-4 shrink-0 text-primary-600" />
+              <div>
+                <div className="text-xl font-bold tabular-nums text-white">{s.value}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{s.label}</div>
+              </div>
             </div>
           ))}
         </div>

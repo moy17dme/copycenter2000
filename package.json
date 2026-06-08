@@ -9,15 +9,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/supabase-js": "^2.90.1",
+    "gsap": "^3.15.0",
+    "gsap-skills.git": "github:greensock/gsap-skills",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.553.0",
     "multer": "^2.0.2",
     "pdfjs-dist": "^5.4.296",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.12.0"
+    "react-router-dom": "^7.12.0",
+    "ui-ux-pro-max-skill.git": "github:nextlevelbuilder/ui-ux-pro-max-skill"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.15",
