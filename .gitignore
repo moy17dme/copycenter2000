@@ -35,3 +35,4 @@ supabase/.temp/
 # Archivos locales/generados
 .agents/
 outputs/
+Precios/*.xlsx
