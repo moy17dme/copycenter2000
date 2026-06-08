@@ -33,6 +33,7 @@ const STEPS = {
   SUCCESS:   "success",
 };
 const UPLOAD_FOREGROUND_BUDGET_MS = 2200;
+const MIN_ONLINE_PAYMENT_MXN = 10;
 
 // ── Validaciones ─────────────────────────────────────────────────────────────
 function validateName(raw) {
@@ -300,6 +301,14 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       }
     }
 
+    if (payment === "mercadopago" && orderSummary.total < MIN_ONLINE_PAYMENT_MXN) {
+      setError(
+        `El pago en linea requiere un total minimo de $${fmtMXN(MIN_ONLINE_PAYMENT_MXN)} MXN. ` +
+        "Agrega productos o selecciona transferencia."
+      );
+      return;
+    }
+
     setStep(STEPS.LOADING);
 
     try {
@@ -465,9 +474,12 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
         if (paymentErr) {
           const reason = paymentErr?.payload?.error || paymentErr?.payload?.code;
           const isQuoteRequired = reason === "quote_required";
+          const isBelowMinimum = reason === "minimum_payment_amount";
           const message = isQuoteRequired
             ? "Este pedido necesita cotizacion antes de pagar en linea. Ya quedo registrado y te contactaremos para confirmar el total."
-            : `Pedido registrado, pero no se pudo abrir Mercado Pago: ${paymentErr.message}`;
+            : isBelowMinimum
+              ? `El total confirmado es menor a $${fmtMXN(MIN_ONLINE_PAYMENT_MXN)} MXN. El pedido quedo registrado y puedes pagarlo por transferencia.`
+              : `Pedido registrado, pero no se pudo abrir Mercado Pago: ${paymentErr.message}`;
 
           setError(message);
           setConfirmedOrder(order);
@@ -784,6 +796,12 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                       Este pedido incluye servicios por cotizar. Si no hay precio calculable, quedara registrado y te contactaremos antes de cobrar.
                     </p>
                   )}
+                  {!orderSummary.hasUnknown && orderSummary.total < MIN_ONLINE_PAYMENT_MXN && (
+                    <p className="mt-2 text-[11px]" style={{ color: '#FCA5A5' }}>
+                      El pago en linea esta disponible desde ${fmtMXN(MIN_ONLINE_PAYMENT_MXN)} MXN.
+                      Agrega productos o selecciona transferencia.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -949,7 +967,10 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
               {/* Submit */}
               <button
                 type="submit"
-                disabled={!hasItems}
+                disabled={
+                  !hasItems ||
+                  (payment === "mercadopago" && orderSummary.total < MIN_ONLINE_PAYMENT_MXN)
+                }
                 className="w-full py-3 rounded-2xl font-semibold text-sm transition-all hover:scale-[1.01] active:scale-[.99] disabled:opacity-40"
                 style={{ backgroundColor: '#C61C1C', color: '#FFFFFF' }}
               >

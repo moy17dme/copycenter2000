@@ -9,6 +9,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const APP_BASE_URL = Deno.env.get("APP_BASE_URL") || "";
 const MP_WEBHOOK_URL = Deno.env.get("MP_WEBHOOK_URL") || "";
 const MP_CHECKOUT_MODE = (Deno.env.get("MP_CHECKOUT_MODE") || "").toLowerCase();
+const MIN_ONLINE_PAYMENT_MXN = 10;
 
 if (!MP_TOKEN) throw new Error("Missing MP_ACCESS_TOKEN secret");
 if (!SUPABASE_URL) throw new Error("Missing SUPABASE_URL secret");
@@ -124,6 +125,18 @@ Deno.serve(async (req: Request) => {
       {
         error: "quote_required",
         message: "Este pedido necesita cotizacion antes de pagar en linea.",
+        pricing,
+      },
+      422
+    );
+  }
+
+  if (pricing.total < MIN_ONLINE_PAYMENT_MXN) {
+    return json(
+      {
+        error: "minimum_payment_amount",
+        message: `El pago en linea requiere un total minimo de $${MIN_ONLINE_PAYMENT_MXN.toFixed(2)} MXN.`,
+        minimum: MIN_ONLINE_PAYMENT_MXN,
         pricing,
       },
       422
