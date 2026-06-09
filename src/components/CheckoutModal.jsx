@@ -1,9 +1,10 @@
 // src/components/CheckoutModal.jsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "./CartContext";
 import {
   createOrder,
   createMercadoPagoCheckout,
+  prepareMercadoPagoCard,
   uploadOrderFiles,
   uploadConstancia,
   saveProfileBilling,
@@ -16,6 +17,7 @@ import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
 import { supabase } from "../lib/supabaseClient";
 import { redeemCopyTicket } from "../lib/copyTickets";
 import { isTicketRequiredItem } from "../lib/ticketItems";
+import MercadoPagoCardPayment, { MercadoPagoChallenge } from "./MercadoPagoCardPayment";
 
 // Datos bancarios del negocio (edita estos valores)
 const BANK_INFO = {
@@ -29,7 +31,9 @@ const STEPS = {
   FORM:      "form",
   LOADING:   "loading",
   UPLOADING: "uploading",
+  CARD:      "card",
   PAYMENT:   "payment",
+  CHALLENGE: "challenge",
   SUCCESS:   "success",
 };
 const UPLOAD_FOREGROUND_BUDGET_MS = 2200;
@@ -177,6 +181,8 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
   const [error, setError] = useState("");
   const [confirmedOrder, setConfirmedOrder] = useState(null);
   const [uploadsInBackground, setUploadsInBackground] = useState(false);
+  const [paymentContext, setPaymentContext] = useState(null);
+  const [challengeData, setChallengeData] = useState(null);
 
   // Datos del cliente
   const [name,      setName]      = useState("");
@@ -211,6 +217,8 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       setStep(STEPS.FORM);
       setError("");
       setUploadsInBackground(false);
+      setPaymentContext(null);
+      setChallengeData(null);
       setNameError("");
       setPhoneError("");
       setCouponInput("");
@@ -283,6 +291,84 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
   // ¿El perfil ya tiene RFC guardado?
   const profileSupportsBilling = Boolean(profile?._supportsBillingProfile);
   const hasProfileBilling = profileSupportsBilling && Boolean(profile?.rfc);
+
+  const handleCardApproved = useCallback(() => {
+    const order = paymentContext?.order;
+    if (!order) return;
+
+    setConfirmedOrder({
+      ...order,
+      payment_method: "mercadopago",
+      payment_status: "approved",
+      status: "paid",
+    });
+    setError("");
+    clearCart();
+    setStep(STEPS.SUCCESS);
+  }, [clearCart, paymentContext]);
+
+  const handleCardPending = useCallback(() => {
+    const order = paymentContext?.order;
+    if (!order) return;
+
+    setConfirmedOrder({
+      ...order,
+      payment_method: "mercadopago",
+      payment_status: "processing",
+      status: "pending_payment",
+    });
+    setError("Mercado Pago esta procesando el pago. El estado se actualizara automaticamente.");
+    clearCart();
+    setStep(STEPS.SUCCESS);
+  }, [clearCart, paymentContext]);
+
+  const handleCardChallenge = useCallback((data) => {
+    setChallengeData(data);
+    setStep(STEPS.CHALLENGE);
+  }, []);
+
+  const handleChallengeFailed = useCallback((message) => {
+    setChallengeData(null);
+    setError(message || "La autenticacion bancaria no fue aprobada.");
+    setStep(STEPS.CARD);
+  }, []);
+
+  const handleCheckoutProFallback = useCallback(async () => {
+    const order = paymentContext?.order;
+    const accessToken = paymentContext?.accessToken;
+    if (!order || !accessToken) return;
+
+    setError("");
+    setStep(STEPS.PAYMENT);
+    const { data: paymentData, error: paymentErr } = await createMercadoPagoCheckout({
+      orderId: order.id,
+      accessToken,
+    });
+
+    if (paymentErr) {
+      setError(`Pedido registrado, pero no se pudo abrir Mercado Pago: ${paymentErr.message}`);
+      setConfirmedOrder(order);
+      clearCart();
+      setStep(STEPS.SUCCESS);
+
+      const msg = buildOrderWhatsAppMessage({ order, isNew: true });
+      openWhatsApp(SHOP_PHONE, msg);
+      return;
+    }
+
+    const checkoutUrl =
+      paymentData?.checkout_url ||
+      paymentData?.init_point ||
+      paymentData?.sandbox_init_point;
+    if (!checkoutUrl) {
+      setError("Mercado Pago no devolvio un enlace de pago.");
+      setStep(STEPS.CARD);
+      return;
+    }
+
+    clearCart();
+    window.location.assign(checkoutUrl);
+  }, [clearCart, paymentContext]);
 
   async function handleConfirm(e) {
     e.preventDefault();
@@ -481,46 +567,24 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
 
       if (payment === "mercadopago") {
         setStep(STEPS.PAYMENT);
-
-        const { data: paymentData, error: paymentErr } = await createMercadoPagoCheckout({
+        const { data: cardQuote, error: cardQuoteError } = await prepareMercadoPagoCard({
           orderId: order.id,
           accessToken,
         });
-
-        if (paymentErr) {
-          const reason = paymentErr?.payload?.error || paymentErr?.payload?.code;
-          const isQuoteRequired = reason === "quote_required";
-          const isBelowMinimum = reason === "minimum_payment_amount";
-          const message = isQuoteRequired
-            ? "Este pedido necesita cotizacion antes de pagar en linea. Ya quedo registrado y te contactaremos para confirmar el total."
-            : isBelowMinimum
-              ? `El total confirmado es menor a $${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN. El pedido quedo registrado y puedes pagarlo por transferencia.`
-              : `Pedido registrado, pero no se pudo abrir Mercado Pago: ${paymentErr.message}`;
-
-          setError(message);
-          setConfirmedOrder(order);
-          clearCart();
-          setStep(STEPS.SUCCESS);
-
-          const msg = buildOrderWhatsAppMessage({ order, isNew: true });
-          openWhatsApp(SHOP_PHONE, msg);
-          return;
+        setPaymentContext({
+          order,
+          accessToken,
+          amount: Number(cardQuote?.amount) || orderSummary.total,
+          payerEmail: activeUser?.email || billingEmail || "",
+          cardUnavailable: Boolean(cardQuoteError),
+        });
+        if (cardQuoteError) {
+          setError(
+            "No se pudo preparar el formulario de tarjeta. Puedes continuar con Checkout Pro."
+          );
         }
-
-        const checkoutUrl = paymentData?.checkout_url || paymentData?.init_point || paymentData?.sandbox_init_point;
-        if (!checkoutUrl) {
-          setError("Pedido registrado, pero Mercado Pago no devolvio un link de pago. Contacta al negocio para completar el pago.");
-          setConfirmedOrder(order);
-          clearCart();
-          setStep(STEPS.SUCCESS);
-
-          const msg = buildOrderWhatsAppMessage({ order, isNew: true });
-          openWhatsApp(SHOP_PHONE, msg);
-          return;
-        }
-
-        clearCart();
-        window.location.assign(checkoutUrl);
+        setChallengeData(null);
+        setStep(STEPS.CARD);
         return;
       }
 
@@ -544,7 +608,13 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
     <div
       className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={(e) => {
-        const isBusy = step === STEPS.LOADING || step === STEPS.UPLOADING || step === STEPS.PAYMENT;
+        const isBusy = [
+          STEPS.LOADING,
+          STEPS.UPLOADING,
+          STEPS.CARD,
+          STEPS.PAYMENT,
+          STEPS.CHALLENGE,
+        ].includes(step);
         if (e.target === e.currentTarget && !isBusy) onClose();
       }}
     >
@@ -557,7 +627,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
             <h2 className="font-semibold text-lg" style={{ color: '#F5F7FA' }}>Confirmar pedido</h2>
             <p className="text-xs mt-0.5" style={{ color: '#9AA6B2' }}>{items.length} servicio(s) en tu carrito</p>
           </div>
-          {step !== STEPS.LOADING && step !== STEPS.UPLOADING && step !== STEPS.PAYMENT && (
+          {![STEPS.LOADING, STEPS.UPLOADING, STEPS.CARD, STEPS.PAYMENT, STEPS.CHALLENGE].includes(step) && (
             <button
               type="button"
               onClick={onClose}
@@ -1019,6 +1089,43 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
             </form>
           )}
 
+          {step === STEPS.CARD && paymentContext?.order && (
+            <div className="max-h-[calc(100vh-8rem)] overflow-y-auto p-6">
+              {error && (
+                <div
+                  className="mb-4 rounded-xl px-3 py-2 text-sm"
+                  style={{ backgroundColor: "rgba(153,27,27,0.15)", border: "1px solid rgba(153,27,27,0.3)", color: "#FCA5A5" }}
+                >
+                  {error}
+                </div>
+              )}
+              <MercadoPagoCardPayment
+                order={paymentContext.order}
+                amount={paymentContext.amount}
+                accessToken={paymentContext.accessToken}
+                payerEmail={paymentContext.payerEmail}
+                onApproved={handleCardApproved}
+                onPending={handleCardPending}
+                onChallenge={handleCardChallenge}
+                onFallback={handleCheckoutProFallback}
+                forceFallback={paymentContext.cardUnavailable}
+              />
+            </div>
+          )}
+
+          {step === STEPS.CHALLENGE && paymentContext?.order && challengeData?.challenge_url && (
+            <div className="max-h-[calc(100vh-8rem)] overflow-y-auto p-6">
+              <MercadoPagoChallenge
+                challengeUrl={challengeData.challenge_url}
+                order={paymentContext.order}
+                accessToken={paymentContext.accessToken}
+                onApproved={handleCardApproved}
+                onPending={handleCardPending}
+                onFailed={handleChallengeFailed}
+              />
+            </div>
+          )}
+
           {/* ── CARGANDO ────────────────────────────────── */}
           {(step === STEPS.LOADING || step === STEPS.UPLOADING || step === STEPS.PAYMENT) && (
             <div className="p-10 flex flex-col items-center gap-4">
@@ -1071,6 +1178,14 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                     <li>Envía tu <strong style={{ color: '#F5F7FA' }}>comprobante de pago</strong> en esa misma conversación de WhatsApp.</li>
                     <li>En cuanto lo confirmemos, tu pedido iniciará de inmediato.</li>
                   </ol>
+                </div>
+              ) : confirmedOrder.payment_status === "approved" ? (
+                <div className="rounded-2xl p-4 text-sm text-left"
+                  style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                  <p className="font-medium" style={{ color: '#34D399' }}>Pago aprobado</p>
+                  <p className="mt-1" style={{ color: '#9AA6B2' }}>
+                    Mercado Pago confirmo el cobro. Tu pedido ya puede pasar a produccion.
+                  </p>
                 </div>
               ) : (
                 <div className="rounded-2xl p-4 text-sm text-left"

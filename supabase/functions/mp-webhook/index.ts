@@ -119,8 +119,62 @@ async function fetchMercadoPagoPayment(paymentId: string) {
   return { payment: await resp.json(), error: null, status: resp.status };
 }
 
+async function fetchMercadoPagoOrder(providerOrderId: string) {
+  const resp = await fetch(
+    `https://api.mercadopago.com/v1/orders/${encodeURIComponent(providerOrderId)}`,
+    { headers: { Authorization: `Bearer ${MP_TOKEN}` } }
+  );
+
+  if (!resp.ok) {
+    return { order: null, error: await resp.text(), status: resp.status };
+  }
+
+  return { order: await resp.json(), error: null, status: resp.status };
+}
+
+function orderPaymentTransaction(providerOrder: any) {
+  return Array.isArray(providerOrder?.transactions?.payments)
+    ? providerOrder.transactions.payments[0] || null
+    : null;
+}
+
+async function findExpectedOrderPayment(
+  orderId: string,
+  providerOrderId: string,
+  providerPaymentId: string | null
+) {
+  const byOrder = await supabaseAdmin
+    .from("payments")
+    .select("*")
+    .eq("provider", "mercadopago")
+    .eq("provider_order_id", providerOrderId)
+    .maybeSingle();
+  if (byOrder.data) return byOrder.data;
+
+  if (providerPaymentId) {
+    const byPayment = await supabaseAdmin
+      .from("payments")
+      .select("*")
+      .eq("provider", "mercadopago")
+      .eq("provider_payment_id", providerPaymentId)
+      .maybeSingle();
+    if (byPayment.data) return byPayment.data;
+  }
+
+  const latest = await supabaseAdmin
+    .from("payments")
+    .select("*")
+    .eq("provider", "mercadopago")
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return latest.data || null;
+}
+
 async function findExpectedPayment(orderId: string, payment: any) {
-  const preferenceId = payment.preference_id || null;
+  const preferenceId = payment?.preference_id || null;
   const providerPaymentId = payment.id ? String(payment.id) : null;
 
   if (providerPaymentId) {
@@ -150,6 +204,7 @@ async function findExpectedPayment(orderId: string, payment: any) {
 async function savePaymentRecord({
   orderId,
   payment,
+  providerOrderId = null,
   status,
   amount,
   currency,
@@ -157,23 +212,35 @@ async function savePaymentRecord({
 }: {
   orderId: string;
   payment: any;
+  providerOrderId?: string | null;
   status: string;
   amount: number;
   currency: string;
   rawEvent: Record<string, unknown>;
 }) {
-  const providerPaymentId = String(payment.id);
+  const providerPaymentId = payment?.id ? String(payment.id) : null;
   const preferenceId = payment.preference_id || null;
   let existing = null;
 
-  const byPayment = await supabaseAdmin
-    .from("payments")
-    .select("id")
-    .eq("provider", "mercadopago")
-    .eq("provider_payment_id", providerPaymentId)
-    .maybeSingle();
+  if (providerOrderId) {
+    const byOrder = await supabaseAdmin
+      .from("payments")
+      .select("id")
+      .eq("provider", "mercadopago")
+      .eq("provider_order_id", providerOrderId)
+      .maybeSingle();
+    existing = byOrder.data;
+  }
 
-  existing = byPayment.data;
+  if (!existing && providerPaymentId) {
+    const byPayment = await supabaseAdmin
+      .from("payments")
+      .select("id")
+      .eq("provider", "mercadopago")
+      .eq("provider_payment_id", providerPaymentId)
+      .maybeSingle();
+    existing = byPayment.data;
+  }
 
   if (!existing && preferenceId) {
     const byPreference = await supabaseAdmin
@@ -189,6 +256,7 @@ async function savePaymentRecord({
   const payload = {
     order_id: orderId,
     provider: "mercadopago",
+    provider_order_id: providerOrderId,
     provider_preference_id: preferenceId,
     provider_payment_id: providerPaymentId,
     amount,
@@ -216,6 +284,142 @@ function isAlreadyConfirmed(order: any) {
     ["paid", "payment_approved", "in_progress", "printing", "ready", "completed"].includes(order?.status);
 }
 
+async function handleOrderNotification(body: any, providerOrderId: string) {
+  if (!/^ord/i.test(providerOrderId)) {
+    return json({
+      ok: true,
+      ignored: "invalid_order_id",
+      providerOrderId,
+    });
+  }
+
+  const fetched = await fetchMercadoPagoOrder(providerOrderId);
+  if (!fetched.order) {
+    if (fetched.status === 404) {
+      return json({
+        ok: true,
+        ignored: "order_not_found",
+        providerOrderId,
+      });
+    }
+    return json({ error: "mercadopago_order_error", detail: fetched.error }, 500);
+  }
+
+  const providerOrder = fetched.order;
+  const orderId = providerOrder.external_reference || null;
+  if (!orderId) return json({ ok: true, ignored: "missing_external_reference" });
+
+  const { data: order, error: orderError } = await supabaseAdmin
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .single();
+  if (orderError || !order) return json({ ok: true, ignored: "internal_order_not_found" });
+
+  const pricing = await calculateOrderPricing(supabaseAdmin, order);
+  const transaction = orderPaymentTransaction(providerOrder);
+  const providerPaymentId = transaction?.id ? String(transaction.id) : null;
+  const expectedPayment = await findExpectedOrderPayment(
+    orderId,
+    String(providerOrder.id),
+    providerPaymentId
+  );
+  const paidAmount = roundMoney(
+    transaction?.paid_amount ??
+    providerOrder.total_paid_amount ??
+    transaction?.amount ??
+    providerOrder.total_amount
+  ) ?? 0;
+  const currency = providerOrder.currency || expectedPayment?.currency || pricing.currency;
+  const expectedAmount = roundMoney(expectedPayment?.amount) ?? pricing.total;
+  const expectedCurrency = expectedPayment?.currency || pricing.currency;
+  const amountMatches =
+    currency === expectedCurrency &&
+    Math.abs(paidAmount - expectedAmount) <= 0.01;
+  const providerStatus = String(transaction?.status || providerOrder.status || "unknown");
+  const statusDetail = String(
+    transaction?.status_detail ||
+    providerOrder.status_detail ||
+    "unknown"
+  );
+  const approved = providerStatus === "processed" && statusDetail === "accredited";
+  const paymentStatus = approved && amountMatches
+    ? "approved"
+    : approved
+      ? "amount_mismatch"
+      : providerStatus;
+
+  const paymentRecord = await savePaymentRecord({
+    orderId,
+    payment: transaction || {},
+    providerOrderId: String(providerOrder.id),
+    status: paymentStatus,
+    amount: paidAmount || expectedAmount,
+    currency,
+    rawEvent: {
+      webhook: body,
+      mercado_pago_order: providerOrder,
+      pricing,
+      expectedPaymentId: expectedPayment?.id || null,
+      expectedAmount,
+      expectedCurrency,
+      amountMatches,
+    },
+  });
+  if (paymentRecord.error) {
+    return json({ error: "payment_record_error", detail: paymentRecord.error.message }, 500);
+  }
+
+  if (approved && amountMatches) {
+    const alreadyConfirmed = isAlreadyConfirmed(order);
+    const nextOrderStatus = ["ready", "completed"].includes(order.status) ? order.status : "paid";
+    const updateOrder = await supabaseAdmin
+      .from("orders")
+      .update({
+        payment_method: "mercadopago",
+        payment_status: "approved",
+        status: nextOrderStatus,
+        pricing_summary: pricing,
+        coupon_code: pricing.couponCode,
+      })
+      .eq("id", orderId);
+
+    if (updateOrder.error) {
+      return json({ error: "order_update_error", detail: updateOrder.error.message }, 500);
+    }
+
+    if (!alreadyConfirmed) {
+      await supabaseAdmin.from("order_status_history").insert({
+        order_id: orderId,
+        status: "paid",
+        message: "Pago con tarjeta confirmado por Mercado Pago",
+      });
+    }
+
+    return json({ ok: true, status: "approved", orderId, amount: paidAmount });
+  }
+
+  await supabaseAdmin
+    .from("orders")
+    .update({
+      payment_method: "mercadopago",
+      payment_status: paymentStatus,
+      status: "pending_payment",
+      pricing_summary: pricing,
+      coupon_code: pricing.couponCode,
+    })
+    .eq("id", orderId);
+
+  return json({
+    ok: true,
+    status: paymentStatus,
+    statusDetail,
+    orderId,
+    amount: paidAmount,
+    expected: expectedAmount,
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -227,15 +431,32 @@ Deno.serve(async (req: Request) => {
 
   const url = new URL(req.url);
   const body = await req.json().catch(() => ({}));
-  const paymentId = paymentIdFrom(url, body);
-  if (!paymentId) {
-    return json({ ok: true, ignored: "missing_payment_id" });
+  const eventType = String(
+    body?.type ||
+    url.searchParams.get("type") ||
+    ""
+  ).toLowerCase();
+  const directResourceId = String(
+    url.searchParams.get("data.id") ||
+    body?.data?.id ||
+    body?.id ||
+    ""
+  );
+  const isOrderEvent = eventType === "order" || /^ord/i.test(directResourceId);
+  const paymentId = isOrderEvent ? "" : paymentIdFrom(url, body);
+  const resourceId = isOrderEvent ? directResourceId : paymentId;
+  if (!resourceId) {
+    return json({ ok: true, ignored: "missing_resource_id" });
   }
 
-  const dataIdForSignature = url.searchParams.get("data.id") || body?.data?.id || paymentId;
+  const dataIdForSignature = url.searchParams.get("data.id") || body?.data?.id || resourceId;
   const signatureOk = await verifyMercadoPagoSignature(req, String(dataIdForSignature));
   if (!signatureOk) {
     return json({ error: "invalid_signature" }, 401);
+  }
+
+  if (isOrderEvent) {
+    return await handleOrderNotification(body, resourceId);
   }
 
   const fetched = await fetchMercadoPagoPayment(paymentId);

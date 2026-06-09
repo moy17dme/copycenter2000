@@ -587,6 +587,101 @@ export async function createMercadoPagoCheckout({ orderId, accessToken }) {
   }
 }
 
+async function callMercadoPagoCardFunction({
+  orderId,
+  accessToken,
+  operation,
+  formData,
+  paymentTypeId,
+  attemptId,
+}) {
+  if (!orderId) {
+    return { data: null, error: new Error("Falta el ID del pedido para procesar el pago.") };
+  }
+  if (!accessToken) {
+    return { data: null, error: new Error("Inicia sesion para pagar en linea.") };
+  }
+
+  try {
+    const response = await withTimeout(
+      fetch(`${supabaseUrl}/functions/v1/process-card-payment`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orderId,
+          operation,
+          formData,
+          paymentTypeId,
+          attemptId,
+        }),
+      }),
+      35000,
+      "Mercado Pago tardo demasiado en responder. Verifica el estado antes de volver a intentar."
+    );
+
+    const text = await response.text();
+    let payload = {};
+    try {
+      payload = text ? JSON.parse(text) : {};
+    } catch {
+      payload = { detail: text };
+    }
+
+    if (!response.ok) {
+      const message =
+        payload.message ||
+        payload.detail?.message ||
+        payload.detail ||
+        payload.error ||
+        "No se pudo procesar el pago.";
+      const error = new Error(typeof message === "string" ? message : "No se pudo procesar el pago.");
+      error.status = response.status;
+      error.payload = payload;
+      return { data: null, error };
+    }
+
+    return { data: payload, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
+export function processMercadoPagoCard({
+  orderId,
+  accessToken,
+  formData,
+  paymentTypeId,
+  attemptId,
+}) {
+  return callMercadoPagoCardFunction({
+    orderId,
+    accessToken,
+    operation: "create",
+    formData,
+    paymentTypeId,
+    attemptId,
+  });
+}
+
+export function prepareMercadoPagoCard({ orderId, accessToken }) {
+  return callMercadoPagoCardFunction({
+    orderId,
+    accessToken,
+    operation: "quote",
+  });
+}
+
+export function queryMercadoPagoCardStatus({ orderId, accessToken }) {
+  return callMercadoPagoCardFunction({
+    orderId,
+    accessToken,
+    operation: "status",
+  });
+}
+
 export async function uploadOrderFiles(orderId, items, { accessToken } = {}) {
   const checkoutClient = createRequestClient(accessToken);
   console.log("[upload] Iniciando subida para orden:", orderId, "| items:", items.length);
