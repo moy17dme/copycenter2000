@@ -196,7 +196,24 @@ export default function MercadoPagoCardPayment({
 
   const handleBinChange = useCallback((nextBin) => {
     setBin(nextBin || "");
+    setError("");
     setActivityKey((current) => current + 1);
+  }, []);
+
+  const handleReady = useCallback(() => {
+    setReady(true);
+  }, []);
+
+  const handleBrickError = useCallback((brickError) => {
+    if (brickError?.type === "non_critical") {
+      if (import.meta.env.DEV) {
+        console.debug("[checkout] Validacion de tarjeta:", brickError);
+      }
+      return;
+    }
+
+    console.error("[checkout] Mercado Pago Brick:", brickError);
+    setError("No se pudo cargar el formulario de tarjeta. Intenta recargar la pagina.");
   }, []);
 
   if (!publicKey || forceFallback) {
@@ -250,12 +267,9 @@ export default function MercadoPagoCardPayment({
           initialization={initialization}
           customization={customization}
           locale="es-MX"
-          onReady={() => setReady(true)}
+          onReady={handleReady}
           onBinChange={handleBinChange}
-          onError={(brickError) => {
-            console.error("[checkout] Mercado Pago Brick:", brickError);
-            setError("No se pudo cargar el formulario de tarjeta.");
-          }}
+          onError={handleBrickError}
           onSubmit={handleSubmit}
         />
       </div>
