@@ -18,6 +18,7 @@ import MisPedidos from "./pages/MisPedidos";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
+import ResetPassword from "./pages/ResetPassword";
 import WhatsAppWidget from "./components/WhatsAppWidget";
 
 // ✅ OJO: App.jsx está en src/, por eso es ./lib/...
@@ -251,6 +252,7 @@ export default function App() {
             <Route path="/mis-pedidos" element={<MisPedidos user={user} session={session} />} />
             <Route path="/admin" element={<Admin user={user} accessToken={session?.access_token || null} profile={profile} />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
 
