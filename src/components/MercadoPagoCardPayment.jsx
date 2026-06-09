@@ -1,12 +1,28 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { loadMercadoPago } from "@mercadopago/sdk-js";
 import { LockKeyhole, RotateCcw, Wifi } from "lucide-react";
 import { processMercadoPagoCard, queryMercadoPagoCardStatus } from "../lib/orders";
 import { fmtMXN } from "../utils/getItemPrice";
 
 const publicKey = (import.meta.env.VITE_MP_PUBLIC_KEY || "").trim();
-if (publicKey) {
-  initMercadoPago(publicKey, { locale: "es-MX" });
+const MASK_GROUP = "\u2022\u2022\u2022\u2022";
+const MASK_CVV = "\u2022\u2022\u2022\u2022";
+let mercadoPagoInstancePromise;
+
+async function getMercadoPagoInstance() {
+  if (!publicKey) throw new Error("Mercado Pago no esta configurado.");
+  if (!mercadoPagoInstancePromise) {
+    mercadoPagoInstancePromise = loadMercadoPago().then(() => {
+      if (!window.MercadoPago) {
+        throw new Error("No se pudo cargar Mercado Pago.");
+      }
+      return new window.MercadoPago(publicKey, {
+        locale: "es-MX",
+        advancedFraudPrevention: true,
+      });
+    });
+  }
+  return mercadoPagoInstancePromise;
 }
 
 const STATUS_MESSAGES = {
@@ -43,15 +59,55 @@ function cardBrandFromBin(bin) {
   return "TARJETA";
 }
 
+function formatCardNumber(value, maxLength = 19) {
+  return String(value || "")
+    .replace(/\D/g, "")
+    .slice(0, maxLength)
+    .replace(/(\d{4})(?=\d)/g, "$1 ");
+}
+
+function formatExpiration(value) {
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 4);
+  return digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+}
+
+function tokenErrorMessage(error) {
+  const cause = error?.cause?.[0]?.code || error?.cause?.[0]?.description;
+  const messages = {
+    "205": "Escribe el numero de la tarjeta.",
+    "208": "Selecciona el mes de vencimiento.",
+    "209": "Selecciona el ano de vencimiento.",
+    "212": "Escribe el tipo de identificacion.",
+    "213": "Escribe el subtipo de identificacion.",
+    "214": "Escribe el numero de identificacion.",
+    "220": "Escribe el banco emisor.",
+    "221": "Escribe el nombre como aparece en la tarjeta.",
+    "224": "Escribe el codigo de seguridad.",
+    E301: "El numero de tarjeta no es valido.",
+    E302: "Revisa el codigo de seguridad.",
+    "316": "El nombre del titular no es valido.",
+    "322": "Revisa tu identificacion.",
+    "323": "Revisa tu identificacion.",
+    "324": "Revisa tu identificacion.",
+    "325": "El mes de vencimiento no es valido.",
+    "326": "El ano de vencimiento no es valido.",
+  };
+  return messages[cause] || error?.message || "Revisa los datos de la tarjeta.";
+}
+
 function AnimatedCardPreview({
   bin,
   lastFour,
   cardholderName,
+  expiration,
+  cvvDots,
+  cvvLength,
   activityKey,
+  showBack,
+  onFlip,
 }) {
-  const [showBack, setShowBack] = useState(false);
   const brand = cardBrandFromBin(bin);
-  const maskedLastFour = /^\d{4}$/.test(lastFour || "") ? lastFour : "••••";
+  const maskedLastFour = /^\d{4}$/.test(lastFour || "") ? lastFour : MASK_GROUP;
 
   return (
     <div className="mp-card-preview-shell">
@@ -73,9 +129,9 @@ function AnimatedCardPreview({
             </div>
 
             <div className="mp-card-number" aria-label={`Tarjeta terminada en ${maskedLastFour}`}>
-              <span>••••</span>
-              <span>••••</span>
-              <span>••••</span>
+              <span>{MASK_GROUP}</span>
+              <span>{MASK_GROUP}</span>
+              <span>{MASK_GROUP}</span>
               <span className={lastFour ? "is-known" : ""}>{maskedLastFour}</span>
             </div>
 
@@ -86,7 +142,7 @@ function AnimatedCardPreview({
               </div>
               <div className="mp-card-expiry">
                 <span className="mp-card-label">Vence</span>
-                <strong>••/••</strong>
+                <strong>{expiration || `${MASK_GROUP.slice(0, 2)}/${MASK_GROUP.slice(0, 2)}`}</strong>
               </div>
             </div>
           </div>
@@ -95,7 +151,9 @@ function AnimatedCardPreview({
             <div className="mp-card-stripe" />
             <div className="mp-card-signature">
               <span>CVV</span>
-              <strong aria-label="CVV oculto">•••</strong>
+              <strong aria-label="CVV oculto">
+                {cvvDots || MASK_CVV.slice(0, cvvLength)}
+              </strong>
             </div>
             <div className="mp-card-security">
               <LockKeyhole aria-hidden="true" size={15} />
@@ -107,7 +165,7 @@ function AnimatedCardPreview({
 
       <button
         type="button"
-        onClick={() => setShowBack((current) => !current)}
+        onClick={onFlip}
         className="mp-card-flip-button"
         aria-label={showBack ? "Mostrar frente de la tarjeta" : "Mostrar ubicacion del CVV"}
         title={showBack ? "Mostrar frente" : "Mostrar CVV"}
@@ -135,86 +193,252 @@ export default function MercadoPagoCardPayment({
   const [bin, setBin] = useState("");
   const [lastFour, setLastFour] = useState("");
   const [cardholderName, setCardholderName] = useState("");
+  const [expiration, setExpiration] = useState("");
+  const [cvvDots, setCvvDots] = useState("");
   const [activityKey, setActivityKey] = useState(0);
+  const [showBack, setShowBack] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState(null);
+  const [installmentOptions, setInstallmentOptions] = useState([]);
+  const [installments, setInstallments] = useState(1);
+  const [cardNumberLength, setCardNumberLength] = useState(16);
+  const [cvvLength, setCvvLength] = useState(3);
+  const cardNumberRef = useRef(null);
+  const expirationRef = useRef(null);
+  const cvvRef = useRef(null);
+  const latestBinRequest = useRef("");
 
-  const initialization = useMemo(() => ({
-    amount,
-    payer: payerEmail ? { email: payerEmail } : undefined,
-  }), [amount, payerEmail]);
-
-  const customization = useMemo(() => ({
-    paymentMethods: {
-      minInstallments: 1,
-      maxInstallments: 12,
-      types: {
-        included: ["credit_card", "debit_card", "prepaid_card"],
-      },
-    },
-    visual: {
-      style: {
-        theme: "dark",
-      },
-    },
-  }), []);
-
-  const handleSubmit = useCallback(async (formData, additionalData) => {
-    setError("");
-    setLastFour(additionalData?.lastFourDigits || "");
-    setCardholderName(additionalData?.cardholderName || "");
-    setActivityKey((current) => current + 1);
-    const { data, error: paymentError } = await processMercadoPagoCard({
-      orderId: order.id,
-      accessToken,
-      formData,
-      paymentTypeId: additionalData?.paymentTypeId,
-      attemptId: crypto.randomUUID(),
-    });
-
-    if (paymentError) {
-      const message = paymentErrorMessage(paymentError);
-      setError(message);
-      throw new Error(message);
-    }
-
-    if (data?.challenge_url) {
-      onChallenge(data);
-      return;
-    }
-    if (data?.approved) {
-      onApproved(data);
-      return;
-    }
-    if (["processing", "created", "action_required"].includes(data?.status)) {
-      onPending(data);
-      return;
-    }
-
-    const message = STATUS_MESSAGES[data?.status_detail] || "El pago fue rechazado. Intenta con otra tarjeta.";
-    setError(message);
-    throw new Error(message);
-  }, [accessToken, onApproved, onChallenge, onPending, order.id]);
-
-  const handleBinChange = useCallback((nextBin) => {
-    setBin(nextBin || "");
-    setError("");
-    setActivityKey((current) => current + 1);
+  useEffect(() => {
+    let active = true;
+    getMercadoPagoInstance()
+      .then(() => {
+        if (active) setReady(true);
+      })
+      .catch((sdkError) => {
+        console.error("[checkout] Mercado Pago SDK:", sdkError);
+        if (active) setError("No se pudo cargar el pago seguro. Intenta recargar la pagina.");
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const handleReady = useCallback(() => {
-    setReady(true);
-  }, []);
+  const loadPaymentOptions = useCallback(async (nextBin) => {
+    if (nextBin.length < 6 || latestBinRequest.current === nextBin) return;
+    latestBinRequest.current = nextBin;
+    setLoadingOptions(true);
+    setError("");
 
-  const handleBrickError = useCallback((brickError) => {
-    if (brickError?.type === "non_critical") {
-      if (import.meta.env.DEV) {
-        console.debug("[checkout] Validacion de tarjeta:", brickError);
+    try {
+      const mp = await getMercadoPagoInstance();
+      const methodsResponse = await mp.getPaymentMethods({ bin: nextBin });
+      if (latestBinRequest.current !== nextBin) return;
+
+      const method = methodsResponse?.results?.find((candidate) => (
+        candidate?.status === "active" &&
+        ["credit_card", "debit_card", "prepaid_card"].includes(candidate?.payment_type_id)
+      ));
+      if (!method) {
+        setPaymentMethod(null);
+        setInstallmentOptions([]);
+        setError("Esta tarjeta no esta disponible para pagos en linea.");
+        return;
       }
+
+      const settings = method.settings?.[0] || {};
+      setPaymentMethod(method);
+      setCardNumberLength(Number(settings?.card_number?.length) || 16);
+      setCvvLength(Number(settings?.security_code?.length) || 3);
+
+      let normalized = [{ installments: 1, recommended_message: `1 pago de $${fmtMXN(amount)}` }];
+      try {
+        const installmentsResponse = await mp.getInstallments({
+          amount: Number(amount).toFixed(2),
+          bin: nextBin,
+          paymentMethodId: method.id,
+          paymentTypeId: method.payment_type_id,
+        });
+        if (latestBinRequest.current !== nextBin) return;
+        const options = installmentsResponse?.[0]?.payer_costs || [];
+        if (options.length > 0) normalized = options;
+      } catch (installmentsError) {
+        console.warn("[checkout] Sin mensualidades para esta tarjeta:", installmentsError);
+      }
+      if (latestBinRequest.current !== nextBin) return;
+      setInstallmentOptions(normalized);
+      setInstallments(Number(normalized[0]?.installments) || 1);
+    } catch (optionsError) {
+      console.error("[checkout] Opciones de tarjeta:", optionsError);
+      setPaymentMethod(null);
+      setInstallmentOptions([]);
+      setError("No pudimos identificar la tarjeta. Revisa los primeros digitos.");
+    } finally {
+      if (latestBinRequest.current === nextBin) setLoadingOptions(false);
+    }
+  }, [amount]);
+
+  const handleCardNumberInput = useCallback((event) => {
+    const digits = event.currentTarget.value.replace(/\D/g, "").slice(0, 19);
+    event.currentTarget.value = formatCardNumber(digits, cardNumberLength);
+    const nextBin = digits.slice(0, 6);
+    setBin(nextBin);
+    setLastFour(digits.length >= 4 ? digits.slice(-4) : "");
+    setActivityKey((current) => current + 1);
+    setError("");
+
+    if (nextBin.length === 6) {
+      loadPaymentOptions(nextBin);
+    } else {
+      latestBinRequest.current = "";
+      setLoadingOptions(false);
+      setPaymentMethod(null);
+      setInstallmentOptions([]);
+      setInstallments(1);
+    }
+  }, [cardNumberLength, loadPaymentOptions]);
+
+  const handleExpirationInput = useCallback((event) => {
+    const formatted = formatExpiration(event.currentTarget.value);
+    event.currentTarget.value = formatted;
+    setExpiration(formatted);
+    setActivityKey((current) => current + 1);
+    setError("");
+  }, []);
+
+  const handleCardholderInput = useCallback((event) => {
+    const name = event.currentTarget.value.toUpperCase().slice(0, 40);
+    event.currentTarget.value = name;
+    setCardholderName(name);
+    setActivityKey((current) => current + 1);
+    setError("");
+  }, []);
+
+  const handleCvvInput = useCallback((event) => {
+    const digits = event.currentTarget.value.replace(/\D/g, "").slice(0, cvvLength);
+    event.currentTarget.value = digits;
+    setCvvDots(digits ? MASK_CVV.slice(0, digits.length) : "");
+    setShowBack(true);
+    setActivityKey((current) => current + 1);
+    setError("");
+  }, [cvvLength]);
+
+  const handleSubmit = useCallback(async (event) => {
+    event.preventDefault();
+    if (submitting) return;
+
+    const cardNumber = cardNumberRef.current?.value.replace(/\D/g, "") || "";
+    const expirationDigits = expirationRef.current?.value.replace(/\D/g, "") || "";
+    const securityCode = cvvRef.current?.value.replace(/\D/g, "") || "";
+    const month = expirationDigits.slice(0, 2);
+    const shortYear = expirationDigits.slice(2, 4);
+
+    if (!paymentMethod || cardNumber.length !== cardNumberLength) {
+      setError("Revisa el numero de la tarjeta.");
+      cardNumberRef.current?.focus();
+      return;
+    }
+    if (!cardholderName.trim()) {
+      setError("Escribe el nombre como aparece en la tarjeta.");
+      return;
+    }
+    if (
+      expirationDigits.length !== 4 ||
+      Number(month) < 1 ||
+      Number(month) > 12
+    ) {
+      setError("Revisa la fecha de vencimiento.");
+      expirationRef.current?.focus();
+      return;
+    }
+    if (securityCode.length !== cvvLength) {
+      setError("Revisa el codigo de seguridad.");
+      setShowBack(true);
+      cvvRef.current?.focus();
       return;
     }
 
-    console.error("[checkout] Mercado Pago Brick:", brickError);
-    setError("No se pudo cargar el formulario de tarjeta. Intenta recargar la pagina.");
-  }, []);
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const mp = await getMercadoPagoInstance();
+      const token = await mp.createCardToken({
+        cardNumber,
+        cardholderName: cardholderName.trim(),
+        securityCode,
+        cardExpirationMonth: month,
+        cardExpirationYear: `20${shortYear}`,
+      });
+      if (!token?.id) {
+        throw new Error("Mercado Pago no genero el token de la tarjeta.");
+      }
+
+      setLastFour(token?.last_four_digits || cardNumber.slice(-4));
+      if (cvvRef.current) cvvRef.current.value = "";
+      setCvvDots("");
+      setShowBack(false);
+
+      const { data, error: paymentError } = await processMercadoPagoCard({
+        orderId: order.id,
+        accessToken,
+        formData: {
+          token: token?.id,
+          issuer_id: String(paymentMethod?.issuer?.id || ""),
+          payment_method_id: paymentMethod.id,
+          payment_type_id: paymentMethod.payment_type_id,
+          transaction_amount: Number(amount),
+          installments: Number(installments) || 1,
+          payer: {
+            email: payerEmail,
+          },
+        },
+        paymentTypeId: paymentMethod.payment_type_id,
+        attemptId: crypto.randomUUID(),
+      });
+
+      if (paymentError) {
+        setError(paymentErrorMessage(paymentError));
+        return;
+      }
+      if (data?.challenge_url) {
+        onChallenge(data);
+        return;
+      }
+      if (data?.approved) {
+        onApproved(data);
+        return;
+      }
+      if (["processing", "created", "action_required"].includes(data?.status)) {
+        onPending(data);
+        return;
+      }
+
+      setError(
+        STATUS_MESSAGES[data?.status_detail] ||
+        "El pago fue rechazado. Intenta con otra tarjeta."
+      );
+    } catch (submitError) {
+      console.error("[checkout] Tokenizacion de tarjeta:", submitError);
+      setError(tokenErrorMessage(submitError));
+    } finally {
+      setSubmitting(false);
+    }
+  }, [
+    accessToken,
+    amount,
+    cardNumberLength,
+    cardholderName,
+    cvvLength,
+    installments,
+    onApproved,
+    onChallenge,
+    onPending,
+    order.id,
+    payerEmail,
+    paymentMethod,
+    submitting,
+  ]);
 
   if (!publicKey || forceFallback) {
     return (
@@ -255,24 +479,112 @@ export default function MercadoPagoCardPayment({
         bin={bin}
         lastFour={lastFour}
         cardholderName={cardholderName}
+        expiration={expiration}
+        cvvDots={cvvDots}
+        cvvLength={cvvLength}
         activityKey={activityKey}
+        showBack={showBack}
+        onFlip={() => setShowBack((current) => !current)}
       />
 
       {!ready && (
         <div className="h-40 rounded-xl animate-pulse" style={{ backgroundColor: "#1B2433" }} />
       )}
 
-      <div style={{ display: ready ? "block" : "none" }}>
-        <CardPayment
-          initialization={initialization}
-          customization={customization}
-          locale="es-MX"
-          onReady={handleReady}
-          onBinChange={handleBinChange}
-          onError={handleBrickError}
-          onSubmit={handleSubmit}
-        />
-      </div>
+      <form
+        className="mp-custom-card-form"
+        style={{ display: ready ? "grid" : "none" }}
+        onSubmit={handleSubmit}
+        autoComplete="on"
+      >
+        <label className="mp-card-field mp-card-field-wide">
+          <span>Numero de tarjeta</span>
+          <input
+            ref={cardNumberRef}
+            type="text"
+            inputMode="numeric"
+            autoComplete="cc-number"
+            name="cardNumber"
+            placeholder="1234 5678 9012 3456"
+            maxLength={23}
+            onInput={handleCardNumberInput}
+            onFocus={() => setShowBack(false)}
+          />
+        </label>
+
+        <label className="mp-card-field mp-card-field-wide">
+          <span>Nombre en la tarjeta</span>
+          <input
+            type="text"
+            autoComplete="cc-name"
+            name="cardholderName"
+            placeholder="NOMBRE DEL TITULAR"
+            maxLength={40}
+            onInput={handleCardholderInput}
+            onFocus={() => setShowBack(false)}
+          />
+        </label>
+
+        <label className="mp-card-field">
+          <span>Vencimiento</span>
+          <input
+            ref={expirationRef}
+            type="text"
+            inputMode="numeric"
+            autoComplete="cc-exp"
+            name="cardExpiration"
+            placeholder="MM/AA"
+            maxLength={5}
+            onInput={handleExpirationInput}
+            onFocus={() => setShowBack(false)}
+          />
+        </label>
+
+        <label className="mp-card-field">
+          <span>CVV</span>
+          <input
+            ref={cvvRef}
+            type="password"
+            inputMode="numeric"
+            autoComplete="cc-csc"
+            name="securityCode"
+            placeholder={MASK_CVV.slice(0, cvvLength)}
+            maxLength={cvvLength}
+            onInput={handleCvvInput}
+            onFocus={() => setShowBack(true)}
+            onBlur={() => setShowBack(false)}
+          />
+        </label>
+
+        <label className="mp-card-field mp-card-field-wide">
+          <span>Forma de pago</span>
+          <select
+            value={installments}
+            onChange={(event) => setInstallments(Number(event.target.value))}
+            disabled={!paymentMethod || loadingOptions}
+          >
+            {!paymentMethod && <option value={1}>Ingresa una tarjeta valida</option>}
+            {loadingOptions && <option value={1}>Consultando opciones...</option>}
+            {!loadingOptions && installmentOptions.map((option) => (
+              <option key={option.installments} value={option.installments}>
+                {option.recommended_message || `${option.installments} mensualidades`}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <button
+          type="submit"
+          className="mp-card-pay-button"
+          disabled={submitting || loadingOptions || !paymentMethod}
+        >
+          {submitting ? "Procesando pago..." : `Pagar $${fmtMXN(amount)} MXN`}
+        </button>
+
+        <p className="mp-card-privacy">
+          Mercado Pago tokeniza la tarjeta. Copy Center 2000 no envia el numero ni el CVV a su servidor.
+        </p>
+      </form>
 
       {error && (
         <div
