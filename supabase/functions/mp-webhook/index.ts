@@ -442,7 +442,10 @@ Deno.serve(async (req: Request) => {
     body?.id ||
     ""
   );
-  const isOrderEvent = eventType === "order" || /^ord/i.test(directResourceId);
+  const isOrderEvent =
+    eventType === "order" ||
+    eventType === "orders" ||
+    /^ord/i.test(directResourceId);
   const paymentId = isOrderEvent ? "" : paymentIdFrom(url, body);
   const resourceId = isOrderEvent ? directResourceId : paymentId;
   if (!resourceId) {
