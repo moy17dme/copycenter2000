@@ -428,3 +428,252 @@ a[role="button"]:not([aria-disabled="true"]):not([class*="btn-"]):not([class*="t
     filter: none !important;
   }
 }
+
+/* Mercado Pago secure card preview */
+.mp-card-preview-shell {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 2px 0 6px;
+}
+
+.mp-card-stage {
+  width: min(100%, 340px);
+  aspect-ratio: 1.586 / 1;
+  perspective: 1000px;
+}
+
+.mp-card-activity {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: mp-card-input 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mp-card-activity.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.mp-card-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 8px;
+  backface-visibility: hidden;
+  box-shadow: 0 18px 38px rgba(2, 6, 23, 0.34);
+}
+
+.mp-card-front {
+  display: flex;
+  flex-direction: column;
+  padding: 22px;
+  color: #f5f7fa;
+  background: #17243a;
+}
+
+.mp-card-front::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 44%;
+  height: 5px;
+  content: "";
+  background: #c61c1c;
+}
+
+.mp-card-topline,
+.mp-card-footer,
+.mp-card-security {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mp-card-brand {
+  min-width: 92px;
+  color: #e5ecf6;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.mp-card-contactless {
+  color: #9fb9ec;
+  transform: rotate(90deg);
+}
+
+.mp-card-chip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 47px;
+  height: 35px;
+  margin-top: 24px;
+  overflow: hidden;
+  border: 1px solid #d8b35a;
+  border-radius: 7px;
+  background: #d9bc70;
+  animation: mp-chip-ready 1.8s ease-in-out infinite;
+}
+
+.mp-card-chip span {
+  border-right: 1px solid rgba(81, 58, 15, 0.28);
+}
+
+.mp-card-number {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: auto;
+  color: #dbe6f8;
+  font-size: 20px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.mp-card-number .is-known {
+  color: #f5f7fa;
+}
+
+.mp-card-footer {
+  gap: 20px;
+  margin-top: 19px;
+}
+
+.mp-card-footer > div:first-child {
+  min-width: 0;
+}
+
+.mp-card-footer strong {
+  display: block;
+  overflow: hidden;
+  max-width: 210px;
+  color: #f5f7fa;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-card-label {
+  display: block;
+  margin-bottom: 2px;
+  color: #8da0ba;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.mp-card-expiry {
+  flex: 0 0 auto;
+}
+
+.mp-card-back {
+  display: flex;
+  flex-direction: column;
+  padding: 26px 0 20px;
+  color: #f5f7fa;
+  background: #1b2433;
+  transform: rotateY(180deg);
+}
+
+.mp-card-stripe {
+  height: 42px;
+  background: #070b12;
+}
+
+.mp-card-signature {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 40px;
+  margin: 22px 22px 0;
+  padding: 0 12px;
+  color: #1b2433;
+  background: #dfe7f2;
+}
+
+.mp-card-signature span {
+  margin-right: 9px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.mp-card-signature strong {
+  font-size: 17px;
+  letter-spacing: 0;
+}
+
+.mp-card-security {
+  justify-content: flex-start;
+  gap: 7px;
+  margin: auto 22px 0;
+  color: #93a4bc;
+  font-size: 10px;
+}
+
+.mp-card-flip-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 0;
+  color: #9aa6b2;
+  background: transparent;
+  font-size: 11px;
+}
+
+@keyframes mp-card-input {
+  0% {
+    transform: translateY(2px) rotateX(0.8deg) scale(0.992);
+  }
+  100% {
+    transform: translateY(0) rotateX(0) scale(1);
+  }
+}
+
+@keyframes mp-chip-ready {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(217, 188, 112, 0);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(217, 188, 112, 0.22);
+  }
+}
+
+@media (max-width: 420px) {
+  .mp-card-front {
+    padding: 18px;
+  }
+
+  .mp-card-chip {
+    width: 42px;
+    height: 31px;
+    margin-top: 18px;
+  }
+
+  .mp-card-number {
+    gap: 5px;
+    font-size: 15px;
+  }
+
+  .mp-card-footer {
+    margin-top: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-card-activity,
+  .mp-card-chip {
+    animation: none !important;
+  }
+}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CardPayment, initMercadoPago } from "@mercadopago/sdk-react";
+import { LockKeyhole, RotateCcw, Wifi } from "lucide-react";
 import { processMercadoPagoCard, queryMercadoPagoCardStatus } from "../lib/orders";
 import { fmtMXN } from "../utils/getItemPrice";
 
@@ -35,6 +36,89 @@ function paymentErrorMessage(error) {
   return STATUS_MESSAGES[detail] || payload?.message || error?.message || "No se pudo procesar el pago.";
 }
 
+function cardBrandFromBin(bin) {
+  if (/^4/.test(bin)) return "VISA";
+  if (/^3[47]/.test(bin)) return "AMEX";
+  if (/^(5[1-5]|2(2[2-9]|[3-6]|7[01]|720))/.test(bin)) return "MASTERCARD";
+  return "TARJETA";
+}
+
+function AnimatedCardPreview({
+  bin,
+  lastFour,
+  cardholderName,
+  activityKey,
+}) {
+  const [showBack, setShowBack] = useState(false);
+  const brand = cardBrandFromBin(bin);
+  const maskedLastFour = /^\d{4}$/.test(lastFour || "") ? lastFour : "••••";
+
+  return (
+    <div className="mp-card-preview-shell">
+      <div className="mp-card-stage">
+        <div
+          key={activityKey}
+          className={`mp-card-activity ${showBack ? "is-flipped" : ""}`}
+        >
+          <div className="mp-card-face mp-card-front">
+            <div className="mp-card-topline">
+              <span className="mp-card-brand">{brand}</span>
+              <Wifi aria-hidden="true" size={20} className="mp-card-contactless" />
+            </div>
+
+            <div className="mp-card-chip" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+
+            <div className="mp-card-number" aria-label={`Tarjeta terminada en ${maskedLastFour}`}>
+              <span>••••</span>
+              <span>••••</span>
+              <span>••••</span>
+              <span className={lastFour ? "is-known" : ""}>{maskedLastFour}</span>
+            </div>
+
+            <div className="mp-card-footer">
+              <div>
+                <span className="mp-card-label">Titular</span>
+                <strong>{cardholderName || "NOMBRE EN TARJETA"}</strong>
+              </div>
+              <div className="mp-card-expiry">
+                <span className="mp-card-label">Vence</span>
+                <strong>••/••</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="mp-card-face mp-card-back">
+            <div className="mp-card-stripe" />
+            <div className="mp-card-signature">
+              <span>CVV</span>
+              <strong aria-label="CVV oculto">•••</strong>
+            </div>
+            <div className="mp-card-security">
+              <LockKeyhole aria-hidden="true" size={15} />
+              <span>El codigo permanece cifrado y oculto</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setShowBack((current) => !current)}
+        className="mp-card-flip-button"
+        aria-label={showBack ? "Mostrar frente de la tarjeta" : "Mostrar ubicacion del CVV"}
+        title={showBack ? "Mostrar frente" : "Mostrar CVV"}
+      >
+        <RotateCcw aria-hidden="true" size={15} />
+        <span>{showBack ? "Ver tarjeta" : "Ver ubicacion del CVV"}</span>
+      </button>
+    </div>
+  );
+}
+
 export default function MercadoPagoCardPayment({
   order,
   amount,
@@ -48,6 +132,10 @@ export default function MercadoPagoCardPayment({
 }) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
+  const [bin, setBin] = useState("");
+  const [lastFour, setLastFour] = useState("");
+  const [cardholderName, setCardholderName] = useState("");
+  const [activityKey, setActivityKey] = useState(0);
 
   const initialization = useMemo(() => ({
     amount,
@@ -71,6 +159,9 @@ export default function MercadoPagoCardPayment({
 
   const handleSubmit = useCallback(async (formData, additionalData) => {
     setError("");
+    setLastFour(additionalData?.lastFourDigits || "");
+    setCardholderName(additionalData?.cardholderName || "");
+    setActivityKey((current) => current + 1);
     const { data, error: paymentError } = await processMercadoPagoCard({
       orderId: order.id,
       accessToken,
@@ -102,6 +193,11 @@ export default function MercadoPagoCardPayment({
     setError(message);
     throw new Error(message);
   }, [accessToken, onApproved, onChallenge, onPending, order.id]);
+
+  const handleBinChange = useCallback((nextBin) => {
+    setBin(nextBin || "");
+    setActivityKey((current) => current + 1);
+  }, []);
 
   if (!publicKey || forceFallback) {
     return (
@@ -138,6 +234,13 @@ export default function MercadoPagoCardPayment({
         </span>
       </div>
 
+      <AnimatedCardPreview
+        bin={bin}
+        lastFour={lastFour}
+        cardholderName={cardholderName}
+        activityKey={activityKey}
+      />
+
       {!ready && (
         <div className="h-40 rounded-xl animate-pulse" style={{ backgroundColor: "#1B2433" }} />
       )}
@@ -148,6 +251,7 @@ export default function MercadoPagoCardPayment({
           customization={customization}
           locale="es-MX"
           onReady={() => setReady(true)}
+          onBinChange={handleBinChange}
           onError={(brickError) => {
             console.error("[checkout] Mercado Pago Brick:", brickError);
             setError("No se pudo cargar el formulario de tarjeta.");
