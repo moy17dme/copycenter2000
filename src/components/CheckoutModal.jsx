@@ -276,8 +276,6 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
     }
   }, [orderSummary.total, payment, requiresInvoice]);
 
-  if (!open) return null;
-
   const hasItems = items.length > 0;
 
   async function handleApplyCoupon() {
@@ -369,6 +367,8 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
     clearCart();
     window.location.assign(checkoutUrl);
   }, [clearCart, paymentContext]);
+
+  if (!open) return null;
 
   async function handleConfirm(e) {
     e.preventDefault();
