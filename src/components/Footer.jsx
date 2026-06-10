@@ -113,6 +113,7 @@ export default function Footer() {
                 <Li href="/precios">Precios</Li>
                 <Li href="/acerca-de">Acerca de</Li>
                 <Li href="/portafolio">Portafolio</Li>
+                <Li href="/recursos">Recursos de impresión</Li>
                 <Li href="/preguntas-frecuentes">Preguntas frecuentes</Li>
                 <Li href="/contacto">Contacto</Li>
                 <Li href="/aviso-privacidad">Aviso de privacidad</Li>

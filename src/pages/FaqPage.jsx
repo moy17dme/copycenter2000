@@ -143,6 +143,12 @@ export default function FaqPage() {
         <Link to="/contacto" className="btn-outline">
           Consultar antes de imprimir
         </Link>
+        <Link
+          to="/recursos/como-preparar-archivos-para-imprimir"
+          className="btn-outline"
+        >
+          Leer guía completa
+        </Link>
         <Link to="/#servicios" className="btn-blue">
           Iniciar pedido
         </Link>

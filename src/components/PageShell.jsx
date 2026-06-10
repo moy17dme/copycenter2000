@@ -8,11 +8,12 @@ export default function PageShell({
   title,
   intro,
   breadcrumbLabel = title,
+  breadcrumbs: breadcrumbItems,
   structuredData,
   children,
   width = "max-w-6xl",
 }) {
-  const breadcrumbs = [{ label: breadcrumbLabel, path }];
+  const breadcrumbs = breadcrumbItems || [{ label: breadcrumbLabel, path }];
 
   return (
     <main className="relative z-10 flex-1 px-4 pb-16 pt-24 sm:px-6 lg:px-8">
@@ -30,12 +31,26 @@ export default function PageShell({
                 Inicio
               </Link>
             </li>
-            <li aria-hidden="true">
-              <ChevronRight className="h-4 w-4" />
-            </li>
-            <li aria-current="page" className="text-slate-300">
-              {breadcrumbLabel}
-            </li>
+            {breadcrumbs.map((item, index) => {
+              const isLast = index === breadcrumbs.length - 1;
+              return (
+                <li key={item.path} className="contents">
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                  {isLast ? (
+                    <span aria-current="page" className="text-slate-300">
+                      {item.label}
+                    </span>
+                  ) : (
+                    <Link
+                      to={item.path}
+                      className="transition hover:text-white"
+                    >
+                      {item.label}
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
           </ol>
         </nav>
 

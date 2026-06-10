@@ -28,6 +28,8 @@ import FaqPage from "./pages/FaqPage";
 import PortfolioPage from "./pages/PortfolioPage";
 import PricesPage from "./pages/PricesPage";
 import ServicesPage from "./pages/ServicesPage";
+import ResourcesPage from "./pages/ResourcesPage";
+import PrintFileGuidePage from "./pages/PrintFileGuidePage";
 import WhatsAppWidget from "./components/WhatsAppWidget";
 
 // ✅ OJO: App.jsx está en src/, por eso es ./lib/...
@@ -283,6 +285,11 @@ export default function App() {
             <Route path="/preguntas-frecuentes" element={<FaqPage />} />
             <Route path="/contacto" element={<ContactPage />} />
             <Route path="/portafolio" element={<PortfolioPage />} />
+            <Route path="/recursos" element={<ResourcesPage />} />
+            <Route
+              path="/recursos/como-preparar-archivos-para-imprimir"
+              element={<PrintFileGuidePage />}
+            />
             <Route
               path="/productos"
               element={

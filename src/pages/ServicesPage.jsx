@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import PageShell from "../components/PageShell";
 import { PUBLIC_SERVICES } from "../data/publicServices";
@@ -52,6 +52,17 @@ export default function ServicesPage() {
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">
                   {service.description}
                 </p>
+                <div className="mt-4 flex items-start gap-2 border-y border-border/70 py-3 text-sm">
+                  <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+                  <div>
+                    <span className="font-semibold text-slate-200">
+                      Entrega estimada:
+                    </span>{" "}
+                    <span className="text-muted-foreground">
+                      {service.delivery}
+                    </span>
+                  </div>
+                </div>
                 <ul className="mt-4 space-y-2">
                   {service.details.map((detail) => (
                     <li
@@ -84,6 +95,11 @@ export default function ServicesPage() {
           Los materiales, medidas y acabados pueden combinarse según el proyecto.
           Comparte cantidad, tamaño, fecha de entrega y archivo para recibir una
           cotización precisa.
+        </p>
+        <p className="mt-3 max-w-3xl text-xs leading-5 text-slate-400">
+          Los tiempos son orientativos y comienzan al confirmar archivo, pago y
+          especificaciones. La cantidad, disponibilidad de material y acabados
+          pueden modificar la fecha final.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link to="/#servicios" className="btn-blue">

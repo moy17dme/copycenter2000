@@ -36,6 +36,16 @@ export const PUBLIC_ROUTE_SEO = {
     description:
       "Explora muestras visuales de impresión digital, ploteo, stickers, sublimación, credenciales, acabados y digitalización.",
   },
+  "/recursos": {
+    title: "Recursos y guías de impresión | Copy Center 2000",
+    description:
+      "Consulta guías de impresión para preparar archivos, elegir resolución, color, sangrado, tipografías y formatos antes de producir.",
+  },
+  "/recursos/como-preparar-archivos-para-imprimir": {
+    title: "Cómo preparar archivos para imprimir | Copy Center 2000",
+    description:
+      "Guía práctica para preparar PDF, imágenes a 300 DPI, color CMYK, sangrado, fuentes y medidas antes de enviar un archivo a impresión.",
+  },
   "/aviso-privacidad": {
     title: "Aviso de privacidad | Copy Center 2000",
     description:

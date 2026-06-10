@@ -11,6 +11,7 @@ const links = [
   { to: "/servicios", label: "Servicios" },
   { to: "/precios", label: "Precios" },
   { to: "/portafolio", label: "Portafolio" },
+  { to: "/recursos", label: "Recursos" },
   { to: "/contacto", label: "Contacto" },
 ];
 
@@ -55,6 +56,7 @@ export default function Navbar({
 
   const isActiveLink = (to) => {
     if (to === "/") return pathname === "/";
+    if (to === "/recursos") return pathname.startsWith("/recursos");
     if (to.startsWith("/#")) return pathname === "/" && hash === to.slice(1);
     return pathname === to;
   };

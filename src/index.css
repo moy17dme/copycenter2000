@@ -337,6 +337,30 @@
     color: #6f91df;
   }
 
+  .resource-copy {
+    color: #cbd5e1;
+    font-size: 0.96rem;
+    line-height: 1.85;
+  }
+
+  .resource-copy section + section {
+    margin-top: 2.5rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .resource-copy h2 {
+    margin-bottom: 0.85rem;
+    color: var(--foreground);
+    font-size: clamp(1.35rem, 2vw, 1.75rem);
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .resource-copy p + p {
+    margin-top: 1rem;
+  }
+
   button:not(:disabled):not([aria-disabled="true"]):not([class~="inset-0"]):not([class*="btn-"]):not([class~="icon-btn"]):not([class~="chip"]):not([class~="item"]):not([class*="translate-"]):not([class*="scale-"]):not([class*="rotate-"]),
   a[role="button"]:not([aria-disabled="true"]):not([class*="btn-"]):not([class*="translate-"]):not([class*="scale-"]):not([class*="rotate-"]),
   [data-pressable]:not([aria-disabled="true"]):not([class*="translate-"]):not([class*="scale-"]):not([class*="rotate-"]) {
