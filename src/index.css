@@ -313,6 +313,30 @@
 }
 
 @layer utilities {
+  .legal-copy a {
+    color: #8fb0f5;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: rgba(143, 176, 245, 0.45);
+    text-underline-offset: 3px;
+  }
+
+  .legal-copy a:hover {
+    color: #b8cdf8;
+    text-decoration-color: currentColor;
+  }
+
+  .legal-copy ul {
+    display: grid;
+    gap: 0.5rem;
+    padding-left: 1.25rem;
+    list-style: disc;
+  }
+
+  .legal-copy li::marker {
+    color: #6f91df;
+  }
+
   button:not(:disabled):not([aria-disabled="true"]):not([class~="inset-0"]):not([class*="btn-"]):not([class~="icon-btn"]):not([class~="chip"]):not([class~="item"]):not([class*="translate-"]):not([class*="scale-"]):not([class*="rotate-"]),
   a[role="button"]:not([aria-disabled="true"]):not([class*="btn-"]):not([class*="translate-"]):not([class*="scale-"]):not([class*="rotate-"]),
   [data-pressable]:not([aria-disabled="true"]):not([class*="translate-"]):not([class*="scale-"]):not([class*="rotate-"]) {

@@ -19,6 +19,7 @@ import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
+import LegalPage from "./pages/LegalPage";
 import WhatsAppWidget from "./components/WhatsAppWidget";
 
 // ✅ OJO: App.jsx está en src/, por eso es ./lib/...
@@ -253,6 +254,8 @@ export default function App() {
             <Route path="/admin" element={<Admin user={user} accessToken={session?.access_token || null} profile={profile} />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/aviso-privacidad" element={<LegalPage type="privacy" />} />
+            <Route path="/terminos" element={<LegalPage type="terms" />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
 

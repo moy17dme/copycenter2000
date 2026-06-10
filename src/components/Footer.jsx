@@ -72,8 +72,14 @@ export default function Footer() {
                 <SocialIcon href="https://wa.me/527713531668" label="WhatsApp">
                   <path d="M12.04 2a10 10 0 100 20 9.9 9.9 0 005.26-1.55l1.7.45-.46-1.66A9.97 9.97 0 0022.04 12 10 10 0 0012.04 2zm5.73 14.25c-.25.7-1.48 1.33-2.03 1.38-.52.05-1.18.07-1.9-.12-.44-.12-1-.32-1.73-.63-3.04-1.31-5.02-4.36-5.17-4.56-.15-.2-1.24-1.66-1.24-3.17 0-1.5.79-2.24 1.07-2.55.28-.31.61-.39.82-.39.21 0 .41.01.59.01.19 0 .44-.07.69.53.25.6.86 2.06.94 2.21.08.15.13.33.02.53-.1.2-.15.33-.3.51-.15.18-.32.41-.45.55-.15.15-.3.31-.13.61.18.31.8 1.32 1.72 2.14 1.18 1.05 2.18 1.38 2.49 1.54.31.15.5.13.69-.08.2-.2.79-.9 1.01-1.21.23-.31.43-.26.69-.16.26.1 1.64.77 1.92.9.28.13.46.2.53.31.06.11.06.65-.19 1.35z" />
                 </SocialIcon>
-                <SocialIcon href="https://facebook.com" label="Facebook">
+                <SocialIcon
+                  href="https://www.facebook.com/p/Copy-Center-2000-100056493007838/"
+                  label="Facebook"
+                >
                   <path d="M14 9h3V6h-3c-1.7 0-3 1.3-3 3v2H8v3h3v7h3v-7h3l1-3h-4V9c0-.6.4-1 1-1z" />
+                </SocialIcon>
+                <SocialIcon label="Instagram, enlace pendiente" disabled>
+                  <path d="M7.8 2h8.4A5.8 5.8 0 0122 7.8v8.4a5.8 5.8 0 01-5.8 5.8H7.8A5.8 5.8 0 012 16.2V7.8A5.8 5.8 0 017.8 2zm-.2 2A3.6 3.6 0 004 7.6v8.8A3.6 3.6 0 007.6 20h8.8a3.6 3.6 0 003.6-3.6V7.6A3.6 3.6 0 0016.4 4H7.6zm9.65 1.5a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5zM12 7a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6z" />
                 </SocialIcon>
                 <SocialIcon href="mailto:copy.center@hotmail.com" label="Email">
                   <path d="M2 6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm2 0l8 6 8-6H4zm16 12V8l-8 6-8-6v10h16z" />
@@ -106,6 +112,7 @@ export default function Footer() {
                 <Li href="/#precios">Precios</Li>
                 <Li href="/#servicios">Realiza tu pedido</Li>
                 <Li href="/aviso-privacidad">Aviso de privacidad</Li>
+                <Li href="/terminos">Términos y condiciones</Li>
               </ul>
             </div>
 
@@ -117,7 +124,7 @@ export default function Footer() {
               <ul className="mt-4 space-y-3 text-sm">
                 <li className="flex items-start gap-3">
                   <IconMap />
-                  <span>Calle Vicente Segura 301, 42060 Pachuca de Soto, Hidalgo</span>
+                  <span>Calle Gral. Vicente Segura 301-A, col. Periodistas, 42060 Pachuca de Soto, Hidalgo</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <IconPhone />
@@ -133,8 +140,7 @@ export default function Footer() {
                 </li>
                 <li className="flex items-start gap-3">
                   <IconClock />
-                  <span>Lun–vie: 8:00–19:30</span>
-                   <span>sab: 9:00–15:00</span>
+                  <span>Lun–vie: 8:00–19:30 · Sáb: 9:00–15:00</span>
                 </li>
               </ul>
             </div>
@@ -147,7 +153,7 @@ export default function Footer() {
               © {new Date().getFullYear()} Copy Center 2000. Todos los derechos reservados.
             </p>
             <p className="opacity-80">
-              Hecho con ❤️ en México | <a href="/terminos" className="hover:underline">Términos</a>
+              Hecho con ❤️ en México | <a href="/terminos" className="hover:underline">Términos y condiciones</a>
             </p>
           </div>
         </div>
@@ -170,19 +176,52 @@ function Li({ href, children }) {
   );
 }
 
-function SocialIcon({ href, label, children }) {
+function SocialIcon({ href, label, children, disabled = false }) {
+  const className = [
+    "group inline-flex h-10 w-10 items-center justify-center rounded-xl transition ring-1",
+    disabled
+      ? "cursor-not-allowed bg-white/5 text-white/35 ring-white/5"
+      : "bg-white/10 hover:bg-white/20 ring-white/10",
+  ].join(" ");
+
+  const icon = (
+    <svg
+      viewBox="0 0 24 24"
+      className={[
+        "h-5 w-5 transition",
+        disabled
+          ? "fill-white/35"
+          : "fill-white/90 group-hover:fill-white",
+      ].join(" ")}
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  );
+
+  if (disabled || !href) {
+    return (
+      <span
+        role="img"
+        aria-label={label}
+        title="Instagram: enlace pendiente"
+        className={className}
+      >
+        {icon}
+      </span>
+    );
+  }
+
   const ext = href.startsWith("http");
   return (
     <a
       href={href}
       aria-label={label}
-      className="group inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 transition ring-1 ring-white/10"
+      className={className}
       target={ext ? "_blank" : undefined}
       rel={ext ? "noopener noreferrer" : undefined}
     >
-      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white/90 group-hover:fill-white transition">
-        {children}
-      </svg>
+      {icon}
     </a>
   );
 }
