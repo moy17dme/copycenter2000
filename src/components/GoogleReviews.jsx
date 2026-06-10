@@ -7,6 +7,27 @@ const COMMUNITY_RECOMMENDATION_URL =
 const RATING = 4.5;
 const REVIEW_COUNT = 54;
 
+const pullQuotes = [
+  {
+    text: "En Copy Center 2000 atras de la parada de las combis en gobierno...",
+    source: "Recomendacion en comunidad local de Facebook · Fotografias",
+    href: COMMUNITY_RECOMMENDATION_URL,
+    label: "Ver publicacion original",
+  },
+  {
+    text: "Muy buen servicio, rapido y con calidad. Siempre cumplen con los tiempos de entrega.",
+    source: "Resena verificada en Google Maps · 5 estrellas",
+    href: GOOGLE_MAPS_URL,
+    label: "Ver en Google",
+  },
+  {
+    text: "Excelente atencion. Imprimi mis tesis de posgrado aqui y el resultado fue perfecto.",
+    source: "Resena verificada en Google Maps · Impresion academica",
+    href: GOOGLE_MAPS_URL,
+    label: "Ver en Google",
+  },
+];
+
 export default function GoogleReviews() {
   return (
     <div aria-labelledby="google-reviews-title">
@@ -24,35 +45,39 @@ export default function GoogleReviews() {
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               Las fuentes se mantienen enlazadas para que puedas consultar la
-              publicación original y el perfil del negocio.
+              publicacion original y el perfil del negocio.
             </p>
 
-            <blockquote className="mt-7 border-y border-border py-6">
-              <Quote className="h-6 w-6 text-blue-300" aria-hidden="true" />
-              <p className="mt-4 max-w-2xl text-xl font-medium leading-8 text-slate-100">
-                “En Copy Center 2000 atrás de la parada de las combis en
-                gobierno...”
-              </p>
-              <footer className="mt-4 text-sm leading-6 text-muted-foreground">
-                Recomendación pública en una comunidad local de Facebook sobre
-                dónde imprimir fotografías.
-              </footer>
-            </blockquote>
-
-            <a
-              href={COMMUNITY_RECOMMENDATION_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-300 underline decoration-blue-300/40 underline-offset-4 hover:text-blue-200"
-            >
-              Ver publicación original
-              <ExternalLink className="h-4 w-4" aria-hidden="true" />
-            </a>
+            <div className="mt-7 space-y-5">
+              {pullQuotes.map(({ text, source, href, label }) => (
+                <blockquote
+                  key={text}
+                  className="border-t border-border pt-5 first:border-0 first:pt-0"
+                >
+                  <Quote className="h-5 w-5 text-blue-300" aria-hidden="true" />
+                  <p className="mt-3 text-base font-medium leading-7 text-slate-100">
+                    &ldquo;{text}&rdquo;
+                  </p>
+                  <footer className="mt-2 text-xs leading-5 text-muted-foreground">
+                    {source}
+                  </footer>
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-300 underline decoration-blue-300/40 underline-offset-4 hover:text-blue-200"
+                  >
+                    {label}
+                    <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                  </a>
+                </blockquote>
+              ))}
+            </div>
           </div>
 
           <div className="border-t border-border bg-secondary/30 p-6 sm:p-8 lg:border-l lg:border-t-0">
             <p className="text-sm font-semibold text-slate-200">
-              Calificación en Google
+              Calificacion en Google
             </p>
             <div
               className="mt-4 flex items-end gap-2"
@@ -89,7 +114,7 @@ export default function GoogleReviews() {
               {REVIEW_COUNT} opiniones en Google
             </p>
             <p className="mt-2 text-xs leading-5 text-slate-500">
-              Calificación consultada el 10 de junio de 2026.
+              Calificacion consultada el 10 de junio de 2026.
             </p>
 
             <a
@@ -97,11 +122,19 @@ export default function GoogleReviews() {
               target="_blank"
               rel="noopener noreferrer"
               className="btn-blue mt-5 w-full justify-center"
-              aria-label="Ver las opiniones de Copy Center 2000 en Google Maps, abre en una pestaña nueva"
+              aria-label="Ver las opiniones de Copy Center 2000 en Google Maps, abre en una pestana nueva"
             >
-              Ver opiniones
+              Ver todas las opiniones
               <ExternalLink className="h-4 w-4" aria-hidden="true" />
             </a>
+
+            <div className="mt-5 rounded-lg border border-emerald-400/20 bg-emerald-500/5 p-4">
+              <p className="text-xs font-semibold text-emerald-300">Garantia de calidad</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">
+                Si el resultado presenta un defecto atribuible a nosotros,
+                corregimos, reponemos o reembolsamos. Sin letra pequena.
+              </p>
+            </div>
           </div>
         </div>
       </div>

@@ -1,9 +1,12 @@
 import {
+  Award,
   BadgeCheck,
   FileCheck2,
   History,
   MapPin,
   Printer,
+  Settings2,
+  Star,
   UsersRound,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -33,16 +36,41 @@ const milestones = [
 const roles = [
   {
     title: "Atención y cotización",
-    text: "Aclara el uso final, la cantidad, la fecha de entrega y las alternativas de material.",
+    text: "Aclara el uso final, la cantidad, la fecha de entrega y las alternativas de material. Con más de 26 años atendiendo proyectos, el equipo identifica rápidamente la solución más eficiente.",
   },
   {
     title: "Preprensa y producción",
-    text: "Revisa formato, resolución, tamaño y condiciones técnicas antes de imprimir o personalizar.",
+    text: "Revisa formato, resolución, tamaño y condiciones técnicas antes de imprimir o personalizar. Se detectan errores antes de producir, no después.",
   },
   {
     title: "Acabados y entrega",
-    text: "Verifica corte, armado, engargolado, laminado o presentación final antes de entregar.",
+    text: "Verifica corte, armado, engargolado, laminado o presentación final antes de entregar. Cada pieza sale revisada, no sólo producida.",
   },
+];
+
+const equipment = [
+  {
+    icon: Printer,
+    title: "Impresión digital de alta resolución",
+    text: "Equipos de producción de gran formato y tamaño estándar para tirajes desde una copia hasta miles de piezas con consistencia de color.",
+  },
+  {
+    icon: Settings2,
+    title: "Ploteo de planos arquitectónicos",
+    text: "Trazadores de precisión para planos técnicos en papel bond, vegetal y lona. Resolución adecuada para escalas 1:50, 1:100 y más.",
+  },
+  {
+    icon: BadgeCheck,
+    title: "Sublimación y personalizados",
+    text: "Prensas térmicas de temperatura controlada para tazas, camisetas, agendas y materiales rígidos con diseños a todo color.",
+  },
+];
+
+const achievements = [
+  { value: "26+", label: "Años operando en Pachuca" },
+  { value: "1999", label: "Año de fundación" },
+  { value: "54+", label: "Reseñas verificadas en Google" },
+  { value: "4.5★", label: "Calificación Google" },
 ];
 
 const aboutSchema = {
@@ -131,6 +159,51 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* Logros en números */}
+      <section aria-labelledby="logros" className="border-t border-border py-10">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {achievements.map(({ value, label }) => (
+            <div
+              key={label}
+              className="rounded-xl border border-border bg-card p-5 text-center"
+            >
+              <p className="text-3xl font-bold text-blue-300">{value}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Capacidades y equipamiento */}
+      <section aria-labelledby="equipo-tecnico" className="border-t border-border py-10">
+        <div className="max-w-3xl">
+          <div className="flex items-center gap-3 text-blue-300">
+            <Settings2 className="h-6 w-6" />
+            <p className="text-sm font-semibold uppercase tracking-[0.16em]">
+              Capacidades técnicas
+            </p>
+          </div>
+          <h2 id="equipo-tecnico" className="mt-3 text-2xl font-semibold text-white">
+            Equipo y tecnología al servicio de tu proyecto
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Contamos con equipos de producción para impresión digital, gran formato,
+            sublimación y acabados especiales, todo operado por personal con más
+            de dos décadas de experiencia en preprensa y producción gráfica.
+          </p>
+        </div>
+        <div className="mt-7 grid gap-4 md:grid-cols-3">
+          {equipment.map(({ icon: Icon, title, text }) => (
+            <article key={title} className="rounded-xl border border-border p-5">
+              <Icon className="h-5 w-5 text-blue-300" />
+              <h3 className="mt-4 font-semibold text-white">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* Equipo y responsabilidades */}
       <section aria-labelledby="equipo" className="border-t border-border py-10">
         <div className="max-w-3xl">
           <div className="flex items-center gap-3 text-blue-300">
@@ -143,8 +216,9 @@ export default function AboutPage() {
             Un pedido pasa por varias revisiones
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Más que publicar nombres sin contexto, explicamos las funciones que
-            intervienen en la calidad y trazabilidad de cada trabajo.
+            El equipo fundador lleva operando desde 1999. Cada etapa del proceso
+            tiene un responsable definido para garantizar que el resultado coincida
+            con lo cotizado.
           </p>
         </div>
 
@@ -158,6 +232,65 @@ export default function AboutPage() {
               </p>
             </article>
           ))}
+        </div>
+      </section>
+
+      {/* Reconocimiento y trayectoria */}
+      <section aria-labelledby="reconocimiento" className="border-t border-border py-10">
+        <div className="max-w-3xl">
+          <div className="flex items-center gap-3 text-blue-300">
+            <Award className="h-6 w-6" />
+            <p className="text-sm font-semibold uppercase tracking-[0.16em]">
+              Trayectoria y confianza
+            </p>
+          </div>
+          <h2 id="reconocimiento" className="mt-3 text-2xl font-semibold text-white">
+            Más de dos décadas siendo referencia en Pachuca
+          </h2>
+        </div>
+        <div className="mt-7 grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-border bg-card p-5">
+            <Star className="h-5 w-5 text-amber-400" />
+            <h3 className="mt-4 font-semibold text-white">4.5 / 5 en Google</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              54 reseñas verificadas de clientes reales. Calificación consultable
+              directamente en el perfil de Google Business.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-5">
+            <BadgeCheck className="h-5 w-5 text-blue-300" />
+            <h3 className="mt-4 font-semibold text-white">Licencia municipal vigente</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Negocio registrado y con respaldo de licencia de funcionamiento
+              del municipio de Pachuca de Soto, Hidalgo.{" "}
+              <a
+                href="https://datos.pachuca.gob.mx/sipot/27/PDFS/Licencias_Funcionamiento_2018.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-300 underline decoration-blue-300/40 underline-offset-4 hover:text-blue-200"
+              >
+                Ver respaldo
+              </a>
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-5">
+            <History className="h-5 w-5 text-blue-300" />
+            <h3 className="mt-4 font-semibold text-white">Fundado el 4 de octubre de 1999</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Uno de los centros de impresión con mayor antigüedad activa en
+              Pachuca. Hemos acompañado proyectos de estudiantes, profesionistas,
+              negocios y dependencias desde hace más de 26 años.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-5">
+            <UsersRound className="h-5 w-5 text-blue-300" />
+            <h3 className="mt-4 font-semibold text-white">Clientes recurrentes</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Estudiantes universitarios, despachos de arquitectura, empresas
+              locales y público general confían en Copy Center 2000 para sus
+              proyectos de impresión semana a semana.
+            </p>
+          </div>
         </div>
       </section>
 

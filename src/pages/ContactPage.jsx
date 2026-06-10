@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Clock3, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { BadgeCheck, Clock3, Mail, MapPin, MessageCircle, Phone, ShieldCheck, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import PageShell from "../components/PageShell";
 
@@ -49,6 +49,22 @@ export default function ContactPage() {
       breadcrumbLabel="Contacto"
       structuredData={contactSchema}
     >
+      {/* Trust bar */}
+      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {[
+          { icon: Star, text: "4.5 / 5 en Google · 54 reseñas verificadas" },
+          { icon: BadgeCheck, text: "Negocio establecido desde 1999 en Pachuca" },
+          { icon: ShieldCheck, text: "Pago seguro con Mercado Pago · HTTPS" },
+        ].map(({ icon: Icon, text }) => (
+          <div
+            key={text}
+            className="flex items-center gap-2 rounded-lg border border-border bg-secondary/30 px-4 py-3 text-xs text-slate-300"
+          >
+            <Icon className="h-4 w-4 shrink-0 text-blue-300" />
+            {text}
+          </div>
+        ))}
+      </div>
       <section className="grid gap-8 py-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div>
           <h2 className="text-2xl font-semibold text-white">

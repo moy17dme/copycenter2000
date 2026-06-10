@@ -23,6 +23,7 @@ const articleSchema = {
     "@type": "Organization",
     name: "Copy Center 2000",
     url: "https://copycenter2000.com/acerca-de",
+    description: "Centro de impresión con más de 26 años de experiencia en preprensa y producción gráfica en Pachuca, Hidalgo.",
   },
   publisher: {
     "@id": "https://copycenter2000.com/#localbusiness",
@@ -56,9 +57,16 @@ export default function PrintFileGuidePage() {
     >
       <div className="grid gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_280px]">
         <article className="resource-copy min-w-0">
-          <p className="text-sm text-muted-foreground">
-            Publicado por Copy Center 2000 · Actualizado el 10 de junio de 2026
-          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <span>
+              Elaborado por el equipo técnico de{" "}
+              <strong className="font-medium text-slate-300">Copy Center 2000</strong>
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>Más de 26 años en preprensa y producción gráfica</span>
+            <span aria-hidden="true">·</span>
+            <span>Actualizado el 10 de junio de 2026</span>
+          </div>
 
           <section id="formato">
             <h2>1. Define tamaño y formato antes de diseñar</h2>

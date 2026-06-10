@@ -151,14 +151,52 @@ export default function Footer() {
             </div>
           </div>
 
+          {/* Trust badges */}
+          <div className="mt-10 pt-6 flex flex-wrap items-center justify-center gap-3"
+            style={{ borderTop: '1px solid #273449' }}>
+            <span className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium"
+              style={{ borderColor: '#273449', color: '#9AA6B2' }}>
+              <svg className="h-3.5 w-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              Pago seguro · Mercado Pago
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium"
+              style={{ borderColor: '#273449', color: '#9AA6B2' }}>
+              <svg className="h-3.5 w-3.5 text-amber-400" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+              4.5 / 5 en Google · 54 reseñas
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium"
+              style={{ borderColor: '#273449', color: '#9AA6B2' }}>
+              <svg className="h-3.5 w-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0110 0v4" />
+              </svg>
+              Sitio con HTTPS
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium"
+              style={{ borderColor: '#273449', color: '#9AA6B2' }}>
+              <svg className="h-3.5 w-3.5 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              Negocio establecido desde 1999
+            </span>
+          </div>
+
           {/* Línea divisoria */}
-          <div className="mt-10 pt-6 text-xs flex flex-col md:flex-row items-center justify-between gap-3"
+          <div className="mt-4 pt-4 text-xs flex flex-col md:flex-row items-center justify-between gap-3"
             style={{ borderTop: '1px solid #273449', color: '#9AA6B2' }}>
             <p>
               © {new Date().getFullYear()} Copy Center 2000. Todos los derechos reservados.
             </p>
             <p className="opacity-80">
-              Hecho en México | <Link to="/terminos" className="hover:underline">Términos y condiciones</Link>
+              Hecho en México |{" "}
+              <Link to="/aviso-privacidad" className="hover:underline">Aviso de privacidad</Link>
+              {" "}|{" "}
+              <Link to="/terminos" className="hover:underline">Términos y condiciones</Link>
             </p>
           </div>
         </div>

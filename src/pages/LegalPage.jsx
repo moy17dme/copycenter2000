@@ -10,13 +10,21 @@ const privacySections = [
   {
     title: "1. Identidad y domicilio del responsable",
     content: (
-      <p>
-        Copy Center 2000, nombre comercial con domicilio en Calle Gral. Vicente
-        Segura 301-A, colonia Periodistas, C.P. 42060, Pachuca de Soto, Hidalgo,
-        es responsable del tratamiento de los datos personales recabados a
-        través de este sitio, WhatsApp, correo electrónico y atención en
-        sucursal.
-      </p>
+      <>
+        <p>
+          Copy Center 2000, nombre comercial con domicilio en Calle Gral. Vicente
+          Segura 301-A, colonia Periodistas, C.P. 42060, Pachuca de Soto, Hidalgo,
+          es responsable del tratamiento de los datos personales recabados a
+          través de este sitio, WhatsApp, correo electrónico y atención en
+          sucursal.
+        </p>
+        <p>
+          Negocio con licencia de funcionamiento municipal del H. Ayuntamiento de
+          Pachuca de Soto, Hidalgo, en operación continua desde el 4 de octubre de
+          1999. Para consultas fiscales o de facturación, contáctanos directamente
+          al correo indicado con el asunto "Facturación".
+        </p>
+      </>
     ),
   },
   {
@@ -92,16 +100,37 @@ const privacySections = [
     ),
   },
   {
-    title: "5. Conservación y seguridad",
+    title: "5. Conservación, retención de archivos y seguridad",
     content: (
-      <p>
-        Conservaremos la información durante el tiempo necesario para prestar el
-        servicio, atender responsabilidades derivadas de la relación y cumplir
-        obligaciones legales. Después será bloqueada o eliminada conforme
-        corresponda. Aplicamos medidas administrativas, técnicas y físicas
-        razonables; sin embargo, ningún sistema conectado a internet puede
-        garantizar seguridad absoluta.
-      </p>
+      <>
+        <p>
+          Conservaremos la información durante el tiempo necesario para prestar
+          el servicio, atender responsabilidades derivadas de la relación y
+          cumplir obligaciones legales. Después será bloqueada o eliminada
+          conforme corresponda.
+        </p>
+        <p>
+          <strong style={{ color: "#e2e8f0" }}>Archivos de diseño e impresión:</strong>{" "}
+          Los archivos que subas para producir tu pedido se conservan en el
+          almacenamiento del sitio durante un plazo máximo de 90 días naturales
+          después de la entrega, únicamente para facilitar la reimpresión o
+          aclaración de pedidos. Transcurrido ese plazo, los archivos se eliminan
+          de forma automática salvo que hayas solicitado expresamente su
+          eliminación anticipada o su conservación para reimpresión futura.
+        </p>
+        <p>
+          Si tu proyecto contiene información confidencial, te recomendamos
+          solicitarnos la eliminación inmediata una vez entregado el pedido
+          escribiendo a <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>{" "}
+          con el asunto "Eliminar archivos · Pedido #[número]".
+        </p>
+        <p>
+          Aplicamos medidas administrativas, técnicas y físicas razonables,
+          incluido el cifrado HTTPS del sitio y el uso de proveedores con sus
+          propias certificaciones de seguridad. Sin embargo, ningún sistema
+          conectado a internet puede garantizar seguridad absoluta.
+        </p>
+      </>
     ),
   },
   {
@@ -258,16 +287,35 @@ const termsSections = [
     ),
   },
   {
-    title: "8. Calidad, garantías y aclaraciones",
+    title: "8. Garantía de calidad y aclaraciones",
     content: (
-      <p>
-        Si el resultado presenta un defecto atribuible a Copy Center 2000,
-        comunícate tan pronto lo detectes y conserva el producto y comprobante.
-        Revisaremos el caso para corregir, reponer, bonificar o reembolsar según
-        corresponda. Los errores presentes en el archivo autorizado por el
-        cliente, o cambios solicitados después de iniciar producción, no se
-        consideran defectos del servicio.
-      </p>
+      <>
+        <p>
+          <strong style={{ color: "#e2e8f0" }}>Garantía de satisfacción:</strong>{" "}
+          Si el resultado presenta un defecto atribuible a Copy Center 2000
+          —error de impresión, corte incorrecto, material equivocado u otro
+          problema originado en nuestra producción— lo corregimos sin costo.
+          Comunícate tan pronto lo detectes, conserva el producto y el
+          comprobante de pago.
+        </p>
+        <p>
+          Dependiendo del caso y a criterio del equipo, la solución puede ser:
+          reimpresión prioritaria, bonificación parcial o reembolso completo por
+          el mismo medio de pago utilizado.
+        </p>
+        <p>
+          Los errores presentes en el archivo autorizado por el cliente
+          (ortografía, medidas, colores, resolución insuficiente), o cambios
+          solicitados después de iniciar la producción, no se consideran defectos
+          atribuibles al servicio y pueden generar un nuevo cargo.
+        </p>
+        <p>
+          Para iniciar una aclaración escribe a{" "}
+          <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> o contáctanos
+          por <a href={WHATSAPP_URL}>WhatsApp</a> con el número de pedido, una
+          descripción del problema y fotografías del resultado si es posible.
+        </p>
+      </>
     ),
   },
   {
