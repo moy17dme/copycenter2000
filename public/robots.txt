@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://copycenter2000.com/sitemap.xml

@@ -223,7 +223,7 @@ function ServicioCard({ s, expanded, onToggle }) {
           )}
 
           <a
-            href="#servicios"
+            href="/#servicios"
             className={`mt-1 inline-flex items-center gap-1 text-xs font-semibold transition-colors ${c.badge.split(" ")[1]}`}
           >
             Hacer pedido

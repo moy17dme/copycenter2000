@@ -1,5 +1,6 @@
 // src/components/Footer.jsx
 import React from "react";
+import { Link } from "react-router-dom";
 import logo from "../assets/LOGOcopy.png";
 
 export default function Footer() {
@@ -30,20 +31,20 @@ export default function Footer() {
                 </p>
               </div>
               <div className="flex gap-3">
-                <a
-                  href="/#servicios"
+                <Link
+                  to="/#servicios"
                   className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold transition"
                   style={{ backgroundColor: '#C61C1C', color: '#FFFFFF' }}
                 >
                   ¡Realiza tu pedido!
-                </a>
-                <a
-                  href="/#precios"
+                </Link>
+                <Link
+                  to="/precios"
                   className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-medium transition"
                   style={{ border: '1px solid rgba(255,255,255,0.2)', color: '#E5ECF6' }}
                 >
                   Ver precios
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -93,11 +94,11 @@ export default function Footer() {
                 Servicios
               </h3>
               <ul className="mt-4 space-y-2 text-sm">
-                <Li href="/#servicios">Impresión Digital</Li>
-                <Li href="/#servicios">Copias B/N y Color</Li>
-                <Li href="/#servicios">Ploteo de Planos</Li>
-                <Li href="/#servicios">Artes Gráficas</Li>
-                <Li href="/#servicios">Engargolados y Laminados</Li>
+                <Li href="/servicios#impresion-digital">Impresión Digital</Li>
+                <Li href="/servicios#copias-engargolados">Copias B/N y Color</Li>
+                <Li href="/servicios#ploteo-planos">Ploteo de Planos</Li>
+                <Li href="/servicios#impresos-comerciales">Artes Gráficas</Li>
+                <Li href="/servicios#digitalizacion">Escaneo y Digitalización</Li>
               </ul>
             </div>
 
@@ -108,9 +109,12 @@ export default function Footer() {
               </h3>
               <ul className="mt-4 space-y-2 text-sm">
                 <Li href="/">Inicio</Li>
-                <Li href="/#servicios">Servicios</Li>
-                <Li href="/#precios">Precios</Li>
-                <Li href="/#servicios">Realiza tu pedido</Li>
+                <Li href="/servicios">Servicios</Li>
+                <Li href="/precios">Precios</Li>
+                <Li href="/acerca-de">Acerca de</Li>
+                <Li href="/portafolio">Portafolio</Li>
+                <Li href="/preguntas-frecuentes">Preguntas frecuentes</Li>
+                <Li href="/contacto">Contacto</Li>
                 <Li href="/aviso-privacidad">Aviso de privacidad</Li>
                 <Li href="/terminos">Términos y condiciones</Li>
               </ul>
@@ -153,7 +157,7 @@ export default function Footer() {
               © {new Date().getFullYear()} Copy Center 2000. Todos los derechos reservados.
             </p>
             <p className="opacity-80">
-              Hecho con ❤️ en México | <a href="/terminos" className="hover:underline">Términos y condiciones</a>
+              Hecho en México | <Link to="/terminos" className="hover:underline">Términos y condiciones</Link>
             </p>
           </div>
         </div>
@@ -164,14 +168,29 @@ export default function Footer() {
 
 /* Helpers (JSX) */
 function Li({ href, children }) {
+  const isExternal =
+    href.startsWith("http") ||
+    href.startsWith("mailto:") ||
+    href.startsWith("tel:");
+  const className =
+    "text-slate-200/90 hover:text-white hover:translate-x-0.5 inline-flex items-center gap-2 transition";
+  const content = (
+    <>
+      <span className="h-1.5 w-1.5 rounded-full bg-white/40" /> {children}
+    </>
+  );
+
   return (
     <li>
-      <a
-        href={href}
-        className="text-slate-200/90 hover:text-white hover:translate-x-0.5 inline-flex items-center gap-2 transition"
-      >
-        <span className="h-1.5 w-1.5 rounded-full bg-white/40" /> {children}
-      </a>
+      {isExternal ? (
+        <a href={href} className={className}>
+          {content}
+        </a>
+      ) : (
+        <Link to={href} className={className}>
+          {content}
+        </Link>
+      )}
     </li>
   );
 }

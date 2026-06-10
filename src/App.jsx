@@ -7,7 +7,9 @@ import Section from "./components/Section";
 import Hero from "./components/Hero";
 import Servicios from "./components/Servicios";
 import Precios from "./components/Precios";
+import GoogleReviews from "./components/GoogleReviews";
 import Footer from "./components/Footer";
+import Seo from "./components/Seo";
 import { CartProvider } from "./components/CartContext";
 import CartOverlay from "./components/CartOverlay";
 import AuthModal from "./components/AuthModal";
@@ -20,6 +22,12 @@ import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
 import LegalPage from "./pages/LegalPage";
+import AboutPage from "./pages/AboutPage";
+import ContactPage from "./pages/ContactPage";
+import FaqPage from "./pages/FaqPage";
+import PortfolioPage from "./pages/PortfolioPage";
+import PricesPage from "./pages/PricesPage";
+import ServicesPage from "./pages/ServicesPage";
 import WhatsAppWidget from "./components/WhatsAppWidget";
 
 // ✅ OJO: App.jsx está en src/, por eso es ./lib/...
@@ -63,22 +71,43 @@ function ScrollToHash() {
 
 function HomePage({ openCart }) {
   return (
-    <main className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 pb-20 pt-28 sm:px-6 md:pt-24 lg:px-8">
-      <Section id="inicio">
-        <Hero />
-      </Section>
+    <>
+      <Seo path="/" />
+      <main className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 pb-20 pt-28 sm:px-6 md:pt-24 lg:px-8">
+        <Section id="inicio">
+          <Hero />
+        </Section>
 
-      <Section id="servicios">
-        <Servicios
-          onAddedToCart={() => openCart({ tab: "editar" })}
-          onDirectCheckout={() => openCart({ tab: "pedido", autoCheckout: true })}
-        />
-      </Section>
+        <Section id="servicios">
+          <Servicios
+            onAddedToCart={() => openCart({ tab: "editar" })}
+            onDirectCheckout={() => openCart({ tab: "pedido", autoCheckout: true })}
+          />
+        </Section>
 
-      <Section id="precios">
-        <Precios />
-      </Section>
-    </main>
+        <Section id="precios">
+          <Precios />
+        </Section>
+
+        <Section id="opiniones">
+          <GoogleReviews />
+        </Section>
+      </main>
+    </>
+  );
+}
+
+function NoIndexRoute({ path, title, children }) {
+  return (
+    <>
+      <Seo
+        path={path}
+        title={`${title} | Copy Center 2000`}
+        description="Área funcional de Copy Center 2000."
+        noindex
+      />
+      {children}
+    </>
   );
 }
 
@@ -248,12 +277,60 @@ export default function App() {
 
           <Routes>
             <Route path="/" element={<HomePage openCart={openCart} />} />
-            <Route path="/productos" element={<ProductosPage />} />
-            <Route path="/equipos" element={<EquiposPage />} />
-            <Route path="/mis-pedidos" element={<MisPedidos user={user} session={session} />} />
-            <Route path="/admin" element={<Admin user={user} accessToken={session?.access_token || null} profile={profile} />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/servicios" element={<ServicesPage />} />
+            <Route path="/precios" element={<PricesPage />} />
+            <Route path="/acerca-de" element={<AboutPage />} />
+            <Route path="/preguntas-frecuentes" element={<FaqPage />} />
+            <Route path="/contacto" element={<ContactPage />} />
+            <Route path="/portafolio" element={<PortfolioPage />} />
+            <Route
+              path="/productos"
+              element={
+                <NoIndexRoute path="/productos" title="Productos">
+                  <ProductosPage />
+                </NoIndexRoute>
+              }
+            />
+            <Route
+              path="/equipos"
+              element={
+                <NoIndexRoute path="/equipos" title="Equipos">
+                  <EquiposPage />
+                </NoIndexRoute>
+              }
+            />
+            <Route
+              path="/mis-pedidos"
+              element={
+                <NoIndexRoute path="/mis-pedidos" title="Mis pedidos">
+                  <MisPedidos user={user} session={session} />
+                </NoIndexRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <NoIndexRoute path="/admin" title="Administración">
+                  <Admin user={user} accessToken={session?.access_token || null} profile={profile} />
+                </NoIndexRoute>
+              }
+            />
+            <Route
+              path="/auth/callback"
+              element={
+                <NoIndexRoute path="/auth/callback" title="Acceso">
+                  <AuthCallback />
+                </NoIndexRoute>
+              }
+            />
+            <Route
+              path="/reset-password"
+              element={
+                <NoIndexRoute path="/reset-password" title="Restablecer contraseña">
+                  <ResetPassword />
+                </NoIndexRoute>
+              }
+            />
             <Route path="/aviso-privacidad" element={<LegalPage type="privacy" />} />
             <Route path="/terminos" element={<LegalPage type="terms" />} />
             <Route path="*" element={<NotFound />} />

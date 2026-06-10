@@ -7,9 +7,11 @@ import { supabase } from "../lib/supabaseClient";
 import { hasAdminRole, useIsAdmin } from "../lib/useIsAdmin";
 
 const links = [
-  { to: "/#inicio", label: "Inicio" },
-  { to: "/#servicios", label: "Servicios" },
-  { to: "/#precios", label: "Precios" },
+  { to: "/", label: "Inicio" },
+  { to: "/servicios", label: "Servicios" },
+  { to: "/precios", label: "Precios" },
+  { to: "/portafolio", label: "Portafolio" },
+  { to: "/contacto", label: "Contacto" },
 ];
 
 export default function Navbar({
@@ -52,7 +54,7 @@ export default function Navbar({
   }
 
   const isActiveLink = (to) => {
-    if (to === "/#inicio") return pathname === "/" && (!hash || hash === "#inicio");
+    if (to === "/") return pathname === "/";
     if (to.startsWith("/#")) return pathname === "/" && hash === to.slice(1);
     return pathname === to;
   };
@@ -72,7 +74,7 @@ export default function Navbar({
       ].join(" ")}
     >
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
-        <Link to="/#inicio" className="flex shrink-0 items-center gap-3">
+        <Link to="/" className="flex shrink-0 items-center gap-3">
           <img
             src={logo}
             alt="Copy Center 2000"

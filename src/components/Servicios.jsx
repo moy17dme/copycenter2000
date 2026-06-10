@@ -98,8 +98,14 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
   });
   const fileInputRef = useRef(null);
   const gridRef = useRef(null);
+  const dialogRef = useRef(null);
+  const closeButtonRef = useRef(null);
+  const dialogTriggerRef = useRef(null);
+  const shouldRestoreDialogFocusRef = useRef(true);
+  const processingFilesRef = useRef(false);
   const cardRefs = useRef({});
   const searchTimerRef = useRef(null);
+  processingFilesRef.current = processingFiles.active;
 
   const { addItem } = useCart();
 
@@ -220,8 +226,10 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
     .filter((s) => !s.requiere_archivo)
     .map((s) => s.id || s.serviceKey);
 
-  const handleCardClick = (servicio) => {
+  const handleCardClick = (servicio, triggerElement) => {
     if (!servicio.activo) return;
+    dialogTriggerRef.current = triggerElement || document.activeElement;
+    shouldRestoreDialogFocusRef.current = true;
     setLocalMsg("");
 
     // 🔵 Sin archivo: copias, escaneos
@@ -253,7 +261,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
       quantity:     1,
       options:      tempOptions,
     });
-    handleCloseModal();
+    handleCloseModal({ restoreFocus: false });
     onAddedToCart?.();
   };
 
@@ -277,7 +285,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
       quantity: 1,
       options: SINARCHIVO_OPTIONS[seleccion.serviceKey] ?? {},
     });
-    handleCloseModal();
+    handleCloseModal({ restoreFocus: false });
     onAddedToCart?.();
   };
 
@@ -289,12 +297,13 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
       quantity: 1,
       options: SINARCHIVO_OPTIONS[seleccion.serviceKey] ?? {},
     });
-    handleCloseModal();
+    handleCloseModal({ restoreFocus: false });
     onDirectCheckout?.();
   };
 
-  const handleCloseModal = () => {
-    if (processingFiles.active) return;
+  const handleCloseModal = ({ restoreFocus = true } = {}) => {
+    if (processingFilesRef.current) return;
+    shouldRestoreDialogFocusRef.current = restoreFocus;
     setSeleccion(null);
     setPaso("pregunta");
     setLocalMsg("");
@@ -302,6 +311,65 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
     setTempOptions({});
     setProcessingFiles({ active: false, current: 0, total: 0, name: "" });
   };
+
+  useEffect(() => {
+    if (!seleccion) return undefined;
+
+    const dialog = dialogRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusTimer = window.setTimeout(() => {
+      closeButtonRef.current?.focus();
+    }, 0);
+
+    const handleDialogKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (!processingFilesRef.current) handleCloseModal();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialog) return;
+
+      const focusable = Array.from(
+        dialog.querySelectorAll(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter(
+        (element) =>
+          !element.hasAttribute("hidden") && element.getClientRects().length > 0
+      );
+
+      if (!focusable.length) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleDialogKeyDown);
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener("keydown", handleDialogKeyDown);
+      document.body.style.overflow = previousOverflow;
+      if (shouldRestoreDialogFocusRef.current) {
+        window.setTimeout(() => dialogTriggerRef.current?.focus(), 0);
+      }
+    };
+  }, [seleccion]);
 
   // Precio en tiempo real para el paso "configurar"
   const precioTemp = useMemo(() => {
@@ -437,6 +505,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
     }
 
     if (addedCount > 0) {
+      shouldRestoreDialogFocusRef.current = false;
       onAddedToCart?.();
       setSeleccion(null);
       setPaso("pregunta");
@@ -547,7 +616,12 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
               key={key}
               ref={(el) => { cardRefs.current[key] = el; }}
               type="button"
-              onClick={() => handleCardClick({ ...s, serviceKey: key, titulo: nombre, desc })}
+              onClick={(event) =>
+                handleCardClick(
+                  { ...s, serviceKey: key, titulo: nombre, desc },
+                  event.currentTarget
+                )
+              }
               disabled={!activo}
               className={`servicio-card group relative flex h-full flex-col overflow-hidden rounded-lg text-left shadow-sm transition-colors
                          focus:outline-none focus:ring-2 focus:ring-ring
@@ -632,15 +706,30 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
           onClick={handleCloseModal}
         >
           <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="service-dialog-title"
+            aria-describedby="service-dialog-description"
+            tabIndex={-1}
             className="relative max-h-[88vh] w-[90%] max-w-lg overflow-y-auto rounded-lg p-5 shadow-2xl md:w-[480px] md:p-6"
             style={{ backgroundColor: '#111827', border: '1px solid #273449' }}
             onClick={(e) => e.stopPropagation()}
           >
+            <h2 id="service-dialog-title" className="sr-only">
+              Configurar {seleccion.titulo}
+            </h2>
+            <p id="service-dialog-description" className="sr-only">
+              Selecciona las opciones del servicio y agrega tu pedido al carrito.
+            </p>
+
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={handleCloseModal}
               className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg text-sm transition"
               style={{ background: 'rgba(27,36,51,0.8)', color: '#9AA6B2' }}
+              aria-label={`Cerrar configuración de ${seleccion.titulo}`}
             >
               ✕
             </button>

@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import Seo from "../components/Seo";
 
 const CONTACT_EMAIL = "copy.center@hotmail.com";
 const WHATSAPP_URL = "https://wa.me/527713531668";
@@ -337,18 +338,29 @@ const pageCopy = {
 
 export default function LegalPage({ type }) {
   const page = pageCopy[type] || pageCopy.terms;
-
-  useEffect(() => {
-    const previousTitle = document.title;
-    document.title = `${page.title} | Copy Center 2000`;
-    return () => {
-      document.title = previousTitle;
-    };
-  }, [page.title]);
+  const path = type === "privacy" ? "/aviso-privacidad" : "/terminos";
+  const breadcrumbs = [{ label: page.title, path }];
 
   return (
     <main className="relative z-10 flex-1 px-4 pb-12 pt-28 sm:px-6 lg:px-8">
+      <Seo path={path} breadcrumbs={breadcrumbs} />
       <article className="mx-auto max-w-4xl">
+        <nav aria-label="Migas de pan" className="mb-8">
+          <ol className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <li>
+              <Link to="/" className="transition hover:text-white">
+                Inicio
+              </Link>
+            </li>
+            <li aria-hidden="true">
+              <ChevronRight className="h-4 w-4" />
+            </li>
+            <li aria-current="page" className="text-slate-300">
+              {page.title}
+            </li>
+          </ol>
+        </nav>
+
         <header className="border-b border-border pb-8">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-blue-300">
             {page.eyebrow}
@@ -386,7 +398,7 @@ export default function LegalPage({ type }) {
         </aside>
 
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link to="/#inicio" className="btn-blue">
+          <Link to="/" className="btn-blue">
             Volver al inicio
           </Link>
           <Link

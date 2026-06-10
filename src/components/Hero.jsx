@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ArrowRight, Clock, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 import fondo from "../assets/fon.png";
 
 gsap.registerPlugin(useGSAP);
@@ -62,19 +63,19 @@ export default function Hero() {
         </div>
 
         <div className="mt-7 flex flex-wrap gap-3">
-          <a
-            href="#servicios"
+          <Link
+            to="/#servicios"
             className="hero-btn inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-600 active:scale-[.99]"
           >
             Realizar pedido
             <ArrowRight className="h-4 w-4" />
-          </a>
-          <a
-            href="#precios"
+          </Link>
+          <Link
+            to="/precios"
             className="hero-btn inline-flex items-center gap-2 rounded-lg border border-border bg-secondary/70 px-5 py-3 text-sm font-semibold text-secondary-foreground transition hover:bg-muted hover:text-white"
           >
             Ver precios
-          </a>
+          </Link>
         </div>
 
         <div className="mt-9 grid max-w-2xl grid-cols-1 border-t border-border/80 pt-5 sm:grid-cols-3">
