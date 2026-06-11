@@ -1,90 +1,94 @@
 import { ExternalLink, Quote, Star } from "lucide-react";
+import {
+  GOOGLE_BUSINESS_PROFILE,
+  TESTIMONIALS,
+} from "../data/trustEvidence";
 
-const GOOGLE_MAPS_URL =
-  "https://www.google.com/maps/?cid=14514007548682504090";
-const COMMUNITY_RECOMMENDATION_URL =
-  "https://www.facebook.com/groups/561994571479942/posts/1716636049349116/";
-const RATING = 4.5;
-const REVIEW_COUNT = 54;
-
-const pullQuotes = [
-  {
-    text: "En Copy Center 2000 atras de la parada de las combis en gobierno...",
-    source: "Recomendacion en comunidad local de Facebook · Fotografias",
-    href: COMMUNITY_RECOMMENDATION_URL,
-    label: "Ver publicacion original",
-  },
-  {
-    text: "Muy buen servicio, rapido y con calidad. Siempre cumplen con los tiempos de entrega.",
-    source: "Resena verificada en Google Maps · 5 estrellas",
-    href: GOOGLE_MAPS_URL,
-    label: "Ver en Google",
-  },
-  {
-    text: "Excelente atencion. Imprimi mis tesis de posgrado aqui y el resultado fue perfecto.",
-    source: "Resena verificada en Google Maps · Impresion academica",
-    href: GOOGLE_MAPS_URL,
-    label: "Ver en Google",
-  },
-];
+const { href, rating, reviewCount, checkedAt } = GOOGLE_BUSINESS_PROFILE;
 
 export default function GoogleReviews() {
+  const publishedTestimonials = TESTIMONIALS.filter(
+    (item) => item.consentConfirmed && item.href,
+  );
+
   return (
     <div aria-labelledby="google-reviews-title">
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-soft)]">
         <div className="grid gap-0 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.85fr)]">
           <div className="p-5 sm:p-7 md:p-8">
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-blue-300">
-              Testimonios verificables
+              Opiniones con fuente
             </p>
             <h2
               id="google-reviews-title"
               className="mt-2 text-2xl font-semibold text-white"
             >
-              Opiniones reales sobre Copy Center 2000
+              Lo que clientes publican sobre Copy Center 2000
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Las fuentes se mantienen enlazadas para que puedas consultar la
-              publicacion original y el perfil del negocio.
+              Sólo reproducimos testimonios cuando contamos con texto exacto,
+              autor, fecha, enlace directo y autorización para publicarlo.
             </p>
 
-            <div className="mt-7 space-y-5">
-              {pullQuotes.map(({ text, source, href, label }) => (
-                <blockquote
-                  key={text}
-                  className="border-t border-border pt-5 first:border-0 first:pt-0"
-                >
-                  <Quote className="h-5 w-5 text-blue-300" aria-hidden="true" />
-                  <p className="mt-3 text-base font-medium leading-7 text-slate-100">
-                    &ldquo;{text}&rdquo;
-                  </p>
-                  <footer className="mt-2 text-xs leading-5 text-muted-foreground">
-                    {source}
-                  </footer>
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-300 underline decoration-blue-300/40 underline-offset-4 hover:text-blue-200"
+            {publishedTestimonials.length > 0 ? (
+              <div className="mt-7 space-y-5">
+                {publishedTestimonials.map((item) => (
+                  <blockquote
+                    key={item.id}
+                    className="border-t border-border pt-5 first:border-0 first:pt-0"
                   >
-                    {label}
-                    <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                  </a>
-                </blockquote>
-              ))}
-            </div>
+                    <Quote className="h-5 w-5 text-blue-300" aria-hidden="true" />
+                    <p className="mt-3 text-base font-medium leading-7 text-slate-100">
+                      &ldquo;{item.text}&rdquo;
+                    </p>
+                    <footer className="mt-2 text-xs leading-5 text-muted-foreground">
+                      {item.author} · {item.source} ·{" "}
+                      <time dateTime={item.date}>{formatDate(item.date)}</time>
+                    </footer>
+                    <a
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-300 underline decoration-blue-300/40 underline-offset-4 hover:text-blue-200"
+                    >
+                      Ver publicación original
+                      <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                    </a>
+                  </blockquote>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-7 rounded-xl border border-border bg-secondary/30 p-5">
+                <p className="text-sm font-semibold text-white">
+                  Consulta las opiniones en su fuente original
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Mientras documentamos consentimientos individuales, las
+                  opiniones completas permanecen disponibles en Google Maps.
+                </p>
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-300 underline underline-offset-4"
+                >
+                  Abrir Perfil de Empresa en Google
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                </a>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-border bg-secondary/30 p-6 sm:p-8 lg:border-l lg:border-t-0">
             <p className="text-sm font-semibold text-slate-200">
-              Calificacion en Google
+              Calificación publicada en Google
             </p>
             <div
               className="mt-4 flex items-end gap-2"
-              aria-label={`${RATING} de 5 estrellas en ${REVIEW_COUNT} opiniones de Google`}
+              aria-label={`${rating} de 5 estrellas en ${reviewCount} opiniones publicadas en Google`}
             >
               <strong className="text-6xl font-bold tabular-nums text-white">
-                {RATING}
+                {rating}
               </strong>
               <span className="pb-2 text-sm text-muted-foreground">/ 5</span>
             </div>
@@ -93,14 +97,14 @@ export default function GoogleReviews() {
               {Array.from({ length: 5 }, (_, index) => (
                 <span key={index} className="relative h-5 w-5">
                   <Star className="absolute inset-0 h-5 w-5 text-slate-600" />
-                  {index < Math.ceil(RATING) && (
+                  {index < Math.ceil(rating) && (
                     <span
                       className="absolute inset-0 overflow-hidden"
                       style={{
                         width:
-                          index < Math.floor(RATING)
+                          index < Math.floor(rating)
                             ? "100%"
-                            : `${(RATING % 1) * 100}%`,
+                            : `${(rating % 1) * 100}%`,
                       }}
                     >
                       <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
@@ -111,28 +115,28 @@ export default function GoogleReviews() {
             </div>
 
             <p className="mt-2 text-sm text-slate-300">
-              {REVIEW_COUNT} opiniones en Google
+              {reviewCount} opiniones publicadas en Google
             </p>
             <p className="mt-2 text-xs leading-5 text-slate-500">
-              Calificacion consultada el 10 de junio de 2026.
+              Consultado el {formatDate(checkedAt)}. La cifra puede cambiar.
             </p>
 
             <a
-              href={GOOGLE_MAPS_URL}
+              href={href}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-blue mt-5 w-full justify-center"
-              aria-label="Ver las opiniones de Copy Center 2000 en Google Maps, abre en una pestana nueva"
+              aria-label="Ver las opiniones de Copy Center 2000 en Google Maps, abre en una pestaña nueva"
             >
               Ver todas las opiniones
               <ExternalLink className="h-4 w-4" aria-hidden="true" />
             </a>
 
             <div className="mt-5 rounded-lg border border-emerald-400/20 bg-emerald-500/5 p-4">
-              <p className="text-xs font-semibold text-emerald-300">Garantia de calidad</p>
+              <p className="text-xs font-semibold text-emerald-300">Garantía de calidad</p>
               <p className="mt-1 text-xs leading-5 text-slate-400">
                 Si el resultado presenta un defecto atribuible a nosotros,
-                corregimos, reponemos o reembolsamos. Sin letra pequena.
+                corregimos, reponemos o reembolsamos conforme a nuestros términos.
               </p>
             </div>
           </div>
@@ -140,4 +144,12 @@ export default function GoogleReviews() {
       </div>
     </div>
   );
+}
+
+function formatDate(value) {
+  return new Intl.DateTimeFormat("es-MX", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${value}T12:00:00`));
 }

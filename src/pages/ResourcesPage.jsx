@@ -13,7 +13,7 @@ const resourcesSchema = {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
   name: "Recursos de impresión de Copy Center 2000",
-  url: "https://copycenter2000.com/recursos",
+  url: "https://copycenter2000.com/recursos/",
   about: "Preparación de archivos para impresión",
 };
 

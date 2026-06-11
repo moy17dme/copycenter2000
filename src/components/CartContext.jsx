@@ -18,6 +18,7 @@ function extractFile(payload) {
 export function CartProvider({ children }) {
   // Carga inicial desde localStorage (sin archivos — los archivos viven en IndexedDB)
   const [items, setItems] = useState(() => {
+    if (typeof window === "undefined") return [];
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       return raw ? JSON.parse(raw) : [];
@@ -53,6 +54,7 @@ export function CartProvider({ children }) {
 
   // ── Persistir en localStorage (sin archivos binarios) ─────────────────
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const safe = items.map(({ file, pdfFile, fileObject, blob, previewUrl, ...rest }) => rest);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(safe));
   }, [items]);

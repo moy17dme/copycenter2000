@@ -1,5 +1,9 @@
 import { useEffect } from "react";
-import { PUBLIC_ROUTE_SEO, SITE_URL } from "../data/seoRoutes";
+import {
+  getCanonicalUrl,
+  PUBLIC_ROUTE_SEO,
+  SITE_URL,
+} from "../data/seoRoutes";
 
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
 
@@ -40,7 +44,7 @@ function buildBreadcrumbData(breadcrumbs) {
       "@type": "ListItem",
       position: index + 1,
       name: item.label,
-      item: new URL(item.path, SITE_URL).href,
+      item: getCanonicalUrl(item.path),
     })),
   };
 }
@@ -58,7 +62,7 @@ export default function Seo({
     const routeSeo = PUBLIC_ROUTE_SEO[path] || PUBLIC_ROUTE_SEO["/"];
     const pageTitle = title || routeSeo.title;
     const pageDescription = description || routeSeo.description;
-    const canonicalUrl = new URL(path, SITE_URL).href;
+    const canonicalUrl = getCanonicalUrl(path);
 
     document.title = pageTitle;
     upsertMeta('meta[name="description"]', {
@@ -108,6 +112,21 @@ export default function Seo({
       .forEach((script) => script.remove());
 
     const schema = [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "@id": `${canonicalUrl}#webpage`,
+        url: canonicalUrl,
+        name: pageTitle,
+        description: pageDescription,
+        inLanguage: "es-MX",
+        isPartOf: {
+          "@id": `${SITE_URL}/#website`,
+        },
+        about: {
+          "@id": `${SITE_URL}/#localbusiness`,
+        },
+      },
       buildBreadcrumbData(breadcrumbs),
       ...(Array.isArray(structuredData)
         ? structuredData

@@ -1,5 +1,11 @@
 export const SITE_URL = "https://copycenter2000.com";
 
+export function getCanonicalUrl(path = "/") {
+  const normalizedPath =
+    path === "/" ? "/" : `${path.replace(/^\/+|\/+$/g, "")}/`;
+  return new URL(normalizedPath, SITE_URL).href;
+}
+
 export const PUBLIC_ROUTE_SEO = {
   "/": {
     title: "Copy Center 2000 - Impresiones Digitales en Pachuca",

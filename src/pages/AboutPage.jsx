@@ -6,14 +6,18 @@ import {
   MapPin,
   Printer,
   Settings2,
+  ShieldCheck,
   Star,
   UsersRound,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import PageShell from "../components/PageShell";
-
-const historySource =
-  "https://datos.pachuca.gob.mx/sipot/27/PDFS/Licencias_Funcionamiento_2018.pdf";
+import {
+  AUTHORITY_LINKS,
+  GOOGLE_BUSINESS_PROFILE,
+  MUNICIPAL_RECORD,
+  TEAM_PROFILES,
+} from "../data/trustEvidence";
 
 const milestones = [
   {
@@ -24,7 +28,7 @@ const milestones = [
   {
     icon: Printer,
     title: "Servicios que han evolucionado",
-    text: "A la operación de copiado y papelería se sumaron impresión digital, gran formato, acabados, personalizados y pedidos en línea.",
+    text: "El centro de copiado incorporó ploteo de planos, artes gráficas, productos personalizados y herramientas para solicitar pedidos en línea.",
   },
   {
     icon: FileCheck2,
@@ -51,33 +55,39 @@ const roles = [
 const equipment = [
   {
     icon: Printer,
-    title: "Impresión digital de alta resolución",
-    text: "Equipos de producción de gran formato y tamaño estándar para tirajes desde una copia hasta miles de piezas con consistencia de color.",
+    title: "Equipos para producción gráfica",
+    text: "La operación utiliza equipos de marcas como HP, Xerox, Epson y Kyocera para atender trabajos de impresión, copiado y gran formato.",
   },
   {
     icon: Settings2,
-    title: "Ploteo de planos arquitectónicos",
-    text: "Trazadores de precisión para planos técnicos en papel bond, vegetal y lona. Resolución adecuada para escalas 1:50, 1:100 y más.",
+    title: "Ploteo de planos por volumen",
+    text: "Producción de planos técnicos en volumen, con opción de doblado y revisión previa de formato, medida y cantidad.",
   },
   {
     icon: BadgeCheck,
-    title: "Sublimación y personalizados",
-    text: "Prensas térmicas de temperatura controlada para tazas, camisetas, agendas y materiales rígidos con diseños a todo color.",
+    title: "Manuales y productos personalizados",
+    text: "Producción de manuales para escuelas, artes gráficas y personalizados con sustratos seleccionados según el uso y acabado final.",
   },
 ];
 
 const achievements = [
   { value: "26+", label: "Años operando en Pachuca" },
   { value: "1999", label: "Año de fundación" },
-  { value: "54+", label: "Reseñas verificadas en Google" },
-  { value: "4.5★", label: "Calificación Google" },
+  {
+    value: `${GOOGLE_BUSINESS_PROFILE.reviewCount}+`,
+    label: "Opiniones publicadas en Google",
+  },
+  {
+    value: `${GOOGLE_BUSINESS_PROFILE.rating}★`,
+    label: "Calificación consultada en Google",
+  },
 ];
 
 const aboutSchema = {
   "@context": "https://schema.org",
   "@type": "AboutPage",
   name: "Acerca de Copy Center 2000",
-  url: "https://copycenter2000.com/acerca-de",
+  url: "https://copycenter2000.com/acerca-de/",
   mainEntity: {
     "@id": "https://copycenter2000.com/#localbusiness",
     foundingDate: "1999-10-04",
@@ -122,10 +132,16 @@ export default function AboutPage() {
             </h2>
             <div className="mt-4 space-y-4 text-[15px] leading-7 text-slate-300">
               <p>
-                Copy Center 2000 fue fundado el 4 de octubre de 1999. A lo largo
-                de más de 26 años, la oferta se ha ampliado para responder a
-                archivos digitales, planos, tirajes comerciales, etiquetas,
-                credenciales y productos personalizados.
+                Copy Center 2000 inició el 4 de octubre de 1999 en Pachuca como
+                centro de copiado. Posteriormente incorporó la impresión y el
+                ploteo de planos, incluidos pedidos por volumen con doblado.
+              </p>
+              <p>
+                La operación evolucionó hacia las artes gráficas, la producción
+                de manuales para escuelas y los productos personalizados. Para
+                estos trabajos se utilizan equipos de marcas como HP, Xerox,
+                Epson y Kyocera, además de sustratos elegidos según la aplicación
+                y el acabado solicitado.
               </p>
               <p>
                 Hoy el sitio permite consultar especificaciones, cargar archivos,
@@ -133,14 +149,14 @@ export default function AboutPage() {
                 sucursal y por WhatsApp mantiene el acompañamiento humano.
               </p>
             </div>
-            <a
-              href={historySource}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-300 underline decoration-blue-300/40 underline-offset-4 hover:text-blue-200"
-            >
-              Consultar respaldo municipal de operación
-            </a>
+            <div className="mt-5 rounded-lg border border-blue-400/20 bg-blue-500/5 p-4">
+              <p className="text-sm font-semibold text-blue-300">
+                {MUNICIPAL_RECORD.label}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-slate-400">
+                {MUNICIPAL_RECORD.description}
+              </p>
+            </div>
           </div>
 
           <aside className="rounded-xl border border-blue-400/20 bg-blue-500/5 p-6">
@@ -187,9 +203,9 @@ export default function AboutPage() {
             Equipo y tecnología al servicio de tu proyecto
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Contamos con equipos de producción para impresión digital, gran formato,
-            sublimación y acabados especiales, todo operado por personal con más
-            de dos décadas de experiencia en preprensa y producción gráfica.
+            La capacidad combina experiencia de operación, revisión de archivos y
+            equipos de marcas reconocidas. La selección de equipo, material y
+            acabado depende de las especificaciones de cada proyecto.
           </p>
         </div>
         <div className="mt-7 grid gap-4 md:grid-cols-3">
@@ -216,9 +232,8 @@ export default function AboutPage() {
             Un pedido pasa por varias revisiones
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            El equipo fundador lleva operando desde 1999. Cada etapa del proceso
-            tiene un responsable definido para garantizar que el resultado coincida
-            con lo cotizado.
+            Cada etapa del proceso tiene una responsabilidad definida para revisar
+            que el resultado coincida con el archivo y las especificaciones cotizadas.
           </p>
         </div>
 
@@ -234,6 +249,65 @@ export default function AboutPage() {
           ))}
         </div>
       </section>
+
+      {TEAM_PROFILES.length > 0 && (
+        <section aria-labelledby="perfiles-equipo" className="border-t border-border py-10">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-blue-300">
+              Personas responsables
+            </p>
+            <h2 id="perfiles-equipo" className="mt-3 text-2xl font-semibold text-white">
+              Experiencia detrás de cada pedido
+            </h2>
+          </div>
+
+          <div
+            className={`mt-7 grid gap-6 ${
+              TEAM_PROFILES.length > 1 ? "md:grid-cols-2" : "max-w-4xl"
+            }`}
+          >
+            {TEAM_PROFILES.map((person) => (
+              <article
+                key={person.id}
+                className="grid gap-5 rounded-xl border border-border bg-card p-5 sm:grid-cols-[120px_1fr]"
+              >
+                {person.image ? (
+                  <img
+                    src={person.image}
+                    alt={person.imageAlt}
+                    className="aspect-square w-full rounded-lg object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div
+                    className="grid h-24 w-full place-items-center rounded-lg border border-blue-400/20 bg-blue-500/5 text-blue-300 sm:aspect-square sm:h-auto"
+                    aria-hidden="true"
+                  >
+                    <ShieldCheck className="h-10 w-10" />
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-300">
+                    {person.category}
+                  </p>
+                  <h3 className="mt-2 text-xl font-semibold text-white">
+                    {person.publicName}
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-300">{person.role}</p>
+                  <p className="mt-1 text-sm text-slate-300">{person.experience}</p>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{person.bio}</p>
+                  <p className="mt-3 text-xs text-slate-400">
+                    Especialidades: {person.specialties.join(", ")}
+                  </p>
+                  <p className="mt-3 text-xs leading-5 text-slate-400">
+                    {person.privacyNote}
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Reconocimiento y trayectoria */}
       <section aria-labelledby="reconocimiento" className="border-t border-border py-10">
@@ -251,26 +325,30 @@ export default function AboutPage() {
         <div className="mt-7 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-border bg-card p-5">
             <Star className="h-5 w-5 text-amber-400" />
-            <h3 className="mt-4 font-semibold text-white">4.5 / 5 en Google</h3>
+            <h3 className="mt-4 font-semibold text-white">
+              {GOOGLE_BUSINESS_PROFILE.rating} / 5 en Google
+            </h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              54 reseñas verificadas de clientes reales. Calificación consultable
-              directamente en el perfil de Google Business.
-            </p>
-          </div>
-          <div className="rounded-xl border border-border bg-card p-5">
-            <BadgeCheck className="h-5 w-5 text-blue-300" />
-            <h3 className="mt-4 font-semibold text-white">Licencia municipal vigente</h3>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Negocio registrado y con respaldo de licencia de funcionamiento
-              del municipio de Pachuca de Soto, Hidalgo.{" "}
+              {GOOGLE_BUSINESS_PROFILE.reviewCount} opiniones publicadas. Calificación
+              consultada el 10 de junio de 2026 y disponible directamente en el{" "}
               <a
-                href="https://datos.pachuca.gob.mx/sipot/27/PDFS/Licencias_Funcionamiento_2018.pdf"
+                href={GOOGLE_BUSINESS_PROFILE.href}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-300 underline decoration-blue-300/40 underline-offset-4 hover:text-blue-200"
               >
-                Ver respaldo
+                Perfil de Empresa en Google
               </a>
+              .
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-5">
+            <BadgeCheck className="h-5 w-5 text-blue-300" />
+            <h3 className="mt-4 font-semibold text-white">
+              {MUNICIPAL_RECORD.label}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {MUNICIPAL_RECORD.description} {MUNICIPAL_RECORD.privacyNote}
             </p>
           </div>
           <div className="rounded-xl border border-border bg-card p-5">
@@ -291,6 +369,49 @@ export default function AboutPage() {
               proyectos de impresión semana a semana.
             </p>
           </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="fuentes-externas" className="border-t border-border py-10">
+        <div className="max-w-3xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-blue-300">
+            Fuentes externas
+          </p>
+          <h2 id="fuentes-externas" className="mt-3 text-2xl font-semibold text-white">
+            Perfiles y documentos consultables fuera del sitio
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Estos enlaces permiten contrastar información básica del negocio en
+            plataformas y documentos externos.
+          </p>
+        </div>
+        <div className="mt-7 divide-y divide-border rounded-xl border border-border">
+          {AUTHORITY_LINKS.map((item) => (
+            item.href ? (
+              <a
+                key={item.href}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="grid gap-2 p-5 transition hover:bg-secondary/35 sm:grid-cols-[220px_1fr]"
+              >
+                <span className="font-semibold text-blue-300">{item.label}</span>
+                <span className="text-sm leading-6 text-muted-foreground">
+                  {item.description}
+                </span>
+              </a>
+            ) : (
+              <div
+                key={item.label}
+                className="grid gap-2 p-5 sm:grid-cols-[220px_1fr]"
+              >
+                <span className="font-semibold text-blue-300">{item.label}</span>
+                <span className="text-sm leading-6 text-muted-foreground">
+                  {item.description}
+                </span>
+              </div>
+            )
+          ))}
         </div>
       </section>
 

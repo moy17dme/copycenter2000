@@ -4,7 +4,7 @@ import Seo from "../components/Seo";
 
 const CONTACT_EMAIL = "copy.center@hotmail.com";
 const WHATSAPP_URL = "https://wa.me/527713531668";
-const LAST_UPDATED = "10 de junio de 2026";
+const LAST_UPDATED = "11 de junio de 2026";
 
 const privacySections = [
   {
@@ -19,10 +19,13 @@ const privacySections = [
           sucursal.
         </p>
         <p>
-          Negocio con licencia de funcionamiento municipal del H. Ayuntamiento de
-          Pachuca de Soto, Hidalgo, en operación continua desde el 4 de octubre de
-          1999. Para consultas fiscales o de facturación, contáctanos directamente
-          al correo indicado con el asunto "Facturación".
+          Copy Center 2000 cuenta con una renovación de licencia de
+          funcionamiento emitida por la Secretaría de Desarrollo Económico de
+          Pachuca de Soto el 6 de febrero de 2026, con vigencia hasta el 31 de
+          diciembre de 2026. El documento original no se publica porque contiene
+          datos personales y elementos de seguridad. Para consultas fiscales o
+          de facturación, contáctanos directamente al correo indicado con el
+          asunto "Facturación".
         </p>
       </>
     ),

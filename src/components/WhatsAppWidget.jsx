@@ -21,10 +21,11 @@ export default function WhatsAppWidget({
   const [name,    setName]    = useState("");
   const [service, setService] = useState("Impresión digital");
   const [message, setMessage] = useState("");
-  const [time]                = useState(nowTime);
+  const [time, setTime]       = useState("");
 
   // Cierra con ESC
   useEffect(() => {
+    setTime(nowTime());
     const h = (e) => { if (e.key === "Escape") setOpen(false); };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);

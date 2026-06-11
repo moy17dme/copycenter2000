@@ -18,11 +18,11 @@ const articleSchema = {
   datePublished: "2026-06-10",
   dateModified: "2026-06-10",
   inLanguage: "es-MX",
-  mainEntityOfPage: `https://copycenter2000.com${articlePath}`,
+  mainEntityOfPage: `https://copycenter2000.com${articlePath}/`,
   author: {
     "@type": "Organization",
     name: "Copy Center 2000",
-    url: "https://copycenter2000.com/acerca-de",
+    url: "https://copycenter2000.com/acerca-de/",
     description: "Centro de impresión con más de 26 años de experiencia en preprensa y producción gráfica en Pachuca, Hidalgo.",
   },
   publisher: {

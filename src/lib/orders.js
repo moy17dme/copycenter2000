@@ -877,7 +877,14 @@ export function subscribeToMyOrders(userId, callback) {
       { event: "*", schema: "public", table: "order_status_history" },
       callback
     )
-    .subscribe();
+    .subscribe((status, err) => {
+      if (err) {
+        // Supabase Realtime puede ser bloqueado por extensiones de navegador (adblockers).
+        // El error es no crítico: la app sigue funcionando; el cliente puede recargar
+        // para ver el estado más reciente de su pedido.
+        console.warn("[Realtime] Suscripción no disponible:", status, err?.message ?? err);
+      }
+    });
   return channel;
 }
 

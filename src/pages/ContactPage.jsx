@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BadgeCheck, Clock3, Mail, MapPin, MessageCircle, Phone, ShieldCheck, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import PageShell from "../components/PageShell";
+import { GOOGLE_BUSINESS_PROFILE } from "../data/trustEvidence";
 
 const WHATSAPP_NUMBER = "527713531668";
 const MAPS_URL = "https://www.google.com/maps/?cid=14514007548682504090";
@@ -12,7 +13,7 @@ const contactSchema = {
   "@context": "https://schema.org",
   "@type": "ContactPage",
   name: "Contacto de Copy Center 2000",
-  url: "https://copycenter2000.com/contacto",
+  url: "https://copycenter2000.com/contacto/",
   mainEntity: {
     "@id": "https://copycenter2000.com/#localbusiness",
   },
@@ -52,7 +53,10 @@ export default function ContactPage() {
       {/* Trust bar */}
       <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
-          { icon: Star, text: "4.5 / 5 en Google · 54 reseñas verificadas" },
+          {
+            icon: Star,
+            text: `${GOOGLE_BUSINESS_PROFILE.rating} / 5 en Google · ${GOOGLE_BUSINESS_PROFILE.reviewCount} opiniones publicadas`,
+          },
           { icon: BadgeCheck, text: "Negocio establecido desde 1999 en Pachuca" },
           { icon: ShieldCheck, text: "Pago seguro con Mercado Pago · HTTPS" },
         ].map(({ icon: Icon, text }) => (

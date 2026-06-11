@@ -24,7 +24,6 @@ const BANK_INFO = {
   bank:    "BANORTE",
   clabe:   "072290013257279710",
   account: "5264246819447292",
-  owner:   "Irene Osorio",
 };
 
 const STEPS = {
@@ -871,7 +870,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                   <p className="font-medium mb-2" style={{ color: '#4E7BDA' }}>Datos para transferencia:</p>
                   <div className="space-y-1" style={{ color: '#9AA6B2' }}>
                     <p>🏦 Banco: <span style={{ color: '#F5F7FA' }}>{BANK_INFO.bank}</span></p>
-                    <p>👤 Nombre: <span style={{ color: '#F5F7FA' }}>{BANK_INFO.owner}</span></p>
+                    <p>👤 Beneficiario: <span style={{ color: '#F5F7FA' }}>Confírmalo en tu aplicación bancaria</span></p>
                     <p>💳 No. de Tarjeta: <span className="font-mono" style={{ color: '#F5F7FA' }}>{BANK_INFO.account}</span></p>
                     <p>🔢 CLABE: <span className="font-mono" style={{ color: '#F5F7FA' }}>{BANK_INFO.clabe}</span></p>
                   </div>

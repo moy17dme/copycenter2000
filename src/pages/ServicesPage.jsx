@@ -10,7 +10,7 @@ const servicesSchema = {
   itemListElement: PUBLIC_SERVICES.map((service, index) => ({
     "@type": "ListItem",
     position: index + 1,
-    url: `https://copycenter2000.com/servicios#${service.id}`,
+    url: `https://copycenter2000.com/servicios/#${service.id}`,
     name: service.title,
   })),
 };
