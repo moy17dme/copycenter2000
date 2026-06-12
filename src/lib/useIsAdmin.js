@@ -12,8 +12,7 @@ function withTimeout(promise, ms, fallback) {
 export function hasAdminRole(user, profile) {
   return (
     profile?.role === "admin" ||
-    user?.app_metadata?.role === "admin" ||
-    user?.user_metadata?.role === "admin"
+    user?.app_metadata?.role === "admin"
   );
 }
 
@@ -95,7 +94,6 @@ export function useIsAdmin({ user: knownUser = null, profile: knownProfile = nul
   }, [
     knownUser?.id,
     knownUser?.app_metadata?.role,
-    knownUser?.user_metadata?.role,
     knownProfile?.role,
   ]);
 

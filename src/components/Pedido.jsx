@@ -1,9 +1,14 @@
 // src/components/Pedido.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { pdfjsLib } from "@/lib/pdfjsSetup";
+import {
+  getExt,
+  MAX_FILES_PER_ORDER,
+  validatePrintableFile,
+} from "../utils/fileGuards";
 
 // === Constantes ===
-const ACCEPT = ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.dwg";
+const ACCEPT = ".pdf,.png,.jpg,.jpeg";
 const STORAGE_KEY = "cc2000_cart_v1";
 
 // Papeles por modo/tecnología
@@ -199,6 +204,7 @@ export default function Pedido() {
   const previewBoxRef = useRef(null);
 
   const [dragOver, setDragOver] = useState(false);
+  const [fileError, setFileError] = useState("");
 
   // guardar settings/estimate en localStorage
   useEffect(() => {
@@ -280,12 +286,18 @@ export default function Pedido() {
   }
 
   async function handleFiles(files) {
-    const arr = Array.from(files || []);
+    const arr = Array.from(files || []).slice(0, MAX_FILES_PER_ORDER);
     if (arr.length === 0) return;
+    setFileError("");
 
     const adds = [];
     for (const f of arr) {
-      const ext = (f.name.split(".").pop() || "").toLowerCase();
+      const validationError = await validatePrintableFile(f);
+      if (validationError) {
+        setFileError((current) => current || `${f.name}: ${validationError}`);
+        continue;
+      }
+      const ext = getExt(f.name);
       const id = uid();
       const item = {
         id,
@@ -319,10 +331,11 @@ export default function Pedido() {
             item.pageHeightCm = parseFloat((vp.height * ptToCm).toFixed(2));
           } catch { /* sin dimensiones */ }
         } catch {
-          item.kind = "other";
+          setFileError((current) =>
+            current || `${f.name}: el PDF no se pudo interpretar de forma segura.`
+          );
+          continue;
         }
-      } else {
-        item.kind = "other"; // doc/ppt/xls/dwg sin preview
       }
       adds.push(item);
     }
@@ -591,7 +604,7 @@ export default function Pedido() {
                   Arrastra tus archivos o haz clic para seleccionar
                 </p>
                 <p className="kpi mt-1">
-                  PDF, DOC(X), PPT(X), XLS(X), PNG, JPG, DWG
+                  PDF, PNG o JPG/JPEG
                 </p>
                 <input
                   id="file-input-pedido"
@@ -602,6 +615,9 @@ export default function Pedido() {
                   className="hidden"
                 />
               </div>
+              {fileError && (
+                <p role="alert" className="text-sm text-red-600">{fileError}</p>
+              )}
 
               {/* LISTA / CARRITO */}
               <div className="card p-3 space-y-2 max-h-[46vh] overflow-auto">

@@ -5,6 +5,8 @@ import { processMercadoPagoCard, queryMercadoPagoCardStatus } from "../lib/order
 import { fmtMXN } from "../utils/getItemPrice";
 
 const publicKey = (import.meta.env.VITE_MP_PUBLIC_KEY || "").trim();
+const embeddedCardEnabled =
+  String(import.meta.env.VITE_ENABLE_EMBEDDED_CARD_FORM || "").toLowerCase() === "true";
 const MASK_GROUP = "\u2022\u2022\u2022\u2022";
 const MASK_CVV = "\u2022\u2022\u2022\u2022";
 let mercadoPagoInstancePromise;
@@ -210,6 +212,7 @@ export default function MercadoPagoCardPayment({
   const latestBinRequest = useRef("");
 
   useEffect(() => {
+    if (!embeddedCardEnabled || forceFallback) return undefined;
     let active = true;
     getMercadoPagoInstance()
       .then(() => {
@@ -222,7 +225,7 @@ export default function MercadoPagoCardPayment({
     return () => {
       active = false;
     };
-  }, []);
+  }, [forceFallback]);
 
   const loadPaymentOptions = useCallback(async (nextBin) => {
     if (nextBin.length < 6 || latestBinRequest.current === nextBin) return;
@@ -440,7 +443,7 @@ export default function MercadoPagoCardPayment({
     submitting,
   ]);
 
-  if (!publicKey || forceFallback) {
+  if (!embeddedCardEnabled || !publicKey || forceFallback) {
     return (
       <div className="space-y-4">
         <div
@@ -616,9 +619,22 @@ export function MercadoPagoChallenge({
   onFailed,
 }) {
   const [checking, setChecking] = useState(false);
+  const challengeFrameRef = useRef(null);
 
   useEffect(() => {
+    let expectedOrigin = "";
+    try {
+      expectedOrigin = new URL(challengeUrl).origin;
+    } catch {
+      onFailed("La direccion de verificacion bancaria no es valida.");
+      return undefined;
+    }
+
     async function handleMessage(event) {
+      if (
+        event.origin !== expectedOrigin ||
+        event.source !== challengeFrameRef.current?.contentWindow
+      ) return;
       if (event?.data?.status !== "COMPLETE" || checking) return;
       setChecking(true);
 
@@ -647,7 +663,7 @@ export function MercadoPagoChallenge({
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [accessToken, checking, onApproved, onFailed, onPending, order.id]);
+  }, [accessToken, challengeUrl, checking, onApproved, onFailed, onPending, order.id]);
 
   return (
     <div className="space-y-3">
@@ -658,6 +674,7 @@ export function MercadoPagoChallenge({
         </p>
       </div>
       <iframe
+        ref={challengeFrameRef}
         title="Verificacion de seguridad del banco"
         src={challengeUrl}
         className="w-full rounded-xl bg-white"

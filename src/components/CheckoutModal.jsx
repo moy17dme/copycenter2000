@@ -11,6 +11,7 @@ import {
   attachOrderFiles,
   buildOrderWhatsAppMessage,
   openWhatsApp,
+  isTrustedMercadoPagoUrl,
   SHOP_PHONE,
 } from "../lib/orders";
 import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
@@ -18,6 +19,7 @@ import { supabase } from "../lib/supabaseClient";
 import { redeemCopyTicket } from "../lib/copyTickets";
 import { isTicketRequiredItem } from "../lib/ticketItems";
 import MercadoPagoCardPayment, { MercadoPagoChallenge } from "./MercadoPagoCardPayment";
+import { validatePrintableFile } from "../utils/fileGuards";
 
 // Datos bancarios del negocio (edita estos valores)
 const BANK_INFO = {
@@ -37,6 +39,8 @@ const STEPS = {
 };
 const UPLOAD_FOREGROUND_BUDGET_MS = 2200;
 const MIN_CHECKOUT_OPTION_MXN = 50;
+const ENABLE_EMBEDDED_CARD_FORM =
+  String(import.meta.env.VITE_ENABLE_EMBEDDED_CARD_FORM || "").toLowerCase() === "true";
 
 // ── Validaciones ─────────────────────────────────────────────────────────────
 function validateName(raw) {
@@ -111,11 +115,18 @@ async function validateCoupon(code, subtotal) {
   if (!code.trim()) return { valid: false, message: "Ingresa un código." };
   try {
     const { data, error } = await supabase
-      .from("cupones")
-      .select("*")
-      .eq("code", code.trim().toUpperCase())
-      .eq("active", true)
+      .rpc("validate_coupon", {
+        coupon_code: code.trim().toUpperCase(),
+        order_subtotal: subtotal,
+      })
       .maybeSingle();
+
+    if (!error && !data?.valid) {
+      return {
+        valid: false,
+        message: data?.reason || "Cupon no encontrado o inactivo.",
+      };
+    }
 
     if (error) {
       // La tabla aún no existe u otro error de DB
@@ -145,7 +156,7 @@ async function validateCoupon(code, subtotal) {
       code: data.code,
       type: data.type,
       value: data.value,
-      discount,
+      discount: Number(data.discount) || discount,
       description: data.description || (data.type === "percent" ? `${data.value}% de descuento` : `$${fmtMXN(data.value)} de descuento`),
     };
   } catch {
@@ -357,8 +368,8 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       paymentData?.checkout_url ||
       paymentData?.init_point ||
       paymentData?.sandbox_init_point;
-    if (!checkoutUrl) {
-      setError("Mercado Pago no devolvio un enlace de pago.");
+    if (!checkoutUrl || !isTrustedMercadoPagoUrl(checkoutUrl)) {
+      setError("Mercado Pago no devolvio un enlace de pago seguro.");
       setStep(STEPS.CARD);
       return;
     }
@@ -418,8 +429,8 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       const activeUser = activeSession?.user || user || null;
       const accessToken = activeSession?.access_token || null;
 
-      if (payment === "mercadopago" && (!activeUser?.id || !accessToken)) {
-        setError("Inicia sesion para pagar en linea con Mercado Pago.");
+      if (!activeUser?.id || !accessToken) {
+        setError("Inicia sesion para crear y proteger tu pedido.");
         setStep(STEPS.FORM);
         return;
       }
@@ -492,7 +503,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
 
       // 2. Subir archivos — esperar a que terminen antes de mostrar éxito
       const hasFiles = items.some((it) => it.file || it.pdfFile || it.fileObject || it.blob);
-      const mustFinishUploads = payment === "mercadopago";
+      const mustFinishUploads = true;
       if (hasFiles || (requiresInvoice && constanciaFile)) {
         setStep(STEPS.UPLOADING);
         const uploadTasks = [];
@@ -541,6 +552,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
 
           if (failed.length) {
             console.warn("[checkout] Algunas subidas no terminaron:", failed);
+            throw failed[0].reason || new Error("No se pudieron validar y subir todos los archivos.");
           }
         });
 
@@ -566,6 +578,33 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
 
       if (payment === "mercadopago") {
         setStep(STEPS.PAYMENT);
+        if (!ENABLE_EMBEDDED_CARD_FORM) {
+          const { data: paymentData, error: paymentErr } = await createMercadoPagoCheckout({
+            orderId: order.id,
+            accessToken,
+          });
+          const checkoutUrl =
+            paymentData?.checkout_url ||
+            paymentData?.init_point ||
+            paymentData?.sandbox_init_point;
+
+          if (paymentErr || !checkoutUrl || !isTrustedMercadoPagoUrl(checkoutUrl)) {
+            setError(
+              "Pedido registrado, pero no se pudo abrir el checkout seguro de Mercado Pago."
+            );
+            setConfirmedOrder(order);
+            clearCart();
+            setStep(STEPS.SUCCESS);
+            const msg = buildOrderWhatsAppMessage({ order, isNew: true });
+            openWhatsApp(SHOP_PHONE, msg);
+            return;
+          }
+
+          clearCart();
+          window.location.assign(checkoutUrl);
+          return;
+        }
+
         const { data: cardQuote, error: cardQuoteError } = await prepareMercadoPagoCard({
           orderId: order.id,
           accessToken,
@@ -1039,9 +1078,18 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                           type="file"
                           accept=".pdf,application/pdf"
                           className="hidden"
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const f = e.target.files?.[0];
-                            if (f) { setConstanciaFile(f); setBillingError(""); }
+                            if (!f) return;
+                            const fileError = await validatePrintableFile(f, { pdfOnly: true });
+                            if (fileError) {
+                              setConstanciaFile(null);
+                              setBillingError(fileError);
+                              e.target.value = "";
+                              return;
+                            }
+                            setConstanciaFile(f);
+                            setBillingError("");
                           }}
                         />
                         {constanciaFile && (

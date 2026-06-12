@@ -621,12 +621,12 @@ export default function AuthModal({ open, onClose, onSignedOut, user: userProp, 
                   <>
                     <div>
                       <label className="block text-[11px] uppercase tracking-[0.16em] text-slate-300/80 mb-1">
-                        Correo o telefono
+                        Correo electronico
                       </label>
                       <input
                         type="text"
                         autoComplete="username"
-                        placeholder="tucorreo@gmail.com o +52XXXXXXXXXX"
+                        placeholder="tucorreo@gmail.com"
                         value={loginInput}
                         onChange={(e) => setLoginInput(e.target.value)}
                         className="w-full rounded-xl bg-white text-slate-900 px-3 py-2 text-sm outline-none"

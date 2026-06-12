@@ -1,11 +1,12 @@
 import { useRef, useState } from "react";
+import {
+  MAX_FILES_PER_ORDER,
+  validatePrintableFile,
+} from "../utils/fileGuards";
 
 const ACCEPT = [
-  ".pdf", ".doc", ".docx",
-  ".ppt", ".pptx",
-  ".xls", ".xlsx",
+  ".pdf",
   ".png", ".jpg", ".jpeg",
-  ".dwg",
 ].join(",");
 
 export default function FileDropzone({
@@ -15,14 +16,31 @@ export default function FileDropzone({
   const inputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState([]);
+  const [error, setError] = useState("");
 
   const openPicker = () => inputRef.current?.click();
 
-  const handleFiles = (fileList) => {
+  const handleFiles = async (fileList) => {
     const arr = Array.from(fileList || []);
     if (!arr.length) return;
-    setFiles((prev) => [...prev, ...arr]);
-    onFiles(arr);
+    const available = Math.max(0, MAX_FILES_PER_ORDER - files.length);
+    const accepted = [];
+    let firstError =
+      arr.length > available
+        ? `Solo puedes adjuntar hasta ${MAX_FILES_PER_ORDER} archivos.`
+        : "";
+    for (const file of arr.slice(0, available)) {
+      const fileError = await validatePrintableFile(file);
+      if (fileError) {
+        firstError ||= `${file.name}: ${fileError}`;
+      } else {
+        accepted.push(file);
+      }
+    }
+    setError(firstError);
+    if (!accepted.length) return;
+    setFiles((prev) => [...prev, ...accepted]);
+    onFiles(accepted);
   };
 
   const onDrop = (e) => {
@@ -79,7 +97,7 @@ export default function FileDropzone({
               {note}
             </div>
             <div className="mt-2 text-xs">
-              PDF, DOC(X), PPT(X), XLS(X), PNG, JPG, DWG
+              PDF, PNG o JPG/JPEG. Convierte otros formatos a PDF.
             </div>
           </div>
 
@@ -90,6 +108,10 @@ export default function FileDropzone({
           </div>
         </div>
       </div>
+
+      {error && (
+        <p role="alert" className="text-sm text-red-600">{error}</p>
+      )}
 
       {files.length > 0 && (
         <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-sm">

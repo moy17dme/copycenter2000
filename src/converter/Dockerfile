@@ -7,8 +7,10 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 COPY . .
+RUN chown -R node:node /app
+USER node
 EXPOSE 8787
 CMD ["node", "index.js"]

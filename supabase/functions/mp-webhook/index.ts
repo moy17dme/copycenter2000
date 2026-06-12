@@ -2,6 +2,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { calculateOrderPricing, roundMoney } from "../_shared/orderPricing.js";
+import {
+  checkRateLimit,
+  jsonResponse,
+  mercadoPagoOrderAudit,
+  mercadoPagoPaymentAudit,
+  rateLimitResponse,
+  readJsonObject,
+  securityHeaders,
+} from "../_shared/httpSecurity.ts";
 
 const MP_TOKEN = Deno.env.get("MP_ACCESS_TOKEN");
 const MP_WEBHOOK_SECRET = Deno.env.get("MP_WEBHOOK_SECRET") || "";
@@ -19,22 +28,6 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     autoRefreshToken: false,
   },
 });
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info, x-signature, x-request-id",
-};
-
-function json(data: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json",
-    },
-  });
-}
 
 function parseSignatureHeader(header: string) {
   return Object.fromEntries(
@@ -75,6 +68,13 @@ async function verifyMercadoPagoSignature(req: Request, dataId: string) {
   const ts = parsed.ts || "";
   const v1 = parsed.v1 || "";
   if (!ts || !v1) return false;
+  if (!/^\d{10,13}$/.test(ts) || !/^[a-f0-9]{64}$/i.test(v1)) return false;
+
+  const timestampNumber = Number(ts);
+  const timestampMs = ts.length >= 13 ? timestampNumber : timestampNumber * 1000;
+  if (!Number.isFinite(timestampMs) || Math.abs(Date.now() - timestampMs) > 5 * 60 * 1000) {
+    return false;
+  }
 
   let manifest = "";
   if (dataId) manifest += `id:${normalizeDataId(dataId)};`;
@@ -284,9 +284,9 @@ function isAlreadyConfirmed(order: any) {
     ["paid", "payment_approved", "in_progress", "printing", "ready", "completed"].includes(order?.status);
 }
 
-async function handleOrderNotification(body: any, providerOrderId: string) {
+async function handleOrderNotification(req: Request, body: any, providerOrderId: string) {
   if (!/^ord/i.test(providerOrderId)) {
-    return json({
+    return jsonResponse(req, {
       ok: true,
       ignored: "invalid_order_id",
       providerOrderId,
@@ -296,25 +296,29 @@ async function handleOrderNotification(body: any, providerOrderId: string) {
   const fetched = await fetchMercadoPagoOrder(providerOrderId);
   if (!fetched.order) {
     if (fetched.status === 404) {
-      return json({
+      return jsonResponse(req, {
         ok: true,
         ignored: "order_not_found",
         providerOrderId,
       });
     }
-    return json({ error: "mercadopago_order_error", detail: fetched.error }, 500);
+    return jsonResponse(req, { error: "mercadopago_order_error" }, 502);
   }
 
   const providerOrder = fetched.order;
   const orderId = providerOrder.external_reference || null;
-  if (!orderId) return json({ ok: true, ignored: "missing_external_reference" });
+  if (!orderId) {
+    return jsonResponse(req, { ok: true, ignored: "missing_external_reference" });
+  }
 
   const { data: order, error: orderError } = await supabaseAdmin
     .from("orders")
     .select("*")
     .eq("id", orderId)
     .single();
-  if (orderError || !order) return json({ ok: true, ignored: "internal_order_not_found" });
+  if (orderError || !order) {
+    return jsonResponse(req, { ok: true, ignored: "internal_order_not_found" });
+  }
 
   const pricing = await calculateOrderPricing(supabaseAdmin, order);
   const transaction = orderPaymentTransaction(providerOrder);
@@ -358,7 +362,7 @@ async function handleOrderNotification(body: any, providerOrderId: string) {
     currency,
     rawEvent: {
       webhook: body,
-      mercado_pago_order: providerOrder,
+      mercado_pago_order: mercadoPagoOrderAudit(providerOrder),
       pricing,
       expectedPaymentId: expectedPayment?.id || null,
       expectedAmount,
@@ -367,7 +371,7 @@ async function handleOrderNotification(body: any, providerOrderId: string) {
     },
   });
   if (paymentRecord.error) {
-    return json({ error: "payment_record_error", detail: paymentRecord.error.message }, 500);
+    return jsonResponse(req, { error: "payment_record_error" }, 500);
   }
 
   if (approved && amountMatches) {
@@ -385,7 +389,7 @@ async function handleOrderNotification(body: any, providerOrderId: string) {
       .eq("id", orderId);
 
     if (updateOrder.error) {
-      return json({ error: "order_update_error", detail: updateOrder.error.message }, 500);
+      return jsonResponse(req, { error: "order_update_error" }, 500);
     }
 
     if (!alreadyConfirmed) {
@@ -396,7 +400,7 @@ async function handleOrderNotification(body: any, providerOrderId: string) {
       });
     }
 
-    return json({ ok: true, status: "approved", orderId, amount: paidAmount });
+    return jsonResponse(req, { ok: true, status: "approved", orderId, amount: paidAmount });
   }
 
   await supabaseAdmin
@@ -410,7 +414,7 @@ async function handleOrderNotification(body: any, providerOrderId: string) {
     })
     .eq("id", orderId);
 
-  return json({
+  return jsonResponse(req, {
     ok: true,
     status: paymentStatus,
     statusDetail,
@@ -422,15 +426,19 @@ async function handleOrderNotification(body: any, providerOrderId: string) {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: securityHeaders(req) });
   }
 
   if (req.method !== "POST") {
-    return json({ error: "method_not_allowed" }, 405);
+    return jsonResponse(req, { error: "method_not_allowed" }, 405);
   }
 
   const url = new URL(req.url);
-  const body = await req.json().catch(() => ({}));
+  const parsedBody = await readJsonObject(req, 32 * 1024);
+  if (parsedBody.error) {
+    return jsonResponse(req, { error: parsedBody.error }, parsedBody.status);
+  }
+  const body = parsedBody.data;
   const eventType = String(
     body?.type ||
     url.searchParams.get("type") ||
@@ -449,35 +457,51 @@ Deno.serve(async (req: Request) => {
   const paymentId = isOrderEvent ? "" : paymentIdFrom(url, body);
   const resourceId = isOrderEvent ? directResourceId : paymentId;
   if (!resourceId) {
-    return json({ ok: true, ignored: "missing_resource_id" });
+    return jsonResponse(req, { ok: true, ignored: "missing_resource_id" });
+  }
+  if (
+    (isOrderEvent && !/^ord[a-z0-9_-]{1,100}$/i.test(resourceId)) ||
+    (!isOrderEvent && !/^\d{1,30}$/.test(resourceId))
+  ) {
+    return jsonResponse(req, { error: "invalid_resource_id" }, 400);
   }
 
   const dataIdForSignature = url.searchParams.get("data.id") || body?.data?.id || resourceId;
   const signatureOk = await verifyMercadoPagoSignature(req, String(dataIdForSignature));
   if (!signatureOk) {
-    return json({ error: "invalid_signature" }, 401);
+    return jsonResponse(req, { error: "invalid_signature" }, 401);
+  }
+
+  const rateLimit = await checkRateLimit(
+    supabaseAdmin,
+    `webhook:mercadopago:${resourceId}`,
+    30,
+    10 * 60,
+  );
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(req, rateLimit);
   }
 
   if (isOrderEvent) {
-    return await handleOrderNotification(body, resourceId);
+    return await handleOrderNotification(req, body, resourceId);
   }
 
   const fetched = await fetchMercadoPagoPayment(paymentId);
   if (!fetched.payment) {
     if (fetched.status === 404) {
-      return json({
+      return jsonResponse(req, {
         ok: true,
         ignored: "payment_not_found",
         paymentId,
       });
     }
-    return json({ error: "mercadopago_payment_error", detail: fetched.error }, 500);
+    return jsonResponse(req, { error: "mercadopago_payment_error" }, 502);
   }
 
   const payment = fetched.payment;
   const orderId = payment.external_reference || payment.metadata?.order_id || null;
   if (!orderId) {
-    return json({ ok: true, ignored: "missing_external_reference" });
+    return jsonResponse(req, { ok: true, ignored: "missing_external_reference" });
   }
 
   const { data: order, error: orderError } = await supabaseAdmin
@@ -487,7 +511,7 @@ Deno.serve(async (req: Request) => {
     .single();
 
   if (orderError || !order) {
-    return json({ ok: true, ignored: "order_not_found" });
+    return jsonResponse(req, { ok: true, ignored: "order_not_found" });
   }
 
   const pricing = await calculateOrderPricing(supabaseAdmin, order);
@@ -507,7 +531,7 @@ Deno.serve(async (req: Request) => {
 
   const rawEvent = {
     webhook: body,
-    mercado_pago_payment: payment,
+    mercado_pago_payment: mercadoPagoPaymentAudit(payment),
     pricing,
     expectedPaymentId: expectedPayment?.id || null,
     expectedAmount,
@@ -525,7 +549,7 @@ Deno.serve(async (req: Request) => {
   });
 
   if (paymentRecord.error) {
-    return json({ error: "payment_record_error", detail: paymentRecord.error.message }, 500);
+    return jsonResponse(req, { error: "payment_record_error" }, 500);
   }
 
   if (approved && amountMatches) {
@@ -544,7 +568,7 @@ Deno.serve(async (req: Request) => {
       .eq("id", orderId);
 
     if (updateOrder.error) {
-      return json({ error: "order_update_error", detail: updateOrder.error.message }, 500);
+      return jsonResponse(req, { error: "order_update_error" }, 500);
     }
 
     if (!alreadyConfirmed) {
@@ -557,7 +581,7 @@ Deno.serve(async (req: Request) => {
         });
     }
 
-    return json({ ok: true, status: "approved", orderId, amount: paidAmount });
+    return jsonResponse(req, { ok: true, status: "approved", orderId, amount: paidAmount });
   }
 
   await supabaseAdmin
@@ -569,7 +593,7 @@ Deno.serve(async (req: Request) => {
     })
     .eq("id", orderId);
 
-  return json({
+  return jsonResponse(req, {
     ok: true,
     status: paymentStatus,
     orderId,

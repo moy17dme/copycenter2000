@@ -2,6 +2,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { calculateOrderPricing } from "../_shared/orderPricing.js";
+import {
+  checkRateLimit,
+  handlePreflight,
+  isAllowedOrigin,
+  isUuid,
+  jsonResponse,
+  rateLimitResponse,
+  readJsonObject,
+} from "../_shared/httpSecurity.ts";
 
 const MP_TOKEN = Deno.env.get("MP_ACCESS_TOKEN");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -21,22 +30,6 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     autoRefreshToken: false,
   },
 });
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info",
-};
-
-function json(data: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json",
-    },
-  });
-}
 
 function bearerToken(req: Request) {
   const auth = req.headers.get("Authorization") || "";
@@ -66,7 +59,22 @@ function shouldUseSandboxCheckout() {
 
 function checkoutUrlMatchesMode(checkoutUrl: string, useSandbox: boolean) {
   const isSandboxUrl = checkoutUrl.includes("sandbox.mercadopago");
-  return useSandbox ? isSandboxUrl : !isSandboxUrl;
+  return isMercadoPagoUrl(checkoutUrl) && (useSandbox ? isSandboxUrl : !isSandboxUrl);
+}
+
+function isMercadoPagoUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    return url.protocol === "https:" && (
+      host === "mercadopago.com" ||
+      host.endsWith(".mercadopago.com") ||
+      host === "mercadopago.com.mx" ||
+      host.endsWith(".mercadopago.com.mx")
+    );
+  } catch {
+    return false;
+  }
 }
 
 function isAlreadyPaid(order: any) {
@@ -77,28 +85,48 @@ function isAlreadyPaid(order: any) {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return handlePreflight(req);
   }
 
   if (req.method !== "POST") {
-    return json({ error: "method_not_allowed" }, 405);
+    return jsonResponse(req, { error: "method_not_allowed" }, 405);
+  }
+  if (!isAllowedOrigin(req)) {
+    return jsonResponse(req, { error: "origin_not_allowed" }, 403);
   }
 
   const token = bearerToken(req);
   if (!token) {
-    return json({ error: "auth_required" }, 401);
+    return jsonResponse(req, { error: "auth_required" }, 401);
   }
 
   const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
   const user = userData?.user || null;
   if (userError || !user) {
-    return json({ error: "invalid_session" }, 401);
+    return jsonResponse(req, { error: "invalid_session" }, 401);
+  }
+  if (!user.email_confirmed_at) {
+    return jsonResponse(req, { error: "email_confirmation_required" }, 403);
   }
 
-  const body = await req.json().catch(() => ({}));
+  const rateLimit = await checkRateLimit(
+    supabaseAdmin,
+    `payment:create:${user.id}`,
+    8,
+    10 * 60,
+  );
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(req, rateLimit);
+  }
+
+  const parsedBody = await readJsonObject(req);
+  if (parsedBody.error) {
+    return jsonResponse(req, { error: parsedBody.error }, parsedBody.status);
+  }
+  const body = parsedBody.data;
   const orderId = String(body?.orderId || "").trim();
-  if (!orderId) {
-    return json({ error: "orderId_required" }, 400);
+  if (!isUuid(orderId)) {
+    return jsonResponse(req, { error: "invalid_order_id" }, 400);
   }
 
   const { data: order, error: orderError } = await supabaseAdmin
@@ -108,20 +136,25 @@ Deno.serve(async (req: Request) => {
     .single();
 
   if (orderError || !order) {
-    return json({ error: "order_not_found" }, 404);
+    return jsonResponse(req, { error: "order_not_found" }, 404);
   }
 
   if (!order.user_id || order.user_id !== user.id) {
-    return json({ error: "order_not_owned_by_user" }, 403);
+    return jsonResponse(req, { error: "order_not_owned_by_user" }, 403);
   }
 
   if (isAlreadyPaid(order)) {
-    return json({ error: "payment_already_confirmed", message: "Este pedido ya tiene pago confirmado." }, 409);
+    return jsonResponse(
+      req,
+      { error: "payment_already_confirmed", message: "Este pedido ya tiene pago confirmado." },
+      409,
+    );
   }
 
   const pricing = await calculateOrderPricing(supabaseAdmin, order);
   if (pricing.hasUnknownTotal || pricing.total <= 0) {
-    return json(
+    return jsonResponse(
+      req,
       {
         error: "quote_required",
         message: "Este pedido necesita cotizacion antes de pagar en linea.",
@@ -132,7 +165,8 @@ Deno.serve(async (req: Request) => {
   }
 
   if (pricing.total < MIN_ONLINE_PAYMENT_MXN) {
-    return json(
+    return jsonResponse(
+      req,
       {
         error: "minimum_payment_amount",
         message: `El pago en linea requiere un total minimo de $${MIN_ONLINE_PAYMENT_MXN.toFixed(2)} MXN.`,
@@ -144,7 +178,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const shortId = String(order.id).slice(0, 8).toUpperCase();
-  const backUrls = body?.back_urls || appBackUrls(order.id);
+  const backUrls = appBackUrls(order.id);
   const useSandboxCheckout = shouldUseSandboxCheckout();
   const { data: existingPayment } = await supabaseAdmin
     .from("payments")
@@ -161,7 +195,7 @@ Deno.serve(async (req: Request) => {
     existingPayment?.checkout_url &&
     checkoutUrlMatchesMode(existingPayment.checkout_url, useSandboxCheckout)
   ) {
-    return json({
+    return jsonResponse(req, {
       id: existingPayment.provider_preference_id,
       checkout_url: existingPayment.checkout_url,
       init_point: existingPayment.checkout_url,
@@ -198,19 +232,30 @@ Deno.serve(async (req: Request) => {
     headers: {
       Authorization: `Bearer ${MP_TOKEN}`,
       "Content-Type": "application/json",
+      "X-Idempotency-Key": `checkout-${order.id}`,
     },
     body: JSON.stringify(prefPayload),
   });
 
   if (!mpResp.ok) {
-    const detail = await mpResp.text();
-    return json({ error: "mercadopago_preference_error", detail }, 400);
+    await mpResp.text();
+    return jsonResponse(
+      req,
+      {
+        error: "mercadopago_preference_error",
+        message: "Mercado Pago no pudo iniciar el checkout.",
+      },
+      mpResp.status >= 500 ? 502 : 422,
+    );
   }
 
   const pref = await mpResp.json();
   const checkoutUrl = useSandboxCheckout
     ? pref.sandbox_init_point || pref.init_point || null
     : pref.init_point || pref.sandbox_init_point || null;
+  if (!checkoutUrl || !isMercadoPagoUrl(checkoutUrl)) {
+    return jsonResponse(req, { error: "invalid_checkout_url" }, 502);
+  }
 
   const { error: paymentError } = await supabaseAdmin
     .from("payments")
@@ -224,13 +269,14 @@ Deno.serve(async (req: Request) => {
       checkout_url: checkoutUrl,
       raw_event: {
         type: "preference_created",
-        preference: pref,
+        preference_id: pref.id,
+        checkout_mode: useSandboxCheckout ? "sandbox" : "production",
         pricing,
       },
     });
 
   if (paymentError) {
-    return json({ error: "payment_record_error", detail: paymentError.message }, 500);
+    return jsonResponse(req, { error: "payment_record_error" }, 500);
   }
 
   await supabaseAdmin
@@ -244,7 +290,7 @@ Deno.serve(async (req: Request) => {
     })
     .eq("id", order.id);
 
-  return json({
+  return jsonResponse(req, {
     id: pref.id,
     checkout_url: checkoutUrl,
     init_point: pref.init_point,

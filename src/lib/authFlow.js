@@ -1,5 +1,3 @@
-import { supabase } from "./supabaseClient";
-
 function normalizePhone(input) {
   return String(input || "").trim().replace(/[\s\-().]/g, "");
 }
@@ -10,19 +8,15 @@ export function isPhoneInput(value) {
 
 export async function resolveEmailFromLoginInput(input) {
   const raw = String(input || "").trim();
-  if (!raw) throw new Error("Escribe tu correo o numero de telefono.");
+  if (!raw) throw new Error("Escribe tu correo.");
 
-  if (!isPhoneInput(raw)) return raw;
-
-  const { data: foundEmail, error } = await supabase.rpc("get_email_by_phone", {
-    phone_input: normalizePhone(raw),
-  });
-
-  if (error || !foundEmail) {
-    throw new Error("No encontramos una cuenta con ese numero de telefono.");
+  if (isPhoneInput(raw)) {
+    throw new Error(
+      "Por seguridad, inicia sesion con tu correo. El acceso por telefono esta deshabilitado."
+    );
   }
 
-  return foundEmail;
+  return raw;
 }
 
 export async function signInAndCheckMfa({ input, password }) {

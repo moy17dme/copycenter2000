@@ -19,12 +19,14 @@ const root = process.cwd();
 const localEnv = readDotEnv(path.join(root, ".env"));
 
 const supabaseUrl = localEnv.VITE_SUPABASE_URL;
-const serviceRoleKey = localEnv.VITE_SERVICE_ROLE_KEY;
+const serviceRoleKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  localEnv.SUPABASE_SERVICE_ROLE_KEY;
 const adminEmail = process.env.ADMIN_EMAIL;
 const adminPassword = process.env.ADMIN_PASSWORD;
 
 if (!supabaseUrl || !serviceRoleKey) {
-  throw new Error("Faltan VITE_SUPABASE_URL o VITE_SERVICE_ROLE_KEY en .env.");
+  throw new Error("Faltan VITE_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY.");
 }
 
 if (!adminEmail || !adminPassword) {
@@ -51,6 +53,7 @@ if (!user) {
     email: normalizedEmail,
     password: adminPassword,
     email_confirm: true,
+    app_metadata: { role: "admin" },
   });
   if (created.error) throw created.error;
   user = created.data.user;
@@ -59,6 +62,10 @@ if (!user) {
   const updated = await admin.auth.admin.updateUserById(user.id, {
     password: adminPassword,
     email_confirm: true,
+    app_metadata: {
+      ...(user.app_metadata || {}),
+      role: "admin",
+    },
   });
   if (updated.error) throw updated.error;
   user = updated.data.user;

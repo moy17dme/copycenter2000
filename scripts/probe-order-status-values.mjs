@@ -14,9 +14,13 @@ function readDotEnv(filePath) {
 }
 
 const localEnv = readDotEnv(path.join(process.cwd(), ".env"));
-const admin = createClient(localEnv.VITE_SUPABASE_URL, localEnv.VITE_SERVICE_ROLE_KEY, {
+const admin = createClient(
+  localEnv.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || localEnv.SUPABASE_SERVICE_ROLE_KEY,
+  {
   auth: { persistSession: false },
-});
+  }
+);
 
 const base = {
   customer_name: "__probe__",

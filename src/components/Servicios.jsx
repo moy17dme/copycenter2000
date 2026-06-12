@@ -9,6 +9,11 @@ import { pdfjsLib } from "@/lib/pdfjsSetup";
 import { supabase } from "@/lib/supabaseClient";
 import ServiceOptionsEditor from "./service-editors/ServiceOptionsEditor";
 import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
+import {
+  getExt,
+  MAX_FILES_PER_ORDER,
+  validatePrintableFile,
+} from "../utils/fileGuards";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -55,19 +60,9 @@ const QTY_BADGE = {
 };
 
 // ✅ Aceptados (sin Office)
-const ACCEPT =
-  ".pdf,.png,.jpg,.jpeg,.tif,.tiff,.dwf,.plt,.gl2,.prn,.hpgl2";
+const ACCEPT = ".pdf,.png,.jpg,.jpeg";
 
 // ❌ Office bloqueado
-const OFFICE_EXTS = ["doc", "docx", "xls", "xlsx", "ppt", "pptx"];
-
-function extFromName(name = "") {
-  const s = String(name);
-  const i = s.lastIndexOf(".");
-  return i >= 0 ? s.slice(i + 1).toLowerCase() : "";
-}
-
-
 // Servicios que van directo a configurar opciones (sin pedir archivo primero)
 const CONFIGURAR_PRIMERO = ["stickers"];
 
@@ -391,7 +386,9 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
   };
 
   const processFiles = async (files) => {
-    const incomingFiles = Array.from(files || []).filter(Boolean);
+    const incomingFiles = Array.from(files || [])
+      .filter(Boolean)
+      .slice(0, MAX_FILES_PER_ORDER);
     if (!incomingFiles.length || !seleccion || processingFiles.active) return;
     setLocalMsg("");
     setProcessingFiles({
@@ -414,13 +411,10 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
         total: incomingFiles.length,
         name: file.name,
       });
-      const ext = extFromName(file.name);
-
-      // ❌ Bloquear Office
-      if (OFFICE_EXTS.includes(ext)) {
-        setLocalMsg(
-          "ESTÁS INTENTANDO SUBIR UN ARCHIVO DE LA PAQUETERÍA DE OFFICE, MEJOR FAVOR DE CONVERTIR A PDF PARA UNA MEJOR GESTIÓN."
-        );
+      const ext = getExt(file.name);
+      const validationError = await validatePrintableFile(file);
+      if (validationError) {
+        setLocalMsg(`${file.name}: ${validationError}`);
         continue;
       }
 
@@ -442,7 +436,11 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
             pageWidthCm  = parseFloat((vp.width  * ptToCm).toFixed(2));
             pageHeightCm = parseFloat((vp.height * ptToCm).toFixed(2));
           } catch { /* sin dimensiones */ }
-        } catch { /* no se pudo leer */ }
+        } catch {
+          URL.revokeObjectURL(blobUrl);
+          setLocalMsg(`${file.name}: el PDF no se pudo interpretar de forma segura.`);
+          continue;
+        }
       }
 
       const isPinsService       = seleccion.serviceKey === "fotobotones";
@@ -915,7 +913,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                       </p>
                     </div>
                     <p className="text-[11px] text-center" style={{ color: '#6B7280' }}>
-                      PDF, PNG/JPG/TIFF, DWF, PLT/GL2/PRN/HPGL2 — Office no permitido
+                      PDF, PNG o JPG/JPEG (maximo 25 MB)
                     </p>
                   </div>
                 </div>

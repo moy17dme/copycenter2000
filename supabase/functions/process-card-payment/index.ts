@@ -2,6 +2,16 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { calculateOrderPricing, roundMoney } from "../_shared/orderPricing.js";
+import {
+  checkRateLimit,
+  handlePreflight,
+  isAllowedOrigin,
+  isUuid,
+  jsonResponse,
+  mercadoPagoOrderAudit,
+  rateLimitResponse,
+  readJsonObject,
+} from "../_shared/httpSecurity.ts";
 
 const MP_TOKEN = Deno.env.get("MP_ACCESS_TOKEN");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -18,22 +28,6 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     autoRefreshToken: false,
   },
 });
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info",
-};
-
-function json(data: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json",
-    },
-  });
-}
 
 function bearerToken(req: Request) {
   const auth = req.headers.get("Authorization") || "";
@@ -61,7 +55,13 @@ function normalizedStatus(order: any) {
 }
 
 function challengeUrl(order: any) {
-  return paymentTransaction(order)?.payment_method?.transaction_security?.url || null;
+  const value = paymentTransaction(order)?.payment_method?.transaction_security?.url || "";
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 function paidAmount(order: any) {
@@ -156,7 +156,7 @@ async function savePaymentRecord({
     status,
     raw_event: {
       source,
-      mercado_pago_order: providerOrder,
+      mercado_pago_order: mercadoPagoOrderAudit(providerOrder),
       expected_amount: expectedAmount,
       expected_currency: expectedCurrency,
       paid_amount: amount,
@@ -229,23 +229,48 @@ async function updateInternalOrder({
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return handlePreflight(req);
   }
   if (req.method !== "POST") {
-    return json({ error: "method_not_allowed" }, 405);
+    return jsonResponse(req, { error: "method_not_allowed" }, 405);
+  }
+  if (!isAllowedOrigin(req)) {
+    return jsonResponse(req, { error: "origin_not_allowed" }, 403);
   }
 
   const token = bearerToken(req);
-  if (!token) return json({ error: "auth_required" }, 401);
+  if (!token) return jsonResponse(req, { error: "auth_required" }, 401);
 
   const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
   const user = userData?.user || null;
-  if (userError || !user) return json({ error: "invalid_session" }, 401);
+  if (userError || !user) return jsonResponse(req, { error: "invalid_session" }, 401);
+  if (!user.email_confirmed_at) {
+    return jsonResponse(req, { error: "email_confirmation_required" }, 403);
+  }
 
-  const body = await req.json().catch(() => ({}));
+  const parsedBody = await readJsonObject(req);
+  if (parsedBody.error) {
+    return jsonResponse(req, { error: parsedBody.error }, parsedBody.status);
+  }
+  const body = parsedBody.data;
   const internalOrderId = String(body?.orderId || "").trim();
   const operation = String(body?.operation || "create").toLowerCase();
-  if (!internalOrderId) return json({ error: "orderId_required" }, 400);
+  if (!isUuid(internalOrderId)) {
+    return jsonResponse(req, { error: "invalid_order_id" }, 400);
+  }
+  if (!["quote", "status", "create"].includes(operation)) {
+    return jsonResponse(req, { error: "invalid_operation" }, 400);
+  }
+
+  const rateLimit = await checkRateLimit(
+    supabaseAdmin,
+    `payment:card:${operation}:${user.id}`,
+    operation === "create" ? 5 : 30,
+    10 * 60,
+  );
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(req, rateLimit);
+  }
 
   const { data: order, error: orderError } = await supabaseAdmin
     .from("orders")
@@ -253,21 +278,21 @@ Deno.serve(async (req: Request) => {
     .eq("id", internalOrderId)
     .single();
 
-  if (orderError || !order) return json({ error: "order_not_found" }, 404);
+  if (orderError || !order) return jsonResponse(req, { error: "order_not_found" }, 404);
   if (!order.user_id || order.user_id !== user.id) {
-    return json({ error: "order_not_owned_by_user" }, 403);
+    return jsonResponse(req, { error: "order_not_owned_by_user" }, 403);
   }
 
   const pricing = await calculateOrderPricing(supabaseAdmin, order);
   if (pricing.hasUnknownTotal || pricing.total <= 0) {
-    return json({
+    return jsonResponse(req, {
       error: "quote_required",
       message: "Este pedido necesita cotizacion antes de pagar en linea.",
       pricing,
     }, 422);
   }
   if (pricing.total < MIN_ONLINE_PAYMENT_MXN) {
-    return json({
+    return jsonResponse(req, {
       error: "minimum_payment_amount",
       message: `El pago en linea requiere un total minimo de $${MIN_ONLINE_PAYMENT_MXN.toFixed(2)} MXN.`,
       minimum: MIN_ONLINE_PAYMENT_MXN,
@@ -276,7 +301,7 @@ Deno.serve(async (req: Request) => {
   }
 
   if (operation === "quote") {
-    return json({
+    return jsonResponse(req, {
       amount: pricing.total,
       currency: pricing.currency,
       pricing,
@@ -286,15 +311,15 @@ Deno.serve(async (req: Request) => {
   if (operation === "status") {
     const existing = await findPaymentRecord(internalOrderId);
     if (!existing?.provider_order_id) {
-      return json({ error: "provider_order_not_found" }, 404);
+      return jsonResponse(req, { error: "provider_order_not_found" }, 404);
     }
 
     const fetched = await fetchMercadoPagoOrder(existing.provider_order_id);
     if (!fetched.response.ok) {
-      return json({
+      return jsonResponse(req, {
         error: "mercadopago_order_error",
-        detail: fetched.payload,
-      }, fetched.response.status);
+        message: "No se pudo consultar el estado del pago.",
+      }, fetched.response.status >= 500 ? 502 : 422);
     }
 
     const saved = await savePaymentRecord({
@@ -305,7 +330,7 @@ Deno.serve(async (req: Request) => {
       source: "status_query",
     });
     if (saved.result.error) {
-      return json({ error: "payment_record_error", detail: saved.result.error.message }, 500);
+      return jsonResponse(req, { error: "payment_record_error" }, 500);
     }
 
     await updateInternalOrder({
@@ -316,7 +341,7 @@ Deno.serve(async (req: Request) => {
       paymentStatus: saved.status,
     });
 
-    return json({
+    return jsonResponse(req, {
       provider_order_id: fetched.payload.id,
       provider_payment_id: saved.state.transaction?.id || null,
       status: saved.status,
@@ -327,16 +352,21 @@ Deno.serve(async (req: Request) => {
   }
 
   if (["approved", "paid", "confirmed"].includes(String(order.payment_status || "").toLowerCase())) {
-    return json({ error: "payment_already_confirmed" }, 409);
+    return jsonResponse(req, { error: "payment_already_confirmed" }, 409);
   }
 
   const formData = body?.formData || {};
   const tokenizedCard = String(formData?.token || "").trim();
   const paymentMethodId = String(formData?.payment_method_id || "").trim();
-  const installments = Math.max(1, Math.trunc(Number(formData?.installments) || 1));
+  const installments = Math.min(24, Math.max(1, Math.trunc(Number(formData?.installments) || 1)));
   const attemptId = String(body?.attemptId || crypto.randomUUID()).trim();
-  if (!tokenizedCard || !paymentMethodId) {
-    return json({ error: "card_data_required" }, 400);
+  if (
+    tokenizedCard.length < 16 ||
+    tokenizedCard.length > 256 ||
+    !/^[a-z0-9_-]{1,64}$/i.test(paymentMethodId) ||
+    !isUuid(attemptId)
+  ) {
+    return jsonResponse(req, { error: "invalid_card_request" }, 400);
   }
 
   let paymentTypeId = String(
@@ -346,11 +376,11 @@ Deno.serve(async (req: Request) => {
   ).trim();
   if (!paymentTypeId) paymentTypeId = await paymentTypeFor(paymentMethodId);
   if (!["credit_card", "debit_card", "prepaid_card"].includes(paymentTypeId)) {
-    return json({ error: "invalid_payment_type", paymentTypeId }, 400);
+    return jsonResponse(req, { error: "invalid_payment_type" }, 400);
   }
 
-  const payerEmail = String(formData?.payer?.email || user.email || "").trim();
-  if (!payerEmail) return json({ error: "payer_email_required" }, 400);
+  const payerEmail = String(user.email || "").trim();
+  if (!payerEmail) return jsonResponse(req, { error: "payer_email_required" }, 400);
 
   const identificationType = String(formData?.payer?.identification?.type || "").trim();
   const identificationNumber = String(formData?.payer?.identification?.number || "").trim();
@@ -412,10 +442,9 @@ Deno.serve(async (req: Request) => {
   }
 
   if (!mpResponse.ok) {
-    return json({
+    return jsonResponse(req, {
       error: "mercadopago_order_error",
       message: "Mercado Pago no pudo procesar la tarjeta.",
-      detail: providerOrder,
     }, mpResponse.status >= 500 ? 502 : 422);
   }
 
@@ -427,7 +456,7 @@ Deno.serve(async (req: Request) => {
     source: "order_created",
   });
   if (saved.result.error) {
-    return json({ error: "payment_record_error", detail: saved.result.error.message }, 500);
+    return jsonResponse(req, { error: "payment_record_error" }, 500);
   }
 
   const orderUpdate = await updateInternalOrder({
@@ -438,10 +467,10 @@ Deno.serve(async (req: Request) => {
     paymentStatus: saved.status,
   });
   if (orderUpdate.error) {
-    return json({ error: "order_update_error", detail: orderUpdate.error.message }, 500);
+    return jsonResponse(req, { error: "order_update_error" }, 500);
   }
 
-  return json({
+  return jsonResponse(req, {
     provider_order_id: providerOrder.id,
     provider_payment_id: saved.state.transaction?.id || null,
     status: saved.status,

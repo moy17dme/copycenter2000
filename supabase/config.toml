@@ -26,3 +26,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/process-card-payment/deno.json"
 entrypoint = "./functions/process-card-payment/index.ts"
+
+[functions.upload-order-file]
+enabled = true
+verify_jwt = true
+import_map = "./functions/upload-order-file/deno.json"
+entrypoint = "./functions/upload-order-file/index.ts"

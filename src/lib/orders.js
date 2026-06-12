@@ -2,6 +2,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { supabase, supabaseAnonKey, supabaseUrl } from "./supabaseClient";
 import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
+import {
+  MAX_FILES_PER_ORDER,
+  validatePrintableFile,
+} from "../utils/fileGuards";
 
 // El cliente real es el de usuario autenticado; RLS decide permisos.
 export const supabaseAdmin = supabase;
@@ -134,6 +138,21 @@ function firstMoney(...values) {
 export function formatMoney(value) {
   const n = roundMoney(value) ?? 0;
   return fmtMXN(n);
+}
+
+export function isTrustedMercadoPagoUrl(value) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    return url.protocol === "https:" && (
+      host === "mercadopago.com" ||
+      host.endsWith(".mercadopago.com") ||
+      host === "mercadopago.com.mx" ||
+      host.endsWith(".mercadopago.com.mx")
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function getItemPricing(item) {
@@ -377,7 +396,7 @@ export function buildOrderWhatsAppMessage({ order, isNew = true }) {
 // ── Abrir WhatsApp con mensaje ────────────────────────────────────
 export function openWhatsApp(phone, message) {
   const encoded = encodeURIComponent(message);
-  window.open(`https://wa.me/${phone}?text=${encoded}`, "_blank");
+  window.open(`https://wa.me/${phone}?text=${encoded}`, "_blank", "noopener,noreferrer");
 }
 
 // ── Guardar pedido en Supabase ───────────────────────────────────
@@ -419,32 +438,79 @@ export async function saveProfileBilling({ userId, rfc, razonSocial, constanciaP
 }
 
 // ── Subir constancia de situación fiscal ────────────────────────
+async function uploadValidatedOrderFile({
+  orderId,
+  itemId,
+  kind,
+  file,
+  fileName,
+  accessToken,
+}) {
+  if (!accessToken) throw new Error("Inicia sesion para subir archivos.");
+  if (!file || !(file instanceof File || file instanceof Blob)) {
+    throw new Error("No se recibio un archivo valido.");
+  }
+
+  const originalName = fileName || file.name || "archivo";
+  const validationTarget = file.name
+    ? file
+    : {
+        name: originalName,
+        size: file.size,
+        arrayBuffer: () => file.arrayBuffer(),
+      };
+  const validationError = await validatePrintableFile(validationTarget, {
+    pdfOnly: kind === "constancia_fiscal",
+  });
+  if (validationError) throw new Error(`${originalName}: ${validationError}`);
+
+  const body = new FormData();
+  body.append("orderId", orderId);
+  body.append("itemId", itemId || "");
+  body.append("kind", kind);
+  body.append("file", file, originalName);
+
+  const response = await withTimeout(
+    fetch(`${supabaseUrl}/functions/v1/upload-order-file`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body,
+    }),
+    60000,
+    `La subida de ${originalName} tardo demasiado.`
+  );
+
+  const text = await response.text();
+  let payload = {};
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch {
+    payload = {};
+  }
+  if (!response.ok) {
+    const error = new Error(
+      payload.message || payload.error || `No se pudo subir ${originalName}.`
+    );
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
+  }
+  return payload;
+}
+
 export async function uploadConstancia(orderId, userId, file, { accessToken } = {}) {
   if (!file || !(file instanceof File || file instanceof Blob)) return null;
-  const client = createRequestClient(accessToken);
-  const sourceName = file.name || "constancia.pdf";
-  const ext = sourceName.split(".").pop() || "pdf";
-  const path = `orders/${orderId}/constancia_${userId || "guest"}.${ext}`;
-
-  try {
-    const { data, error } = await withTimeout(
-      client.storage.from("order-files").upload(path, file, {
-        upsert: false,
-        contentType: file.type || "application/pdf",
-        cacheControl: "3600",
-      }),
-      15000,
-      "No se pudo subir la constancia. Verifica la conexion."
-    );
-    if (error) {
-      console.warn("[upload] ERROR constancia:", error.message);
-      return null;
-    }
-    return data?.path || path;
-  } catch (error) {
-    console.warn("[upload] TIMEOUT/ERROR constancia:", error?.message || error);
-    return null;
-  }
+  const data = await uploadValidatedOrderFile({
+    orderId,
+    itemId: userId || "billing",
+    kind: "constancia_fiscal",
+    file,
+    fileName: file.name || "constancia.pdf",
+    accessToken,
+  });
+  return data.path;
 }
 
 function isMissingOptionalOrderColumn(error) {
@@ -469,6 +535,19 @@ export async function createOrder({
   total,
   billingInfo,
 }) {
+  if (!user?.id || !accessToken) {
+    return { data: null, error: new Error("Inicia sesion para crear un pedido.") };
+  }
+  if (!Array.isArray(items) || items.length < 1 || items.length > 50) {
+    return { data: null, error: new Error("El pedido debe contener entre 1 y 50 productos.") };
+  }
+  if (String(customerName || "").trim().length > 120) {
+    return { data: null, error: new Error("El nombre es demasiado largo.") };
+  }
+  if (String(customerPhone || "").trim().length > 32 || String(notes || "").length > 4000) {
+    return { data: null, error: new Error("Los datos del pedido exceden el limite permitido.") };
+  }
+
   // Limpiar File objects (no serializables) antes de guardar
   const cleanItems = items.map(({ file, previewUrl, blob, pdfFile, fileObject, ...rest }) => {
     const pricing = rest.pricing || getItemPricing(rest);
@@ -683,63 +762,36 @@ export function queryMercadoPagoCardStatus({ orderId, accessToken }) {
 }
 
 export async function uploadOrderFiles(orderId, items, { accessToken } = {}) {
-  const checkoutClient = createRequestClient(accessToken);
-  console.log("[upload] Iniciando subida para orden:", orderId, "| items:", items.length);
-
-  const uploadJobs = items.map(async (item) => {
+  const candidates = items.slice(0, MAX_FILES_PER_ORDER).flatMap((item) => {
     const file = item.file || item.pdfFile || item.fileObject || item.blob;
-    console.log("[upload] Item:", item.id, "| file:", file ? `${file.name} (${file.size}b)` : "sin archivo");
-    if (!file || !(file instanceof File || file instanceof Blob)) return null;
+    return file && (file instanceof File || file instanceof Blob)
+      ? [{ item, file }]
+      : [];
+  });
+  const results = [];
+  const concurrency = 3;
 
-    const originalName = (item.fileName || file.name || "archivo").replace(/[^a-zA-Z0-9._-]/g, "_");
-    const ext = originalName.split(".").pop() || "pdf";
-    const baseName = originalName.replace(/\.[^.]+$/, "").slice(0, 60);
-    const itemId = item.id || Math.random().toString(36).slice(2, 10);
-    const path = `orders/${orderId}/${itemId}_${baseName}.${ext}`;
-    console.log("[upload] Subiendo a path:", path);
-
-    try {
-      const { data, error } = await withTimeout(
-        checkoutClient.storage
-          .from("order-files")
-          .upload(path, file, {
-            upsert: false,
-            contentType: file.type || "application/octet-stream",
-            cacheControl: "3600",
-          }),
-        15000,
-        `Supabase no respondio al subir ${originalName}.`
-      );
-
-      if (error) {
-        console.warn(`[upload] ERROR subiendo ${originalName}:`, error.message);
-        return null;
-      }
-
-      console.log("[upload] OK:", data.path);
+  for (let index = 0; index < candidates.length; index += concurrency) {
+    const batch = candidates.slice(index, index + concurrency);
+    const uploaded = await Promise.all(batch.map(async ({ item, file }) => {
+      const originalName = item.fileName || file.name || "archivo";
+      const data = await uploadValidatedOrderFile({
+        orderId,
+        itemId: item.id || "",
+        kind: "order_file",
+        file,
+        fileName: originalName,
+        accessToken,
+      });
       return {
         itemId: item.id,
         path: data.path,
-        originalName,
-        size: file.size,
+        originalName: data.originalName || originalName,
+        size: data.size || file.size,
+        type: "order_file",
       };
-    } catch (error) {
-      console.warn(`[upload] TIMEOUT/ERROR subiendo ${originalName}:`, error?.message || error);
-      return null;
-    }
-  });
-
-  const settled = await Promise.allSettled(uploadJobs);
-  const results = settled.flatMap((result) => (
-    result.status === "fulfilled" && result.value ? [result.value] : []
-  ));
-
-  console.log("[upload] Resultados:", results);
-
-  if (results.length > 0) {
-    console.log("[upload] Archivos listos en Storage:", results.map((r) => r.path));
-  } else {
-    console.warn("[upload] Ningún archivo encontrado en los items del carrito.");
+    }));
+    results.push(...uploaded);
   }
 
   return results;
