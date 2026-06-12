@@ -54,6 +54,7 @@ function uploadErrorMessage(code: string) {
     unsupported_file_type: "Solo se permiten archivos PDF, PNG o JPG/JPEG.",
     invalid_pdf_signature: "El archivo no contiene una firma PDF valida.",
     incomplete_pdf: "El PDF esta incompleto o danado.",
+    appended_pdf_payload: "El PDF contiene datos no permitidos despues de su cierre.",
     active_or_encrypted_pdf:
       "El PDF contiene contenido activo, adjuntos o cifrado no permitido.",
     invalid_png_signature: "El archivo no contiene una firma PNG valida.",

@@ -6,18 +6,19 @@ export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 export const MAX_FILES_PER_ORDER = 50;
 export const ALLOWED_UPLOAD_EXTS = new Set(["pdf", "png", "jpg", "jpeg"]);
 const MAX_IMAGE_PIXELS = 100_000_000;
-const PDF_BLOCKED_FEATURES = [
-  "/javascript",
-  "/js",
-  "/launch",
-  "/openaction",
-  "/embeddedfile",
-  "/richmedia",
-  "/xfa",
-  "/encrypt",
-  "/submitform",
-  "/importdata",
-];
+const PDF_BLOCKED_NAMES = new Set([
+  "javascript",
+  "js",
+  "launch",
+  "embeddedfile",
+  "embeddedfiles",
+  "ef",
+  "richmedia",
+  "xfa",
+  "encrypt",
+  "submitform",
+  "importdata",
+]);
 
 export function getExt(name = "") {
   const value = String(name);
@@ -65,15 +66,76 @@ function hasBytes(bytes, offset, expected) {
   return expected.every((value, index) => bytes[offset + index] === value);
 }
 
-function containsAsciiIgnoreCase(bytes, text) {
-  const needle = Array.from(text, (character) => character.charCodeAt(0));
-  outer: for (let offset = 0; offset <= bytes.length - needle.length; offset += 1) {
-    for (let index = 0; index < needle.length; index += 1) {
-      const value = bytes[offset + index];
-      const lower = value >= 65 && value <= 90 ? value + 32 : value;
-      if (lower !== needle[index]) continue outer;
+function isPdfWhitespace(character) {
+  return character === "\x00" || /[\t\n\f\r ]/.test(character);
+}
+
+function isPdfDelimiter(character) {
+  return !character || isPdfWhitespace(character) || /[()[\]{}<>/%]/.test(character);
+}
+
+function decodePdfName(value) {
+  return value
+    .replace(/#([0-9a-f]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .toLowerCase();
+}
+
+function pdfHasBlockedName(bytes) {
+  const source = ascii(bytes);
+
+  for (let index = 0; index < source.length;) {
+    const character = source[index];
+
+    if (character === "%") {
+      while (index < source.length && !/[\r\n]/.test(source[index])) index += 1;
+      continue;
     }
-    return true;
+
+    if (character === "(") {
+      let depth = 1;
+      index += 1;
+      while (index < source.length && depth > 0) {
+        if (source[index] === "\\") {
+          index += 2;
+          continue;
+        }
+        if (source[index] === "(") depth += 1;
+        if (source[index] === ")") depth -= 1;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (character === "<") {
+      if (source[index + 1] === "<") {
+        index += 2;
+        continue;
+      }
+      const end = source.indexOf(">", index + 1);
+      index = end === -1 ? source.length : end + 1;
+      continue;
+    }
+
+    if (
+      source.startsWith("stream", index) &&
+      isPdfDelimiter(source[index - 1]) &&
+      /[\r\n]/.test(source[index + 6] || "")
+    ) {
+      const end = source.indexOf("endstream", index + 6);
+      index = end === -1 ? source.length : end + 9;
+      continue;
+    }
+
+    if (character === "/") {
+      let end = index + 1;
+      while (end < source.length && !isPdfDelimiter(source[end])) end += 1;
+      const name = decodePdfName(source.slice(index + 1, end));
+      if (PDF_BLOCKED_NAMES.has(name)) return true;
+      index = end;
+      continue;
+    }
+
+    index += 1;
   }
   return false;
 }
@@ -83,12 +145,17 @@ function validatePdfBytes(bytes) {
     return "El archivo no contiene una firma PDF valida.";
   }
 
-  const tail = ascii(bytes, Math.max(0, bytes.length - 8192)).trimEnd();
-  if (!tail.includes("%%EOF")) {
+  const tail = ascii(bytes, Math.max(0, bytes.length - 8192));
+  const eofIndex = tail.lastIndexOf("%%EOF");
+  if (eofIndex === -1) {
     return "El PDF esta incompleto o danado.";
   }
+  const afterEof = tail.slice(eofIndex + 5);
+  if (afterEof.replace(/%[^\r\n]*(?:\r?\n|$)/g, "").trim().length > 0) {
+    return "El PDF contiene datos no permitidos despues de su cierre.";
+  }
 
-  if (PDF_BLOCKED_FEATURES.some((feature) => containsAsciiIgnoreCase(bytes, feature))) {
+  if (pdfHasBlockedName(bytes)) {
     return "El PDF contiene contenido activo, adjuntos o cifrado no permitido.";
   }
 
