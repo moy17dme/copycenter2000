@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { signInAndCheckMfa } from "../lib/authFlow";
+import GoogleSignInButton from "./GoogleSignInButton";
 
 function isValidWhatsapp(raw) {
   return /^\+?\d{10,15}$/.test(String(raw || "").trim());
@@ -195,6 +196,14 @@ export default function CheckoutAuthModal({ open, onClose, onReady }) {
           )}
           {msg && (
             <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-[12px] text-emerald-200">{msg}</div>
+          )}
+
+          {(mode === "signin" || mode === "signup") && (
+            <GoogleSignInButton
+              resumeCheckout
+              dividerLabel="o usa tu correo"
+              onError={(error) => setErr(humanizeError(error?.message))}
+            />
           )}
 
           {/* ── Login ── */}

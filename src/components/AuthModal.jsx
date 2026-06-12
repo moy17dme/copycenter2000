@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { isPhoneInput, signInAndCheckMfa } from "../lib/authFlow";
+import GoogleSignInButton from "./GoogleSignInButton";
 
 // ─── Utilidades ────────────────────────────────────────────────────────────────
 
@@ -356,6 +357,16 @@ export default function AuthModal({ open, onClose, onSignedOut, user: userProp, 
               <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-[12px] text-emerald-200">
                 {msg}
               </div>
+            )}
+
+            {!user && (mode === "login" || mode === "register") && (
+              <GoogleSignInButton
+                dividerLabel="o usa tu correo"
+                onError={(error) => {
+                  setMsg("");
+                  setErr(humanizeAuthError(error?.message));
+                }}
+              />
             )}
 
             {/* ── Usuario logueado ── */}

@@ -31,6 +31,7 @@ import ServicesPage from "./pages/ServicesPage";
 import ResourcesPage from "./pages/ResourcesPage";
 import PrintFileGuidePage from "./pages/PrintFileGuidePage";
 import WhatsAppWidget from "./components/WhatsAppWidget";
+import { OAUTH_RESUME_CHECKOUT_KEY } from "./lib/googleAuth";
 
 // ✅ OJO: App.jsx está en src/, por eso es ./lib/...
 import { supabase } from "./lib/supabaseClient";
@@ -114,6 +115,8 @@ function NoIndexRoute({ path, title, children }) {
 }
 
 export default function App() {
+  const location = useLocation();
+
   // carrito
   const [cartOpen, setCartOpen] = useState(false);
   const [cartTab, setCartTab] = useState("pedido");
@@ -261,6 +264,18 @@ export default function App() {
       sub?.subscription?.unsubscribe?.();
     };
   }, []);
+
+  useEffect(() => {
+    if (!user || location.pathname === "/auth/callback") return;
+
+    try {
+      if (sessionStorage.getItem(OAUTH_RESUME_CHECKOUT_KEY) !== "1") return;
+      sessionStorage.removeItem(OAUTH_RESUME_CHECKOUT_KEY);
+      openCart({ tab: "pedido", autoCheckout: true });
+    } catch {
+      // El checkout puede abrirse manualmente si el almacenamiento esta bloqueado.
+    }
+  }, [location.pathname, user]);
 
   return (
     <CartProvider>

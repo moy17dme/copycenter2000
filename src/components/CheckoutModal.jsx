@@ -20,6 +20,7 @@ import { redeemCopyTicket } from "../lib/copyTickets";
 import { isTicketRequiredItem } from "../lib/ticketItems";
 import MercadoPagoCardPayment, { MercadoPagoChallenge } from "./MercadoPagoCardPayment";
 import { validatePrintableFile } from "../utils/fileGuards";
+import GoogleSignInButton from "./GoogleSignInButton";
 
 // Datos bancarios del negocio (edita estos valores)
 const BANK_INFO = {
@@ -683,6 +684,15 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
           {/* ── FORMULARIO ─────────────────────────────── */}
           {step === STEPS.FORM && (
             <form onSubmit={handleConfirm} className="p-6 space-y-5">
+
+              {!user && (
+                <GoogleSignInButton
+                  resumeCheckout
+                  onError={(authError) =>
+                    setError(authError?.message || "No se pudo abrir el acceso con Google.")
+                  }
+                />
+              )}
 
               {/* Resumen de servicios con precios */}
               <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #273449' }}>

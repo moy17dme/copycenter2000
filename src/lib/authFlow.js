@@ -1,3 +1,5 @@
+import { supabase } from "./supabaseClient";
+
 function normalizePhone(input) {
   return String(input || "").trim().replace(/[\s\-().]/g, "");
 }
@@ -24,13 +26,31 @@ export async function signInAndCheckMfa({ input, password }) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
 
+  const challenge = await createVerifiedTotpChallenge();
+  if (!challenge) {
+    return { status: "signed_in", data, email };
+  }
+
+  return {
+    status: "mfa_required",
+    data,
+    email,
+    factorId: challenge.factorId,
+    challengeId: challenge.challengeId,
+  };
+}
+
+export async function createVerifiedTotpChallenge() {
+  const { data: assurance, error: assuranceError } =
+    await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (assuranceError) throw assuranceError;
+  if (assurance?.currentLevel === "aal2") return null;
+
   const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
   if (factorsError) throw factorsError;
 
   const totpFactor = factorsData?.totp?.find((factor) => factor.status === "verified");
-  if (!totpFactor) {
-    return { status: "signed_in", data, email };
-  }
+  if (!totpFactor) return null;
 
   const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
     factorId: totpFactor.id,
@@ -38,9 +58,6 @@ export async function signInAndCheckMfa({ input, password }) {
   if (challengeError) throw challengeError;
 
   return {
-    status: "mfa_required",
-    data,
-    email,
     factorId: totpFactor.id,
     challengeId: challenge.id,
   };
