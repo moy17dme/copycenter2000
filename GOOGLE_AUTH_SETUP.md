@@ -37,8 +37,8 @@ En Authentication > URL Configuration:
 
 ```text
 Site URL: https://copycenter2000.com
-Redirect URL: https://copycenter2000.com/auth/callback
-Redirect URL local: http://localhost:5173/auth/callback
+Redirect URL: https://copycenter2000.com/auth/callback/
+Redirect URL local: http://localhost:5173/auth/callback/
 ```
 
 Usa rutas exactas en produccion. No agregues comodines para

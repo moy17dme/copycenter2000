@@ -18,8 +18,9 @@ export function sanitizeOAuthReturnPath(value) {
 
   try {
     const url = new URL(value || "/", window.location.origin);
+    const normalizedPath = url.pathname.replace(/\/+$/, "") || "/";
     if (url.origin !== window.location.origin) return "/";
-    if (url.pathname === "/auth/callback") return "/";
+    if (normalizedPath === "/auth/callback") return "/";
     return `${url.pathname}${url.search}${url.hash}`;
   } catch {
     return "/";
@@ -56,7 +57,7 @@ export function buildGoogleOAuthRedirect({
     throw new Error("El acceso con Google solo esta disponible en el navegador.");
   }
 
-  const callback = new URL("/auth/callback", window.location.origin);
+  const callback = new URL("/auth/callback/", window.location.origin);
   callback.searchParams.set("next", sanitizeOAuthReturnPath(returnTo));
   if (resumeCheckout) callback.searchParams.set("resume", "checkout");
   return callback.toString();

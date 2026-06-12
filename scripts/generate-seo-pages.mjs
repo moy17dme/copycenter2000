@@ -35,6 +35,13 @@ const breadcrumbLabels = {
   "/terminos": "Términos y condiciones",
 };
 
+const functionalRoutes = {
+  "/auth/callback": {
+    title: "Conectando cuenta | Copy Center 2000",
+    description: "Retorno seguro de autenticacion de Copy Center 2000.",
+  },
+};
+
 function escapeHtml(value) {
   return value
     .replaceAll("&", "&amp;")
@@ -114,11 +121,15 @@ function buildRouteSchema(path, seo) {
   return schemas;
 }
 
-function renderRouteHtml(path, seo) {
+function renderRouteHtml(
+  path,
+  seo,
+  { includeSchema = true, noindex = false, prerender = true } = {},
+) {
   const title = escapeHtml(seo.title);
   const description = escapeHtml(seo.description);
   const canonical = getCanonicalUrl(path);
-  const appHtml = render(path);
+  const appHtml = prerender ? render(path) : "";
 
   let html = template.replace(/<title>.*?<\/title>/s, `<title>${title}</title>`);
   html = html.replace(
@@ -160,6 +171,15 @@ function renderRouteHtml(path, seo) {
     /<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/i,
     `<meta name="twitter:description" content="${description}" />`,
   );
+  if (noindex) {
+    html = replaceTag(
+      html,
+      /<meta\s+name="robots"\s+content="[^"]*"\s*\/?>/i,
+      '<meta name="robots" content="noindex, nofollow" />',
+    );
+  }
+
+  if (!includeSchema) return html;
 
   const schemaScripts = buildRouteSchema(path, seo)
     .map(
@@ -171,8 +191,7 @@ function renderRouteHtml(path, seo) {
   return html.replace("</head>", `    ${schemaScripts}\n  </head>`);
 }
 
-for (const [path, seo] of Object.entries(PUBLIC_ROUTE_SEO)) {
-  const html = renderRouteHtml(path, seo);
+async function writeRoute(path, html) {
   const outputPath =
     path === "/"
       ? join(distDir, "index.html")
@@ -181,6 +200,21 @@ for (const [path, seo] of Object.entries(PUBLIC_ROUTE_SEO)) {
   await writeFile(outputPath, html, "utf8");
 }
 
+for (const [path, seo] of Object.entries(PUBLIC_ROUTE_SEO)) {
+  await writeRoute(path, renderRouteHtml(path, seo));
+}
+
+for (const [path, seo] of Object.entries(functionalRoutes)) {
+  await writeRoute(
+    path,
+    renderRouteHtml(path, seo, {
+      includeSchema: false,
+      noindex: true,
+      prerender: false,
+    }),
+  );
+}
+
 console.log(
-  `Prerendered ${Object.keys(PUBLIC_ROUTE_SEO).length} public routes with route JSON-LD.`,
+  `Prerendered ${Object.keys(PUBLIC_ROUTE_SEO).length} public routes and ${Object.keys(functionalRoutes).length} functional routes.`,
 );
