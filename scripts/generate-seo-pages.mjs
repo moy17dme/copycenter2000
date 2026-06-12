@@ -134,7 +134,7 @@ function renderRouteHtml(
   let html = template.replace(/<title>.*?<\/title>/s, `<title>${title}</title>`);
   html = html.replace(
     '<div id="root"></div>',
-    `<div id="root">${appHtml}</div>`,
+    `<div id="root" data-prerender-path="${escapeHtml(path)}">${appHtml}</div>`,
   );
   html = replaceTag(
     html,
