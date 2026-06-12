@@ -329,7 +329,7 @@ export default function CartOverlay({
                       <p className="text-xs" style={{ color: '#9AA6B2' }}>Vista previa</p>
                       <p className="text-xs truncate max-w-[180px]" style={{ color: '#4E7BDA' }}>{activeItem?.fileName || ""}</p>
                     </div>
-                    <div className="h-[280px]">
+                    <div className="h-[clamp(280px,42vh,460px)]">
                       {(hasAnyFile || hasAnyUrl) && activeItem ? (
                         isPinsItem ? (
                           <PinCircularPreview

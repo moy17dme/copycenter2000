@@ -6,6 +6,7 @@ import {
   MAX_FILES_PER_ORDER,
   validatePrintableFile,
 } from "../utils/fileGuards";
+import { getPdfFitScale } from "../utils/pdfPreviewSizing";
 
 // === Constantes ===
 const ACCEPT = ".pdf,.png,.jpg,.jpeg";
@@ -479,32 +480,33 @@ export default function Pedido() {
         );
         const pageObj = await it.pdf.getPage(pageNum);
 
-        const base = pageObj.getViewport({ scale: 1, rotation: 0 });
-        const isPortrait = base.height >= base.width;
-        let rotation = 0; // opcional
+        const rotation = 0;
 
         const rotated = pageObj.getViewport({ scale: 1, rotation });
-        let targetScale = 1;
-        if (it.settings.sizeMode === "ajustar") {
-          const wr = boxW / rotated.width;
-          const hr = boxH / rotated.height;
-          targetScale = Math.min(wr, hr);
-        } else if (it.settings.sizeMode === "real") {
-          targetScale = 1;
-        } else {
-          targetScale = Math.max(
-            0.1,
-            Number(it.settings.scalePct) / 100
-          );
-        }
+        // El visor siempre encaja la hoja completa. Las opciones de escala
+        // afectan la impresion, no el zoom de previsualizacion.
+        const targetScale = getPdfFitScale({
+          pageWidth: rotated.width,
+          pageHeight: rotated.height,
+          containerWidth: boxW,
+          containerHeight: boxH,
+          insetX: 24,
+          insetY: 24,
+          maxScale: 3,
+        });
 
         const viewport = pageObj.getViewport({ scale: targetScale, rotation });
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.max(1, Math.floor(viewport.width * dpr));
+        canvas.height = Math.max(1, Math.floor(viewport.height * dpr));
+        canvas.style.width = `${Math.max(1, Math.floor(viewport.width))}px`;
+        canvas.style.height = `${Math.max(1, Math.floor(viewport.height))}px`;
+        const transform = dpr === 1 ? null : [dpr, 0, 0, dpr, 0, 0];
 
         await pageObj.render({
           canvasContext: ctx,
           viewport,
+          transform,
           intent: "display",
         }).promise;
         return;

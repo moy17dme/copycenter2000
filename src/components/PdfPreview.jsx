@@ -1,9 +1,9 @@
 // src/components/PdfPreview.jsx
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { pdfjsLib } from "@/lib/pdfjsSetup";
+import { getPdfFitScale } from "../utils/pdfPreviewSizing";
 
-const FIT_PADDING = 24;
-const FIT_FACTOR  = 0.82;
+const FIT_INSET = 24;
 
 const OFFICE_EXTS  = new Set(["doc", "docx", "xls", "xlsx", "ppt", "pptx"]);
 const IMAGE_EXTS   = new Set(["jpg", "jpeg", "png", "webp", "gif", "bmp"]);
@@ -155,25 +155,31 @@ export default function PdfPreview({ item, className = "" }) {
       if (myId !== renderCallId.current) return;
 
       const rect  = view.getBoundingClientRect();
-      const vw    = Math.max(50, rect.width  - FIT_PADDING);
-      const vh    = Math.max(50, rect.height - FIT_PADDING);
       const base  = p.getViewport({ scale: 1 });
-      const scale = Math.max(0.2, Math.min(3,
-        Math.min(vw / base.width, vh / base.height) * FIT_FACTOR
-      ));
+      const scale = getPdfFitScale({
+        pageWidth: base.width,
+        pageHeight: base.height,
+        containerWidth: rect.width,
+        containerHeight: rect.height,
+        insetX: FIT_INSET,
+        insetY: FIT_INSET,
+        maxScale: 3,
+      });
       const dpr      = window.devicePixelRatio || 1;
       const viewport = p.getViewport({ scale });
       const ctx      = canvas.getContext("2d", { alpha: false });
+      const cssWidth = Math.max(1, Math.floor(viewport.width));
+      const cssHeight = Math.max(1, Math.floor(viewport.height));
 
-      canvas.width        = Math.floor(viewport.width  * dpr);
-      canvas.height       = Math.floor(viewport.height * dpr);
-      canvas.style.width  = `${Math.floor(viewport.width)}px`;
-      canvas.style.height = `${Math.floor(viewport.height)}px`;
+      canvas.width        = Math.max(1, Math.floor(viewport.width * dpr));
+      canvas.height       = Math.max(1, Math.floor(viewport.height * dpr));
+      canvas.style.width  = `${cssWidth}px`;
+      canvas.style.height = `${cssHeight}px`;
 
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = true;
 
-      const task = p.render({ canvasContext: ctx, viewport });
+      const transform = dpr === 1 ? null : [dpr, 0, 0, dpr, 0, 0];
+      const task = p.render({ canvasContext: ctx, viewport, transform });
       renderTaskRef.current = task;
       await task.promise;
 
@@ -232,9 +238,6 @@ export default function PdfPreview({ item, className = "" }) {
         setNumPages(n);
         setPage(1);
         setLoading(false);
-
-        // Render directo, sin esperar re-render de React
-        await renderPageRef.current?.(1);
       } catch (e) {
         if (!cancelled) {
           setErr(e?.message || "Error cargando PDF");
@@ -247,12 +250,13 @@ export default function PdfPreview({ item, className = "" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, file, displayUrl]);
 
-  // ── Render al cambiar de página ───────────────────────────────────────
+  // Render inicial y al cambiar de pagina. Esperar a loading=false
+  // garantiza que React ya monto el canvas antes de dibujar.
   useEffect(() => {
-    if (kind !== "pdf" || !docRef.current || loading) return;
-    renderPage(page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+    if (kind !== "pdf" || !docRef.current || loading || !numPages) return;
+    const frame = window.requestAnimationFrame(() => renderPage(page));
+    return () => window.cancelAnimationFrame(frame);
+  }, [kind, loading, numPages, page, renderPage]);
 
   // ── ResizeObserver: re-render al cambiar tamaño del contenedor ────────
   useEffect(() => {
@@ -319,7 +323,10 @@ export default function PdfPreview({ item, className = "" }) {
             </div>
           ) : kind === "pdf" ? (
             <div className="w-full h-full flex items-center justify-center p-2">
-              <canvas ref={canvasRef} className="bg-white shadow rounded-sm" />
+              <canvas
+                ref={canvasRef}
+                className="block max-h-full max-w-full bg-white shadow rounded-sm"
+              />
             </div>
           ) : kind === "image" ? (
             <div className="w-full h-full flex items-center justify-center p-2">
