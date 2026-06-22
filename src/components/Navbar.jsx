@@ -1,20 +1,24 @@
 // src/components/Navbar.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LogOut, Menu, Package, ShieldCheck, ShoppingCart, UserRound, X } from "lucide-react";
+import { ChevronDown, LogOut, Menu, Package, ShieldCheck, ShoppingCart, Ticket, UserRound, X } from "lucide-react";
 import logo from "../assets/LOGOcopy.png";
 import { supabase } from "../lib/supabaseClient";
 import { hasAdminRole, useIsAdmin } from "../lib/useIsAdmin";
 
-const links = [
+const primaryLinks = [
   { to: "/", label: "Inicio" },
   { to: "/servicios", label: "Servicios" },
   { to: "/precios", label: "Precios" },
-  { to: "/ticket", label: "Pagar ticket" },
-  { to: "/portafolio", label: "Portafolio" },
-  { to: "/recursos", label: "Recursos" },
   { to: "/contacto", label: "Contacto" },
 ];
+
+const moreLinks = [
+  { to: "/portafolio", label: "Portafolio" },
+  { to: "/recursos", label: "Recursos" },
+];
+
+const mobileLinks = [...primaryLinks.slice(0, 3), ...moreLinks, primaryLinks[3]];
 
 export default function Navbar({
   onOpenCart,
@@ -25,6 +29,8 @@ export default function Navbar({
 }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreMenuRef = useRef(null);
   const { hash, pathname } = useLocation();
   const { isAdmin: verifiedIsAdmin } = useIsAdmin({ user, profile });
   const showAdminLink = Boolean(user && (hasAdminRole(user, profile) || verifiedIsAdmin));
@@ -38,7 +44,26 @@ export default function Navbar({
 
   useEffect(() => {
     setMobileOpen(false);
+    setMoreOpen(false);
   }, [hash, pathname]);
+
+  useEffect(() => {
+    if (!moreOpen) return undefined;
+
+    const closeOnOutsideClick = (event) => {
+      if (!moreMenuRef.current?.contains(event.target)) setMoreOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setMoreOpen(false);
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [moreOpen]);
 
   const name = useMemo(() => {
     const n = (displayName || "").trim() || user?.email || "";
@@ -69,6 +94,8 @@ export default function Navbar({
       : "text-muted-foreground hover:bg-secondary hover:text-white",
   ].join(" ");
 
+  const moreIsActive = moreLinks.some((link) => isActiveLink(link.to));
+
   return (
     <header
       className={[
@@ -85,22 +112,61 @@ export default function Navbar({
           />
         </Link>
 
-        <ul className="hidden items-center gap-1 rounded-lg border border-border/70 bg-secondary/30 p-1 xl:flex">
-          {links.map((l) => (
+        <ul className="hidden items-center gap-1 xl:flex">
+          {primaryLinks.map((l) => (
             <li key={l.to}>
               <Link to={l.to} className={linkClass(l.to)}>
                 {l.label}
               </Link>
             </li>
           ))}
+          <li ref={moreMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setMoreOpen((open) => !open)}
+              className={[
+                "inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                moreIsActive || moreOpen
+                  ? "bg-secondary text-white"
+                  : "text-muted-foreground hover:bg-secondary hover:text-white",
+              ].join(" ")}
+              aria-haspopup="menu"
+              aria-expanded={moreOpen}
+            >
+              Más
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform duration-150 ${moreOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {moreOpen && (
+              <div
+                role="menu"
+                className="absolute left-0 top-[calc(100%+8px)] z-50 min-w-40 rounded-lg border border-border bg-background p-1.5 shadow-2xl"
+              >
+                {moreLinks.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    role="menuitem"
+                    className={`${linkClass(link.to)} w-full justify-start py-2`}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </li>
         </ul>
 
         <div className="flex shrink-0 items-center gap-2">
-          {user && (
-            <span className="hidden max-w-32 truncate text-sm text-muted-foreground xl:inline">
-              Hola{ name ? `, ${name}` : "" }
-            </span>
-          )}
+          <Link
+            to="/ticket"
+            className="hidden shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-white xl:inline-flex"
+          >
+            <Ticket className="h-4 w-4" />
+            Pagar ticket
+          </Link>
 
           {!user ? (
             <button
@@ -133,10 +199,11 @@ export default function Navbar({
               <button
                 type="button"
                 onClick={onOpenAuth}
-                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary/70 px-3 py-2 text-sm font-medium text-secondary-foreground transition hover:bg-muted"
+                className="inline-flex max-w-36 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary/70 px-3 py-2 text-sm font-medium text-secondary-foreground transition hover:bg-muted"
+                title="Mi cuenta"
               >
                 <UserRound className="h-4 w-4" />
-                Mi cuenta
+                <span className="truncate">{name || "Mi cuenta"}</span>
               </button>
 
               <button
@@ -175,7 +242,7 @@ export default function Navbar({
       {mobileOpen && (
         <div className="border-t border-border/70 bg-background/95 shadow-[0_18px_36px_rgba(0,0,0,0.32)] xl:hidden">
           <div className="mx-auto grid max-w-7xl gap-2 px-4 py-3">
-            {links.map((l) => (
+            {mobileLinks.map((l) => (
               <Link
                 key={l.to}
                 to={l.to}
@@ -187,6 +254,15 @@ export default function Navbar({
             ))}
 
             <div className="mt-2 grid gap-2 border-t border-border/70 pt-3">
+              <Link
+                to="/ticket"
+                onClick={() => setMobileOpen(false)}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-400/25 bg-blue-500/10 px-4 py-2.5 text-sm font-semibold text-blue-200 transition-colors hover:bg-blue-500/15"
+              >
+                <Ticket className="h-4 w-4" />
+                Pagar ticket
+              </Link>
+
               {!user ? (
                 <button
                   type="button"
@@ -229,7 +305,7 @@ export default function Navbar({
                     className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary/70 px-4 py-2.5 text-sm font-medium text-secondary-foreground transition hover:bg-muted"
                   >
                     <UserRound className="h-4 w-4" />
-                    Mi cuenta
+                    {name || "Mi cuenta"}
                   </button>
 
                   <button
