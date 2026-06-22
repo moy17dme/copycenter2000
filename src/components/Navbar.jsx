@@ -231,6 +231,8 @@ export default function Navbar({
           <button
             type="button"
             onClick={onOpenCart}
+            aria-label="Abrir carrito"
+            title="Abrir carrito"
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-600 active:scale-[.99] sm:px-4"
           >
             <span className="hidden sm:inline">Carrito</span>
