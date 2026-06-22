@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ChevronDown, LogOut, Menu, Package, ShieldCheck, ShoppingCart, Ticket, UserRound, X } from "lucide-react";
-import logo from "../assets/LOGOcopy.png";
+import logo from "../assets/LOGOcopy-330.webp";
 import { supabase } from "../lib/supabaseClient";
 import { hasAdminRole, useIsAdmin } from "../lib/useIsAdmin";
 
@@ -108,6 +108,9 @@ export default function Navbar({
           <img
             src={logo}
             alt="Copy Center 2000"
+            width="330"
+            height="154"
+            decoding="async"
             className="h-8 w-auto max-w-[148px] object-contain drop-shadow sm:max-w-none"
           />
         </Link>

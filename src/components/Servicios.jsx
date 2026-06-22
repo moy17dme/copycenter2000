@@ -1,13 +1,8 @@
 // src/components/Servicios.jsx
-import { useRef, useState, useEffect, useMemo, useCallback } from "react";
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { lazy, Suspense, useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { CheckCircle2, Paperclip, PencilLine, Search, ShoppingCart, Upload, X } from "lucide-react";
 import { useCart } from "./CartContext";
-import { pdfjsLib } from "@/lib/pdfjsSetup";
 import { supabase } from "@/lib/supabaseClient";
-import ServiceOptionsEditor from "./service-editors/ServiceOptionsEditor";
 import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
 import {
   getExt,
@@ -15,17 +10,17 @@ import {
   validatePrintableFile,
 } from "../utils/fileGuards";
 
-gsap.registerPlugin(useGSAP, ScrollTrigger);
+const ServiceOptionsEditor = lazy(() => import("./service-editors/ServiceOptionsEditor"));
 
-import digi from "@/assets/digi.png";
-import engar from "@/assets/engar.png";
-import planos from "@/assets/planos.png";
-import artes from "@/assets/artes.png";
-import stickers from "@/assets/stickers.png";
-import pvcImg from "@/assets/pvc.png";
-import subliImg from "@/assets/sublimacion.png";
-import scanImg from "@/assets/scan.png";
-import pinsImg from "@/assets/pins.png";
+import digi from "@/assets/digi.webp";
+import engar from "@/assets/engar.webp";
+import planos from "@/assets/planos.webp";
+import artes from "@/assets/artes.webp";
+import stickers from "@/assets/stickers.webp";
+import pvcImg from "@/assets/pvc.webp";
+import subliImg from "@/assets/sublimacion.webp";
+import scanImg from "@/assets/scan.webp";
+import pinsImg from "@/assets/pins.webp";
 
 // Mapa de imágenes locales por serviceKey
 const IMG_MAP = {
@@ -42,6 +37,47 @@ const IMG_MAP = {
   actas: scanImg,
   "constancia-situacion-fiscal": scanImg,
 };
+
+function DeferredServiceImage({ src, alt }) {
+  const containerRef = useRef(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element || typeof IntersectionObserver === "undefined") {
+      setShouldLoad(true);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setShouldLoad(true);
+        observer.disconnect();
+      },
+      { rootMargin: "180px 0px" },
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className="h-40 w-full bg-secondary/40">
+      {shouldLoad ? (
+        <img
+          src={src}
+          alt={alt}
+          width="1024"
+          height="768"
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
+      ) : null}
+    </div>
+  );
+}
 
 // Fallback estático (por si la BD tarda o falla)
 const SERVICIOS_FALLBACK = [
@@ -249,17 +285,17 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "center" });
           // Animación: glow pulsante + pequeño rebote
-          gsap.killTweensOf(el);
-          gsap.timeline()
-            .to(el, { scale: 1.03, duration: 0.18, ease: "power2.out" })
-            .to(el, { scale: 1.0,  duration: 0.22, ease: "power2.in" })
-            .fromTo(el,
-              { boxShadow: "0 0 0 3px rgba(79,123,218,0.95), 0 0 28px rgba(79,123,218,0.6)" },
-              { boxShadow: "0 0 0 3px rgba(79,123,218,0.2), 0 0 8px rgba(79,123,218,0.1)",
-                duration: 0.7, repeat: 3, yoyo: true, ease: "sine.inOut" },
-              "<0.1"
-            )
-            .to(el, { boxShadow: "0 0 0 2px rgba(79,123,218,0.55)", duration: 0.3 });
+          el.getAnimations().forEach((animation) => animation.cancel());
+          if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            el.animate(
+              [
+                { transform: "scale(1)", boxShadow: "0 0 0 2px rgba(79,123,218,0.3)" },
+                { transform: "scale(1.03)", boxShadow: "0 0 0 3px rgba(79,123,218,0.9), 0 0 28px rgba(79,123,218,0.55)" },
+                { transform: "scale(1)", boxShadow: "0 0 0 2px rgba(79,123,218,0.55)" },
+              ],
+              { duration: 850, easing: "cubic-bezier(.22,1,.36,1)" },
+            );
+          }
         }
       } else {
         setHighlightKey(null);
@@ -273,33 +309,13 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
       setHighlightKey(null);
       // limpiar boxShadow de todas las cards
       Object.values(cardRefs.current).forEach((el) => {
-        if (el) gsap.to(el, { boxShadow: "none", duration: 0.3 });
+        if (el) {
+          el.getAnimations().forEach((animation) => animation.cancel());
+          el.style.boxShadow = "";
+        }
       });
     }
   }, [searchQuery]);
-
-  useGSAP(() => {
-    const cards = gridRef.current?.querySelectorAll(".servicio-card");
-    if (!cards?.length) return;
-
-    gsap.fromTo(
-      cards,
-      { opacity: 0, y: 40 },
-      {
-        opacity: 1,
-        y: 0,
-        stagger: 0.08,
-        duration: 0.55,
-        ease: "power3.out",
-        clearProps: "transform",
-        scrollTrigger: {
-          trigger: gridRef.current,
-          start: "top 85%",
-          once: true,
-        },
-      }
-    );
-  }, { scope: gridRef });
 
   // Cargar servicios desde la BD
   useEffect(() => {
@@ -560,6 +576,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
       if (ext === "pdf") {
         try {
           const buf = await file.arrayBuffer();
+          const { pdfjsLib } = await import("@/lib/pdfjsSetup");
           const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
           pageCount = pdf.numPages || 1;
           try {
@@ -779,12 +796,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
               )}
 
               {img && (
-                <img
-                  src={img}
-                  alt={nombre}
-                  className="h-40 w-full object-cover"
-                  loading="lazy"
-                />
+                <DeferredServiceImage src={img} alt={nombre} />
               )}
 
               <div className="flex flex-1 flex-col p-4 pb-5">
@@ -933,13 +945,15 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
 
                 {/* Editor de opciones con scroll */}
                 <div className="overflow-y-auto pr-1 mt-3" style={{ maxHeight: '55vh' }}>
-                  <ServiceOptionsEditor
-                    item={{ serviceKey: seleccion.serviceKey, options: tempOptions, quantity: 1 }}
-                    onChangeOptions={(patch) => {
-                      setLocalMsg("");
-                      setTempOptions((prev) => ({ ...prev, ...patch }));
-                    }}
-                  />
+                  <Suspense fallback={<p className="py-6 text-center text-sm text-muted-foreground">Cargando opciones…</p>}>
+                    <ServiceOptionsEditor
+                      item={{ serviceKey: seleccion.serviceKey, options: tempOptions, quantity: 1 }}
+                      onChangeOptions={(patch) => {
+                        setLocalMsg("");
+                        setTempOptions((prev) => ({ ...prev, ...patch }));
+                      }}
+                    />
+                  </Suspense>
                 </div>
 
                 {localMsg && (

@@ -1,12 +1,12 @@
-import artes from "../assets/artes.png";
-import digi from "../assets/digi.png";
-import engar from "../assets/engar.png";
-import pins from "../assets/pins.png";
-import planos from "../assets/planos.png";
-import pvc from "../assets/pvc.png";
-import scan from "../assets/scan.png";
-import stickers from "../assets/stickers.png";
-import sublimacion from "../assets/sublimacion.png";
+import artes from "../assets/artes.webp";
+import digi from "../assets/digi.webp";
+import engar from "../assets/engar.webp";
+import pins from "../assets/pins.webp";
+import planos from "../assets/planos.webp";
+import pvc from "../assets/pvc.webp";
+import scan from "../assets/scan.webp";
+import stickers from "../assets/stickers.webp";
+import sublimacion from "../assets/sublimacion.webp";
 
 export const PUBLIC_SERVICES = [
   {

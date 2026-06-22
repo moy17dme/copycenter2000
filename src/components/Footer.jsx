@@ -1,7 +1,7 @@
 // src/components/Footer.jsx
 import React from "react";
 import { Link } from "react-router-dom";
-import logo from "../assets/LOGOcopy.png";
+import logo from "../assets/LOGOcopy-330.webp";
 import { GOOGLE_BUSINESS_PROFILE } from "../data/trustEvidence";
 
 export default function Footer() {
@@ -64,6 +64,10 @@ export default function Footer() {
                 <img
                   src={logo}
                   alt="Copy Center 2000"
+                  width="330"
+                  height="154"
+                  loading="lazy"
+                  decoding="async"
                   className="h-10 w-auto"
                 />
               </div>

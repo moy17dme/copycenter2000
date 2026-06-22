@@ -22,15 +22,15 @@ import { fmtOptionsAdmin } from "../lib/orderOptions";
 import { createCopyTicket, listRecentCopyTickets } from "../lib/copyTickets";
 
 // ── Assets de servicios ────────────────────────────────────────────────────────
-import digi      from "@/assets/digi.png";
-import engar     from "@/assets/engar.png";
-import planos    from "@/assets/planos.png";
-import artes     from "@/assets/artes.png";
-import stickers  from "@/assets/stickers.png";
-import pvcImg    from "@/assets/pvc.png";
-import subliImg  from "@/assets/sublimacion.png";
-import scanImg   from "@/assets/scan.png";
-import pinsImg   from "@/assets/pins.png";
+import digi      from "@/assets/digi.webp";
+import engar     from "@/assets/engar.webp";
+import planos    from "@/assets/planos.webp";
+import artes     from "@/assets/artes.webp";
+import stickers  from "@/assets/stickers.webp";
+import pvcImg    from "@/assets/pvc.webp";
+import subliImg  from "@/assets/sublimacion.webp";
+import scanImg   from "@/assets/scan.webp";
+import pinsImg   from "@/assets/pins.webp";
 
 const IMG_MAP = {
   impresion: digi, copias: engar, engargolado: engar, ploteo: planos, artes, stickers,

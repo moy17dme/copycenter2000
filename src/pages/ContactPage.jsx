@@ -21,6 +21,7 @@ const contactSchema = {
 
 export default function ContactPage() {
   const [sent, setSent] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -173,14 +174,35 @@ export default function ContactPage() {
 
         <div className="space-y-5">
           <div className="overflow-hidden rounded-xl border border-border bg-card">
-            <iframe
-              src={MAP_EMBED_URL}
-              title="Mapa de Copy Center 2000 en Pachuca"
-              className="h-[360px] w-full border-0"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              allowFullScreen
-            />
+            {showMap ? (
+              <iframe
+                src={MAP_EMBED_URL}
+                title="Mapa de Copy Center 2000 en Pachuca"
+                className="h-[360px] w-full border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+              />
+            ) : (
+              <div className="flex h-[360px] flex-col items-center justify-center bg-[radial-gradient(circle_at_center,rgba(31,74,168,0.22),transparent_68%)] px-6 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full border border-blue-400/30 bg-blue-500/10 text-blue-300">
+                  <MapPin className="h-7 w-7" aria-hidden="true" />
+                </span>
+                <p className="mt-4 text-base font-semibold text-white">
+                  Copy Center 2000 en Pachuca
+                </p>
+                <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+                  El mapa interactivo se carga solo cuando lo necesitas para ahorrar datos y acelerar la página.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowMap(true)}
+                  className="btn-blue mt-5"
+                >
+                  Ver mapa interactivo
+                </button>
+              </div>
+            )}
             <div className="p-5">
               <a
                 href={MAPS_URL}

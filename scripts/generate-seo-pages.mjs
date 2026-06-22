@@ -121,7 +121,7 @@ function buildRouteSchema(path, seo) {
   return schemas;
 }
 
-function renderRouteHtml(
+async function renderRouteHtml(
   path,
   seo,
   { includeSchema = true, noindex = false, prerender = true } = {},
@@ -129,7 +129,7 @@ function renderRouteHtml(
   const title = escapeHtml(seo.title);
   const description = escapeHtml(seo.description);
   const canonical = getCanonicalUrl(path);
-  const appHtml = prerender ? render(path) : "";
+  const appHtml = prerender ? await render(path) : "";
 
   let html = template.replace(/<title>.*?<\/title>/s, `<title>${title}</title>`);
   html = html.replace(
@@ -201,13 +201,13 @@ async function writeRoute(path, html) {
 }
 
 for (const [path, seo] of Object.entries(PUBLIC_ROUTE_SEO)) {
-  await writeRoute(path, renderRouteHtml(path, seo));
+  await writeRoute(path, await renderRouteHtml(path, seo));
 }
 
 for (const [path, seo] of Object.entries(functionalRoutes)) {
   await writeRoute(
     path,
-    renderRouteHtml(path, seo, {
+    await renderRouteHtml(path, seo, {
       includeSchema: false,
       noindex: true,
       prerender: false,

@@ -1,38 +1,34 @@
 // src/App.jsx
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
-import Section from "./components/Section";
-import Hero from "./components/Hero";
-import Servicios from "./components/Servicios";
-import Precios from "./components/Precios";
-import GoogleReviews from "./components/GoogleReviews";
 import Footer from "./components/Footer";
 import Seo from "./components/Seo";
 import { CartProvider } from "./components/CartContext";
-import CartOverlay from "./components/CartOverlay";
-import AuthModal from "./components/AuthModal";
-
-import ProductosPage from "./pages/ProductosPage";
-import EquiposPage from "./pages/EquiposPage";
-import MisPedidos from "./pages/MisPedidos";
-import Admin from "./pages/Admin";
-import NotFound from "./pages/NotFound";
-import AuthCallback from "./pages/AuthCallback";
-import ResetPassword from "./pages/ResetPassword";
-import LegalPage from "./pages/LegalPage";
-import AboutPage from "./pages/AboutPage";
-import ContactPage from "./pages/ContactPage";
-import FaqPage from "./pages/FaqPage";
-import PortfolioPage from "./pages/PortfolioPage";
-import PricesPage from "./pages/PricesPage";
-import ServicesPage from "./pages/ServicesPage";
-import ResourcesPage from "./pages/ResourcesPage";
-import PrintFileGuidePage from "./pages/PrintFileGuidePage";
-import TicketPage from "./pages/TicketPage";
-import WhatsAppWidget from "./components/WhatsAppWidget";
 import { OAUTH_RESUME_CHECKOUT_KEY } from "./lib/googleAuth";
+
+const HomePage = lazy(() => import("./pages/HomePage"));
+const ProductosPage = lazy(() => import("./pages/ProductosPage"));
+const EquiposPage = lazy(() => import("./pages/EquiposPage"));
+const MisPedidos = lazy(() => import("./pages/MisPedidos"));
+const Admin = lazy(() => import("./pages/Admin"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const LegalPage = lazy(() => import("./pages/LegalPage"));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
+const FaqPage = lazy(() => import("./pages/FaqPage"));
+const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
+const PricesPage = lazy(() => import("./pages/PricesPage"));
+const ServicesPage = lazy(() => import("./pages/ServicesPage"));
+const ResourcesPage = lazy(() => import("./pages/ResourcesPage"));
+const PrintFileGuidePage = lazy(() => import("./pages/PrintFileGuidePage"));
+const TicketPage = lazy(() => import("./pages/TicketPage"));
+const CartOverlay = lazy(() => import("./components/CartOverlay"));
+const AuthModal = lazy(() => import("./components/AuthModal"));
+const WhatsAppWidget = lazy(() => import("./components/WhatsAppWidget"));
 
 // ✅ OJO: App.jsx está en src/, por eso es ./lib/...
 import { supabase } from "./lib/supabaseClient";
@@ -73,34 +69,6 @@ function ScrollToHash() {
   return null;
 }
 
-function HomePage({ openCart }) {
-  return (
-    <>
-      <Seo path="/" />
-      <main className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 pb-20 pt-28 sm:px-6 md:pt-24 lg:px-8">
-        <Section id="inicio">
-          <Hero />
-        </Section>
-
-        <Section id="servicios">
-          <Servicios
-            onAddedToCart={() => openCart({ tab: "editar" })}
-            onDirectCheckout={() => openCart({ tab: "pedido", autoCheckout: true })}
-          />
-        </Section>
-
-        <Section id="precios">
-          <Precios />
-        </Section>
-
-        <Section id="opiniones">
-          <GoogleReviews />
-        </Section>
-      </main>
-    </>
-  );
-}
-
 function NoIndexRoute({ path, title, children }) {
   return (
     <>
@@ -117,6 +85,7 @@ function NoIndexRoute({ path, title, children }) {
 
 export default function App() {
   const location = useLocation();
+  const [showWhatsApp, setShowWhatsApp] = useState(false);
 
   // carrito
   const [cartOpen, setCartOpen] = useState(false);
@@ -279,6 +248,19 @@ export default function App() {
     }
   }, [location.pathname, user]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const reveal = () => setShowWhatsApp(true);
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(reveal, { timeout: 2500 });
+      return () => window.cancelIdleCallback(id);
+    }
+
+    const id = window.setTimeout(reveal, 1500);
+    return () => window.clearTimeout(id);
+  }, []);
+
   return (
     <CartProvider>
       <div className="relative min-h-screen flex flex-col bg-background text-foreground">
@@ -294,6 +276,7 @@ export default function App() {
             displayName={displayName}
           />
 
+          <Suspense fallback={<div className="min-h-[55vh]" aria-hidden="true" />}>
           <Routes>
             <Route path="/" element={<HomePage openCart={openCart} />} />
             <Route path="/servicios" element={<ServicesPage />} />
@@ -367,30 +350,43 @@ export default function App() {
             <Route path="/terminos" element={<LegalPage type="terms" />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
 
           <Footer />
 
-          <CartOverlay
-            open={cartOpen}
-            onClose={closeCart}
-            initialTab={cartTab}
-            focusItemId={cartFocusId}
-            autoCheckout={cartAutoCheckout}
-            user={user}
-            session={session}
-            profile={profile}
-          />
+          {cartOpen ? (
+            <Suspense fallback={null}>
+              <CartOverlay
+                open
+                onClose={closeCart}
+                initialTab={cartTab}
+                focusItemId={cartFocusId}
+                autoCheckout={cartAutoCheckout}
+                user={user}
+                session={session}
+                profile={profile}
+              />
+            </Suspense>
+          ) : null}
 
-          <AuthModal
-            key={user?.id || "guest"}
-            open={authOpen}
-            onClose={closeAuth}
-            onSignedOut={() => { setSession(null); setProfile(null); setAuthOpen(false); }}
-            user={user}
-            displayName={displayName}
-          />
+          {authOpen ? (
+            <Suspense fallback={null}>
+              <AuthModal
+                key={user?.id || "guest"}
+                open
+                onClose={closeAuth}
+                onSignedOut={() => { setSession(null); setProfile(null); setAuthOpen(false); }}
+                user={user}
+                displayName={displayName}
+              />
+            </Suspense>
+          ) : null}
 
-          <WhatsAppWidget phone="527713531668" />
+          {showWhatsApp ? (
+            <Suspense fallback={null}>
+              <WhatsAppWidget phone="527713531668" />
+            </Suspense>
+          ) : null}
         </div>
       </div>
     </CartProvider>

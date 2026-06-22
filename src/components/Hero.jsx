@@ -1,26 +1,8 @@
-import { useRef } from "react";
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
 import { ArrowRight, Clock, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
-import fondo from "../assets/fon.png";
-
-gsap.registerPlugin(useGSAP);
+import fondo from "../assets/fon.webp";
 
 export default function Hero() {
-  const containerRef = useRef(null);
-
-  useGSAP(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-    tl.fromTo(".hero-badge", { y: -10 }, { y: 0, duration: 0.35, clearProps: "transform" })
-      .fromTo(".hero-title", { y: 18 }, { y: 0, duration: 0.45, clearProps: "transform" }, "-=0.15")
-      .fromTo(".hero-desc", { y: 12 }, { y: 0, duration: 0.35, clearProps: "transform" }, "-=0.2")
-      .fromTo(".hero-btn", { y: 10 }, { y: 0, stagger: 0.06, duration: 0.3, clearProps: "transform" }, "-=0.15")
-      .fromTo(".hero-stat", { y: 8 }, { y: 0, stagger: 0.06, duration: 0.3, clearProps: "transform" }, "-=0.1");
-  }, { scope: containerRef });
-
   const stats = [
     { label: "Servicios", value: "9+" },
     { label: "Lun-Vie", value: "8:00-19:30" },
@@ -29,10 +11,18 @@ export default function Hero() {
 
   return (
     <div
-      ref={containerRef}
       className="relative min-h-[420px] overflow-hidden rounded-lg border border-border bg-card shadow-[var(--shadow-soft)] md:min-h-[500px]"
-      style={{ backgroundImage: `url(${fondo})`, backgroundSize: "cover", backgroundPosition: "center" }}
     >
+      <img
+        src={fondo}
+        alt=""
+        width="1625"
+        height="652"
+        fetchpriority="high"
+        decoding="async"
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full object-cover object-center"
+      />
       <div
         className="absolute inset-0"
         style={{

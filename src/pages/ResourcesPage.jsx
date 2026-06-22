@@ -6,7 +6,7 @@ import {
   Ruler,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import digi from "../assets/digi.png";
+import digi from "../assets/digi.webp";
 import PageShell from "../components/PageShell";
 
 const resourcesSchema = {
