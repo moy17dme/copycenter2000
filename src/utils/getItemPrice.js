@@ -164,8 +164,21 @@ export function getItemPrice(item) {
   const opts = item.options || {};
   const key  = normalizeKey(item);
 
+  if (key === "ticket-cobro") {
+    const total = Number(opts.ticketTotal);
+    if (!Number.isFinite(total) || total <= 0) return null;
+    const qty = Math.max(1, Number(opts.ticketQuantity ?? 1));
+    return {
+      total,
+      perUnit: Number(opts.ticketUnitPrice) || total / qty,
+      qty,
+      label: opts.ticketDescription || "Ticket de mostrador",
+    };
+  }
+
   // Trámites documentales con precio fijo
   if (
+    key === "actas" ||
     key === "acta-nacimiento" ||
     key === "acta-matrimonio" ||
     key === "acta-defuncion"

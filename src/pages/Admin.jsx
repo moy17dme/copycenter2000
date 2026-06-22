@@ -33,9 +33,64 @@ import scanImg   from "@/assets/scan.png";
 import pinsImg   from "@/assets/pins.png";
 
 const IMG_MAP = {
-  impresion: digi, copias: engar, ploteo: planos, artes, stickers,
+  impresion: digi, copias: engar, engargolado: engar, ploteo: planos, artes, stickers,
   pvc: pvcImg, sublimacion: subliImg, fotobotones: pinsImg, escaneo: scanImg,
+  actas: scanImg,
+  "constancia-situacion-fiscal": scanImg,
 };
+
+const LEGACY_ADMIN_ACTA_KEYS = new Set([
+  "acta-nacimiento",
+  "acta-matrimonio",
+  "acta-defuncion",
+]);
+
+const REQUIRED_ADMIN_SERVICES = [
+  { id: "copias", nombre: "Copias", tag: "OFICINA", descripcion: "Copias rápidas y nítidas en blanco y negro o color, a una o dos caras.", desde_precio: "Desde $0.90/copia", activo: true, orden: 2, requiere_archivo: false },
+  { id: "engargolado", nombre: "Engargolados", tag: "ACABADOS", descripcion: "Engargolado metálico o plástico para tareas, manuales, informes y presentaciones.", desde_precio: "Desde $24", activo: true, orden: 3, requiere_archivo: false },
+  { id: "actas", nombre: "Actas", tag: "TRÁMITES", descripcion: "Actas de nacimiento, matrimonio o defunción. El cliente selecciona el tipo al configurar.", desde_precio: "$85", activo: true, orden: 4, requiere_archivo: false },
+  { id: "constancia-situacion-fiscal", nombre: "Constancia de situación fiscal", tag: "SAT", descripcion: "Obtén tu constancia proporcionando RFC e ID de CIF.", desde_precio: "$120", activo: true, orden: 5, requiere_archivo: false },
+];
+
+function mergeAdminServices(remoteServices = []) {
+  const remoteById = new Map(
+    remoteServices
+      .filter((service) => !LEGACY_ADMIN_ACTA_KEYS.has(service.id))
+      .map((service) => {
+      const id = service.id === "copias-engargolados" ? "copias" : service.id;
+      return [id, { ...service, id, _catalogOnly: false }];
+      })
+  );
+
+  const required = REQUIRED_ADMIN_SERVICES.map((catalogService) => {
+    const remote = remoteById.get(catalogService.id);
+    remoteById.delete(catalogService.id);
+    if (!remote) return { ...catalogService, _catalogOnly: true };
+    if (catalogService.id === "copias" && /engargol/i.test(remote.nombre || "")) {
+      return { ...remote, ...catalogService, activo: remote.activo !== false, _catalogOnly: false };
+    }
+    return remote;
+  });
+
+  return [...required, ...remoteById.values()].sort(
+    (a, b) => Number(a.orden ?? 999) - Number(b.orden ?? 999)
+  );
+}
+
+function serviceDatabasePayload(service, overrides = {}) {
+  return {
+    id: service.id,
+    nombre: service.nombre,
+    descripcion: service.descripcion,
+    tag: service.tag,
+    desde_precio: service.desde_precio,
+    activo: service.activo !== false,
+    orden: service.orden,
+    requiere_archivo: Boolean(service.requiere_archivo),
+    suspendido_msg: service.suspendido_msg || null,
+    ...overrides,
+  };
+}
 
 // ── Constantes de color por estado ────────────────────────────────────────────
 const STATUS_COLORS = {
@@ -1205,7 +1260,6 @@ function DashboardTab({ orders, loading, onSelectOrder }) {
   const revenueToday = paidOrdersRevenue(hoy);
 
   const recientes = [...orders].slice(0, 8);
-  const [ticketsRefreshKey, setTicketsRefreshKey] = useState(0);
 
   return (
     <div className="space-y-6">
@@ -1242,10 +1296,6 @@ function DashboardTab({ orders, loading, onSelectOrder }) {
         </div>
       )}
 
-      {/* Formulario de ticket de cobro en mostrador */}
-      <CopyTicketForm onCreated={() => setTicketsRefreshKey((v) => v + 1)} />
-      <CopyTicketList refreshKey={ticketsRefreshKey} />
-
       {/* Pedidos recientes */}
       <div>
         <h2 className="text-sm font-semibold text-white mb-3">Pedidos recientes</h2>
@@ -1271,6 +1321,23 @@ function DashboardTab({ orders, loading, onSelectOrder }) {
   );
 }
 
+function TicketsTab() {
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-blue-400/20 bg-blue-500/5 px-4 py-3">
+        <h2 className="text-sm font-semibold text-blue-200">Tickets de mostrador</h2>
+        <p className="mt-1 text-xs leading-5 text-slate-400">
+          Genera y consulta códigos de cobro desde este apartado independiente.
+        </p>
+      </div>
+      <CopyTicketForm onCreated={() => setRefreshKey((value) => value + 1)} />
+      <CopyTicketList refreshKey={refreshKey} />
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE: Gestión de Servicios (sin cambios funcionales)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1285,13 +1352,24 @@ function AdminServicios() {
   async function load() {
     setLoading(true);
     const { data } = await supabase.from("servicios").select("*").order("orden");
-    setServicios(data || []);
+    setServicios(mergeAdminServices(data || []));
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
 
   async function toggleActivo(s) {
-    await supabase.from("servicios").update({ activo: !s.activo }).eq("id", s.id);
+    const nextActivo = !s.activo;
+    const query = s._catalogOnly
+      ? supabase.from("servicios").upsert(
+          serviceDatabasePayload(s, { activo: nextActivo }),
+          { onConflict: "id" }
+        )
+      : supabase.from("servicios").update({ activo: nextActivo }).eq("id", s.id);
+    const { error } = await query;
+    if (error) {
+      setMsg("Error: " + error.message);
+      return;
+    }
     setServicios(prev => prev.map(x => x.id === s.id ? { ...x, activo: !s.activo } : x));
   }
 
@@ -1302,10 +1380,18 @@ function AdminServicios() {
 
   async function saveEdit() {
     setSaving(true);
-    const { error } = await supabase.from("servicios").update({
+    const currentService = servicios.find((service) => service.id === editingId);
+    const updates = {
       nombre: editForm.nombre, descripcion: editForm.descripcion, tag: editForm.tag,
       desde_precio: editForm.desde_precio, suspendido_msg: editForm.suspendido_msg || null,
-    }).eq("id", editingId);
+    };
+    const query = currentService?._catalogOnly
+      ? supabase.from("servicios").upsert(
+          serviceDatabasePayload(currentService, updates),
+          { onConflict: "id" }
+        )
+      : supabase.from("servicios").update(updates).eq("id", editingId);
+    const { error } = await query;
     setSaving(false);
     if (error) { setMsg("Error: " + error.message); return; }
     setMsg("Guardado correctamente ✓");
@@ -1617,6 +1703,7 @@ function AdminReportes({ orders }) {
 const TABS = [
   { id: "inicio",    label: "Inicio",    icon: "🏠" },
   { id: "pedidos",   label: "Pedidos",   icon: "📋" },
+  { id: "tickets",   label: "Tickets",   icon: "🎫" },
   { id: "servicios", label: "Servicios", icon: "⚙️" },
   { id: "precios",   label: "Precios",   icon: "💲" },
   { id: "reportes",  label: "Reportes",  icon: "📊" },
@@ -1883,6 +1970,8 @@ export default function Admin({ user = null, accessToken: initialAccessToken = n
             onOrderPatch={patchOrder}
           />
         )}
+
+        {tab === "tickets" && <TicketsTab />}
 
         {tab === "servicios" && (
           <>

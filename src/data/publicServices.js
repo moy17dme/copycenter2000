@@ -120,37 +120,15 @@ export const PUBLIC_SERVICES = [
     alt: "Proceso ilustrativo de escaneo y digitalizacion",
   },
   {
-    id: "acta-nacimiento",
-    title: "Acta de nacimiento",
+    id: "actas",
+    title: "Actas",
     tag: "Trámites",
     description:
-      "Solicita tu acta de nacimiento por $85. Solo necesitamos tu CURP para iniciar.",
-    details: ["Precio fijo de $85", "Requisito: CURP", "Solicitud desde el sistema de pedidos"],
+      "Solicita actas de nacimiento, matrimonio o defunción por $85. Elige el tipo al configurar el servicio.",
+    details: ["Precio fijo de $85", "Nacimiento: una CURP", "Matrimonio: las dos CURP de la pareja"],
     delivery: "Sujeto a disponibilidad del sistema",
     image: scan,
-    alt: "Servicio de solicitud de acta de nacimiento",
-  },
-  {
-    id: "acta-matrimonio",
-    title: "Acta de matrimonio",
-    tag: "Trámites",
-    description:
-      "Solicita tu acta de matrimonio por $85. Confirmaremos contigo los datos necesarios.",
-    details: ["Precio fijo de $85", "Validación de datos", "Solicitud desde el sistema de pedidos"],
-    delivery: "Sujeto a disponibilidad del sistema",
-    image: scan,
-    alt: "Servicio de solicitud de acta de matrimonio",
-  },
-  {
-    id: "acta-defuncion",
-    title: "Acta de defunción",
-    tag: "Trámites",
-    description:
-      "Solicita un acta de defunción por $85. Confirmaremos contigo los datos necesarios.",
-    details: ["Precio fijo de $85", "Validación de datos", "Solicitud desde el sistema de pedidos"],
-    delivery: "Sujeto a disponibilidad del sistema",
-    image: scan,
-    alt: "Servicio de solicitud de acta de defunción",
+    alt: "Servicio de solicitud de actas",
   },
   {
     id: "constancia-situacion-fiscal",
@@ -164,3 +142,22 @@ export const PUBLIC_SERVICES = [
     alt: "Servicio de obtención de constancia de situación fiscal",
   },
 ];
+
+const PUBLIC_SERVICE_ORDER = [
+  "impresion-digital",
+  "copias",
+  "engargolados",
+  "actas",
+  "constancia-situacion-fiscal",
+  "ploteo-planos",
+  "impresos-comerciales",
+  "stickers",
+  "tarjetas-pvc",
+  "sublimacion",
+  "fotobotones-pines",
+  "digitalizacion",
+];
+
+PUBLIC_SERVICES.sort(
+  (a, b) => PUBLIC_SERVICE_ORDER.indexOf(a.id) - PUBLIC_SERVICE_ORDER.indexOf(b.id)
+);

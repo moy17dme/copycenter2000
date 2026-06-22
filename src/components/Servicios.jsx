@@ -39,9 +39,7 @@ const IMG_MAP = {
   sublimacion: subliImg,
   fotobotones: pinsImg,
   escaneo:     scanImg,
-  "acta-nacimiento": scanImg,
-  "acta-matrimonio": scanImg,
-  "acta-defuncion": scanImg,
+  actas: scanImg,
   "constancia-situacion-fiscal": scanImg,
 };
 
@@ -57,29 +55,46 @@ const SERVICIOS_FALLBACK = [
   { id: "sublimacion", nombre: "Sublimación",               tag: "PERSONALIZADOS",   descripcion: "Tazas, termos, playeras, cojines y más con tu diseño.",                               desde_precio: "Desde $30/pieza",   activo: true, orden: 7, requiere_archivo: true  },
   { id: "fotobotones", nombre: "Fotobotones y Pines",       tag: "PROMOCIONALES",    descripcion: "Pines y fotobotones personalizados con tu foto o logo.",                              desde_precio: "Desde $9/pieza",    activo: true, orden: 8, requiere_archivo: true  },
   { id: "escaneo",     nombre: "Escaneos y Digitalización", tag: "DIGITAL",          descripcion: "Escaneo de documentos y planos, PDF/JPG y envío por correo.",                         desde_precio: "Desde $0.40/hoja",  activo: true, orden: 9, requiere_archivo: false },
-  { id: "acta-nacimiento", nombre: "Acta de nacimiento", tag: "TRÁMITES", descripcion: "Solicita tu acta de nacimiento proporcionando únicamente la CURP.", desde_precio: "$85", activo: true, orden: 10, requiere_archivo: false },
-  { id: "acta-matrimonio", nombre: "Acta de matrimonio", tag: "TRÁMITES", descripcion: "Solicitud de acta de matrimonio. Confirmaremos contigo los datos necesarios.", desde_precio: "$85", activo: true, orden: 11, requiere_archivo: false },
-  { id: "acta-defuncion", nombre: "Acta de defunción", tag: "TRÁMITES", descripcion: "Solicitud de acta de defunción. Confirmaremos contigo los datos necesarios.", desde_precio: "$85", activo: true, orden: 12, requiere_archivo: false },
+  { id: "actas", nombre: "Actas", tag: "TRÁMITES", descripcion: "Actas de nacimiento, matrimonio o defunción. Selecciona el tipo y proporciona los datos necesarios.", desde_precio: "$85", activo: true, orden: 10, requiere_archivo: false },
   { id: "constancia-situacion-fiscal", nombre: "Constancia de situación fiscal", tag: "SAT", descripcion: "Obtén tu constancia proporcionando RFC e ID de CIF.", desde_precio: "$120", activo: true, orden: 13, requiere_archivo: false },
 ];
+
+const LEGACY_ACTA_SERVICE_KEYS = new Set([
+  "acta-nacimiento",
+  "acta-matrimonio",
+  "acta-defuncion",
+]);
 
 const CATALOG_CONTENT_KEYS = new Set([
   "copias",
   "engargolado",
-  "acta-nacimiento",
-  "acta-matrimonio",
-  "acta-defuncion",
+  "actas",
   "constancia-situacion-fiscal",
 ]);
 
+const SERVICE_DISPLAY_ORDER = new Map([
+  "impresion",
+  "copias",
+  "engargolado",
+  "actas",
+  "constancia-situacion-fiscal",
+  "ploteo",
+  "artes",
+  "stickers",
+  "pvc",
+  "sublimacion",
+  "fotobotones",
+  "escaneo",
+].map((id, index) => [id, index]));
+
 function mergeServicesWithCatalog(remoteServices = []) {
-  const remoteByKey = new Map(
-    remoteServices.map((service) => {
-      const rawKey = service.id || service.serviceKey;
-      const key = rawKey === "copias-engargolados" ? "copias" : rawKey;
-      return [key, service];
-    })
-  );
+  const remoteByKey = new Map();
+  remoteServices.forEach((service) => {
+    const rawKey = service.id || service.serviceKey;
+    if (LEGACY_ACTA_SERVICE_KEYS.has(rawKey)) return;
+    const key = rawKey === "copias-engargolados" ? "copias" : rawKey;
+    remoteByKey.set(key, service);
+  });
 
   const catalog = SERVICIOS_FALLBACK.map((localService) => {
     const remoteService = remoteByKey.get(localService.id);
@@ -102,9 +117,13 @@ function mergeServicesWithCatalog(remoteServices = []) {
     return merged;
   });
 
-  return [...catalog, ...remoteByKey.values()].sort(
-    (a, b) => Number(a.orden ?? 999) - Number(b.orden ?? 999)
-  );
+  return [...catalog, ...remoteByKey.values()].sort((a, b) => {
+    const aKey = a.id || a.serviceKey;
+    const bKey = b.id || b.serviceKey;
+    const aPriority = SERVICE_DISPLAY_ORDER.get(aKey) ?? 999;
+    const bPriority = SERVICE_DISPLAY_ORDER.get(bKey) ?? 999;
+    return aPriority - bPriority || Number(a.orden ?? 999) - Number(b.orden ?? 999);
+  });
 }
 
 // Badge de cantidad mínima por servicio (se muestra en la tarjeta)
@@ -121,23 +140,30 @@ const ACCEPT = ".pdf,.png,.jpg,.jpeg";
 const CONFIGURAR_PRIMERO = [
   "stickers",
   "engargolado",
-  "acta-nacimiento",
-  "acta-matrimonio",
-  "acta-defuncion",
+  "actas",
   "constancia-situacion-fiscal",
 ];
 
 const SOLO_CONFIGURACION = new Set([
   "engargolado",
-  "acta-nacimiento",
-  "acta-matrimonio",
-  "acta-defuncion",
+  "actas",
   "constancia-situacion-fiscal",
 ]);
 
 function getRequiredDocumentMessage(serviceKey, options) {
-  if (serviceKey === "acta-nacimiento" && !options.documentCurp?.trim()) {
-    return "Escribe la CURP para solicitar el acta de nacimiento.";
+  if (serviceKey === "actas") {
+    const documentType = options.documentType || "nacimiento";
+    if (documentType === "nacimiento" && options.documentCurp?.trim().length !== 18) {
+      return "Escribe la CURP completa de 18 caracteres para solicitar el acta de nacimiento.";
+    }
+    if (documentType === "matrimonio") {
+      if (options.documentCurpPartner1?.trim().length !== 18) {
+        return "Escribe la CURP completa de la primera persona de la pareja.";
+      }
+      if (options.documentCurpPartner2?.trim().length !== 18) {
+        return "Escribe la CURP completa de la segunda persona de la pareja.";
+      }
+    }
   }
   if (serviceKey === "constancia-situacion-fiscal") {
     if (!options.documentRfc?.trim()) return "Escribe el RFC para solicitar la constancia.";
@@ -159,9 +185,7 @@ const STICKER_DEFAULTS = {
 const CONFIG_DEFAULTS = {
   stickers: STICKER_DEFAULTS,
   engargolado: { bindType: "metalico", bindPages: 1, bindQty: 1, bindNotes: "" },
-  "acta-nacimiento": { documentCurp: "", documentNotes: "" },
-  "acta-matrimonio": { documentNotes: "" },
-  "acta-defuncion": { documentNotes: "" },
+  actas: { documentType: "nacimiento", documentCurp: "", documentNotes: "" },
   "constancia-situacion-fiscal": {
     documentRfc: "",
     documentIdCif: "",
@@ -174,7 +198,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
   const [paso, setPaso] = useState("pregunta");
   const [localMsg, setLocalMsg] = useState("");
   const [isDragging, setIsDragging] = useState(false);
-  const [servicios, setServicios] = useState(SERVICIOS_FALLBACK);
+  const [servicios, setServicios] = useState(() => mergeServicesWithCatalog([]));
   const [tempOptions, setTempOptions] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightKey, setHighlightKey] = useState(null);

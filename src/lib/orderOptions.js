@@ -11,6 +11,13 @@ export function fmtOptionsAdmin(item) {
   };
 
   switch (item.serviceKey) {
+    case "ticket-cobro":
+      add("Código", o.ticketCode);
+      if (o.ticketDescription) add("Concepto", o.ticketDescription);
+      if (o.ticketQuantity) add("Cantidad", o.ticketQuantity);
+      if (o.ticketUnitPrice) add("Precio unitario", `$${o.ticketUnitPrice}`);
+      break;
+
     case "impresion":
       add("Color", o.colorMode === "bn" ? "Blanco y negro" : "Color");
       if (o.paper) add("Papel", o.paper);
@@ -54,6 +61,23 @@ export function fmtOptionsAdmin(item) {
       add("Cantidad", o.bindQty || 1);
       if (o.bindNotes) add("Notas", o.bindNotes);
       break;
+
+    case "actas": {
+      const actaLabels = {
+        nacimiento: "Nacimiento",
+        matrimonio: "Matrimonio",
+        defuncion: "Defunción",
+      };
+      const documentType = o.documentType || "nacimiento";
+      add("Tipo de acta", actaLabels[documentType] || documentType);
+      if (documentType === "nacimiento") add("CURP", o.documentCurp);
+      if (documentType === "matrimonio") {
+        add("CURP primera persona", o.documentCurpPartner1);
+        add("CURP segunda persona", o.documentCurpPartner2);
+      }
+      if (o.documentNotes) add("Notas", o.documentNotes);
+      break;
+    }
 
     case "acta-nacimiento":
       add("CURP", o.documentCurp);

@@ -30,6 +30,7 @@ import PricesPage from "./pages/PricesPage";
 import ServicesPage from "./pages/ServicesPage";
 import ResourcesPage from "./pages/ResourcesPage";
 import PrintFileGuidePage from "./pages/PrintFileGuidePage";
+import TicketPage from "./pages/TicketPage";
 import WhatsAppWidget from "./components/WhatsAppWidget";
 import { OAUTH_RESUME_CHECKOUT_KEY } from "./lib/googleAuth";
 
@@ -297,6 +298,14 @@ export default function App() {
             <Route path="/" element={<HomePage openCart={openCart} />} />
             <Route path="/servicios" element={<ServicesPage />} />
             <Route path="/precios" element={<PricesPage />} />
+            <Route
+              path="/ticket"
+              element={
+                <NoIndexRoute path="/ticket" title="Pagar ticket">
+                  <TicketPage openCart={openCart} />
+                </NoIndexRoute>
+              }
+            />
             <Route path="/acerca-de" element={<AboutPage />} />
             <Route path="/preguntas-frecuentes" element={<FaqPage />} />
             <Route path="/contacto" element={<ContactPage />} />

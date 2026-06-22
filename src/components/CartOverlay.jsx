@@ -2,8 +2,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "./CartContext";
 import { cadBulkDiscountPct, cadNextTier, totalCadBondQty } from "../utils/cadDiscount";
-import { validateCopyTicket } from "../lib/copyTickets";
-import { isTicketRequiredItem } from "../lib/ticketItems";
 import PdfPreview from "./PdfPreview";
 import PinCircularPreview from "./PinCircularPreview";
 import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
@@ -27,11 +25,6 @@ export default function CartOverlay({
   const [tab, setTab]                           = useState("pedido");
   const [activeKey, setActiveKey]               = useState(null);
   const [checkoutOpen, setCheckoutOpen]         = useState(false);
-  const [ticketCode, setTicketCode]             = useState("");
-  const [ticketValidating, setTicketValidating] = useState(false);
-  const [ticketError, setTicketError]           = useState("");
-  const [ticketUnlocked, setTicketUnlocked]     = useState(false);
-  const [ticketData, setTicketData]             = useState(null); // datos reales del ticket
   const [editHinted, setEditHinted]             = useState(false);
 
   const items      = cartApi.items || [];
@@ -44,16 +37,6 @@ export default function CartOverlay({
   const cadTotalQty    = useMemo(() => totalCadBondQty(items), [items]);
   const cadDiscountPct = useMemo(() => cadBulkDiscountPct(cadTotalQty), [cadTotalQty]);
   const cadNext        = useMemo(() => cadNextTier(cadTotalQty), [cadTotalQty]);
-
-  const hasTicketRequiredItems = useMemo(() => {
-    return items.some(isTicketRequiredItem);
-  }, [items]);
-
-  const checkoutBlocked = hasTicketRequiredItems && !ticketUnlocked;
-  const ticketTotal = useMemo(() => {
-    const n = Number(ticketData?.total);
-    return Number.isFinite(n) ? n : null;
-  }, [ticketData?.total]);
 
   // Total estimado del carrito
   const cartTotal = useMemo(() => {
@@ -68,16 +51,6 @@ export default function CartOverlay({
   }, [items]);
 
   // ── useEffect ─────────────────────────────────────────────
-  // Reset ticket when all locked items are removed from cart
-  useEffect(() => {
-    if (!hasTicketRequiredItems) {
-      setTicketUnlocked(false);
-      setTicketData(null);
-      setTicketCode("");
-      setTicketError("");
-    }
-  }, [hasTicketRequiredItems]);
-
   // Auto-abrir checkout cuando se indica (ej. "Confirmar pedido" desde Servicios)
   useEffect(() => {
     if (open && autoCheckout && items.length > 0) {
@@ -142,19 +115,6 @@ export default function CartOverlay({
     return raw.includes("fotobot") || raw === "pin" || raw === "pines" ||
       (raw.includes("pin") && !raw.includes("imprimir") && !raw.includes("impresion"));
   }, [activeItem]);
-
-  async function handleRedeemTicket() {
-    setTicketError("");
-    setTicketValidating(true);
-    const result = await validateCopyTicket(ticketCode);
-    setTicketValidating(false);
-    if (result.valid) {
-      setTicketUnlocked(true);
-      setTicketData(result);
-    } else {
-      setTicketError(result.reason || "Código no válido.");
-    }
-  }
 
   const updateItemOptions = (itemId, patch) => {
     if (!itemId) return;
@@ -435,87 +395,7 @@ export default function CartOverlay({
               </div>
             )}
 
-            {/* ── Ticket de copias / escaneos / engargolado ──── */}
-            {hasTicketRequiredItems && !ticketUnlocked && (
-              <div className="rounded-xl p-3 space-y-2"
-                style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.3)" }}>
-                <div className="flex items-start gap-2">
-                  <span className="text-base shrink-0 mt-0.5">🎫</span>
-                  <div>
-                    <p className="text-[12px] font-semibold" style={{ color: "#A5B4FC" }}>
-                      Se requiere ticket de cobro
-                    </p>
-                    <p className="text-[11px] mt-0.5" style={{ color: "#9AA6B2" }}>
-                      Tu pedido incluye copias / escaneos / engargolados. Acércate con un trabajador para que cuente tus hojas y te genere el código de cobro.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    value={ticketCode}
-                    onChange={(e) => { setTicketCode(e.target.value.toUpperCase()); setTicketError(""); }}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleRedeemTicket(); } }}
-                    placeholder="CÓDIGO DEL TICKET"
-                    maxLength={10}
-                    className="flex-1 rounded-xl px-3 py-2 text-sm font-mono outline-none tracking-widest"
-                    style={{ backgroundColor: '#0D121B', border: '1px solid #273449', color: '#F5F7FA' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleRedeemTicket}
-                    disabled={ticketValidating || !ticketCode.trim()}
-                    className="px-4 py-2 rounded-xl text-sm font-medium transition disabled:opacity-40"
-                    style={{ backgroundColor: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)', color: '#A5B4FC' }}
-                  >
-                    {ticketValidating ? "…" : "Validar"}
-                  </button>
-                </div>
-                {ticketError && (
-                  <p className="text-[11px]" style={{ color: '#F87171' }}>{ticketError}</p>
-                )}
-              </div>
-            )}
-
-            {/* Ticket validado — muestra precio real */}
-            {hasTicketRequiredItems && ticketUnlocked && ticketData && (
-              <div className="rounded-xl p-3 space-y-1"
-                style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.3)" }}>
-                <div className="flex items-center justify-between">
-                  <p className="text-[12px] font-semibold flex items-center gap-1.5" style={{ color: "#34D399" }}>
-                    🎫 Ticket validado
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => { setTicketUnlocked(false); setTicketData(null); setTicketCode(""); }}
-                    className="text-[11px] px-2 py-0.5 rounded-lg"
-                    style={{ color: '#9AA6B2', backgroundColor: 'rgba(255,255,255,0.05)' }}
-                  >
-                    Quitar
-                  </button>
-                </div>
-                {ticketData.descripcion && (
-                  <p className="text-[11px]" style={{ color: '#9AA6B2' }}>{ticketData.descripcion}</p>
-                )}
-                {ticketData.code && (
-                  <p className="text-[11px] font-mono tracking-widest" style={{ color: '#6EE7B7' }}>
-                    Codigo: {ticketData.code}
-                  </p>
-                )}
-                {ticketData.cantidad != null && (
-                  <p className="text-[11px]" style={{ color: '#9AA6B2' }}>
-                    {ticketData.cantidad} {ticketData.servicio ? `× ${ticketData.servicio}` : "unidades"}
-                    {ticketData.precio_unit != null ? ` @ $${fmtMXN(ticketData.precio_unit)}` : ""}
-                  </p>
-                )}
-                {ticketTotal != null && (
-                  <p className="text-sm font-semibold tabular-nums" style={{ color: '#34D399' }}>
-                    Total del ticket: ${fmtMXN(ticketTotal)}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Total — usa precio real del ticket si está desbloqueado */}
+            {/* Total estimado del carrito */}
             {items.length > 0 && (
               <div className="rounded-xl px-4 py-3 flex items-center justify-between"
                 style={{
@@ -524,40 +404,25 @@ export default function CartOverlay({
                 }}>
                 <div>
                   <p className="text-[11px] uppercase tracking-wider" style={{ color: "#6EE7B7" }}>
-                    {ticketUnlocked && ticketTotal != null
-                      ? "Total confirmado"
-                      : ticketUnlocked
-                        ? "Precio confirmado por ticket"
-                        : cartTotal.sum === 0
-                          ? "Precio a cotizar"
-                          : cartTotal.hasUnknown
-                            ? "Total parcial estimado"
-                            : "Total estimado"}
+                    {cartTotal.sum === 0
+                      ? "Precio a cotizar"
+                      : cartTotal.hasUnknown
+                        ? "Total parcial estimado"
+                        : "Total estimado"}
                   </p>
-                  {!ticketUnlocked && cartTotal.sum === 0 && (
+                  {cartTotal.sum === 0 && (
                     <p className="text-[10px] mt-0.5" style={{ color: "#9AA6B2" }}>
                       Te confirmamos el precio antes de imprimir.
                     </p>
                   )}
-                  {!ticketUnlocked && cartTotal.sum > 0 && cartTotal.hasUnknown && (
+                  {cartTotal.sum > 0 && cartTotal.hasUnknown && (
                     <p className="text-[10px] mt-0.5" style={{ color: "#9AA6B2" }}>
                       * Algunos servicios se cotizan en sucursal.
                     </p>
                   )}
-                  {ticketUnlocked && ticketTotal != null && (
-                    <p className="text-[10px] mt-0.5" style={{ color: "#9AA6B2" }}>
-                      Precio fijado por el ticket de cobro.
-                    </p>
-                  )}
                 </div>
                 <span className="text-[22px] font-bold tabular-nums" style={{ color: "#34D399" }}>
-                  {ticketUnlocked && ticketTotal != null
-                    ? `$${fmtMXN(ticketTotal)}`
-                    : ticketUnlocked
-                      ? "—"
-                      : cartTotal.sum > 0
-                        ? `$${fmtMXN(cartTotal.sum)}`
-                        : "—"}
+                  {cartTotal.sum > 0 ? `$${fmtMXN(cartTotal.sum)}` : "—"}
                 </span>
               </div>
             )}
@@ -573,12 +438,12 @@ export default function CartOverlay({
 
             <button
               type="button"
-              disabled={items.length === 0 || checkoutBlocked}
+              disabled={items.length === 0}
               onClick={() => setCheckoutOpen(true)}
               className="w-full py-3 rounded-xl font-semibold text-sm transition-all hover:scale-[1.01] active:scale-[.99] disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ backgroundColor: '#C61C1C', color: '#FFFFFF' }}
             >
-              {checkoutBlocked ? "🔒 Ingresa el ticket para continuar" : "Confirmar pedido →"}
+              Confirmar pedido →
             </button>
             <p className="text-[11px]" style={{ color: '#9AA6B2' }}>
               *El total se confirma antes de imprimir.
@@ -598,7 +463,6 @@ export default function CartOverlay({
         user={user}
         session={session}
         profile={profile}
-        ticketData={ticketUnlocked ? ticketData : null}
       />
     </div>
   );

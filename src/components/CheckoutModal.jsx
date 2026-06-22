@@ -415,6 +415,26 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
     setPhoneError(phoneErr || "");
     if (nameErr || phoneErr) return;
 
+    const incompleteActa = items.find((item) => {
+      if (item.serviceKey !== "actas") return false;
+      const options = item.options || {};
+      const documentType = options.documentType || "nacimiento";
+      if (documentType === "nacimiento") {
+        return options.documentCurp?.trim().length !== 18;
+      }
+      if (documentType === "matrimonio") {
+        return (
+          options.documentCurpPartner1?.trim().length !== 18 ||
+          options.documentCurpPartner2?.trim().length !== 18
+        );
+      }
+      return false;
+    });
+    if (incompleteActa) {
+      setError("Completa las CURP requeridas del acta desde la edición del carrito.");
+      return;
+    }
+
     // Validar facturacion
     if (requiresInvoice) {
       if (orderSummary.total < MIN_CHECKOUT_OPTION_MXN) {
@@ -458,9 +478,23 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
         return;
       }
 
+      const cartTicketItem = items.find(
+        (item) => item.serviceKey === "ticket-cobro" && item.options?.ticketCode
+      );
+      const checkoutTicketData = ticketData || (cartTicketItem
+        ? {
+            code: cartTicketItem.options.ticketCode,
+            total: cartTicketItem.options.ticketTotal,
+            descripcion: cartTicketItem.options.ticketDescription,
+            cantidad: cartTicketItem.options.ticketQuantity,
+            precio_unit: cartTicketItem.options.ticketUnitPrice,
+            servicio: cartTicketItem.serviceLabel,
+          }
+        : null);
+
       let redeemedTicket = null;
-      if (ticketData?.code) {
-        redeemedTicket = await redeemCopyTicket(ticketData.code);
+      if (checkoutTicketData?.code) {
+        redeemedTicket = await redeemCopyTicket(checkoutTicketData.code);
         if (!redeemedTicket.valid) {
           setError(redeemedTicket.reason || "El ticket ya no esta disponible. Pide un codigo nuevo.");
           setStep(STEPS.FORM);
@@ -503,7 +537,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
         customerName:  name.trim(),
         customerPhone: phone.trim(),
         paymentMethod: payment,
-        notes:         [notes.trim(), buildTicketNote(redeemedTicket || ticketData)].filter(Boolean).join("\n"),
+        notes:         [notes.trim(), buildTicketNote(redeemedTicket || checkoutTicketData)].filter(Boolean).join("\n"),
         couponCode:    couponApplied ? couponState.code : null,
         discount:      couponApplied ? couponState.discount : 0,
         subtotal:      orderSummary.sum,

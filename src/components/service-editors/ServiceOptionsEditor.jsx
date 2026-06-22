@@ -13,6 +13,7 @@ import PloteoOptionsEditor from "./editors/PloteoOptionsEditor";
 import GenericOptionsEditor from "./editors/GenericOptionsEditor";
 import BindingOptionsEditor from "./editors/BindingOptionsEditor";
 import GovernmentDocumentsOptionsEditor from "./editors/GovernmentDocumentsOptionsEditor";
+import TicketOptionsEditor from "./editors/TicketOptionsEditor";
 
 export default function ServiceOptionsEditor({ item, onChangeOptions }) {
   if (!item) return null;
@@ -51,6 +52,7 @@ export default function ServiceOptionsEditor({ item, onChangeOptions }) {
     key.includes("copias");
 
   const isGovernmentDocument =
+    key === "actas" ||
     key === "acta-nacimiento" ||
     key === "acta-matrimonio" ||
     key === "acta-defuncion" ||
@@ -79,6 +81,7 @@ export default function ServiceOptionsEditor({ item, onChangeOptions }) {
   if (isScan) return <ScanOptionsEditor {...common} />;
   if (isPloteo) return <PloteoOptionsEditor {...common} item={item} />;
   if (key === "sublimacion") return <SublimationOptionsEditor {...common} />;
+  if (key === "ticket-cobro") return <TicketOptionsEditor {...common} />;
   if (isStickers) return <StickersOptionsEditor {...common} />;
   if (isGovernmentDocument) {
     return (

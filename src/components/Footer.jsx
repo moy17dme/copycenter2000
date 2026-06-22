@@ -101,7 +101,7 @@ export default function Footer() {
                 <Li href="/servicios#ploteo-planos">Ploteo de Planos</Li>
                 <Li href="/servicios#impresos-comerciales">Artes Gráficas</Li>
                 <Li href="/servicios#digitalizacion">Escaneo y Digitalización</Li>
-                <Li href="/servicios#acta-nacimiento">Actas y constancias</Li>
+                <Li href="/servicios#actas">Actas y constancias</Li>
               </ul>
             </div>
 
