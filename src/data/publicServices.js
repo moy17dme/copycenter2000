@@ -21,15 +21,26 @@ export const PUBLIC_SERVICES = [
     alt: "Equipo y muestras de impresion digital",
   },
   {
-    id: "copias-engargolados",
-    title: "Copias y engargolados",
+    id: "copias",
+    title: "Copias",
     tag: "Documentos y oficina",
     description:
-      "Copiado nitido, organizacion de juegos, engargolado y acabados para tareas, manuales, informes y presentaciones.",
-    details: ["Copias B/N y color", "Engargolado y pastas", "Laminado y enmicado"],
+      "Copias nitidas en blanco y negro o color para tareas, expedientes, manuales y presentaciones.",
+    details: ["Blanco y negro o color", "Carta, oficio y doble carta", "Una o dos caras"],
     delivery: "Mismo día, según volumen",
     image: engar,
-    alt: "Muestra de copiado y acabados para documentos",
+    alt: "Copias de documentos listas para entrega",
+  },
+  {
+    id: "engargolados",
+    title: "Engargolados",
+    tag: "Acabados",
+    description:
+      "Presentacion y proteccion de tareas, manuales, informes y documentos con arillo y pastas.",
+    details: ["Arillo metalico o plastico", "Pastas y respaldos", "Desde $24"],
+    delivery: "Mismo día, según volumen",
+    image: engar,
+    alt: "Documentos con engargolado y pastas",
   },
   {
     id: "ploteo-planos",
@@ -107,5 +118,49 @@ export const PUBLIC_SERVICES = [
     delivery: "Mismo día o 1 a 2 días por volumen",
     image: scan,
     alt: "Proceso ilustrativo de escaneo y digitalizacion",
+  },
+  {
+    id: "acta-nacimiento",
+    title: "Acta de nacimiento",
+    tag: "Trámites",
+    description:
+      "Solicita tu acta de nacimiento por $85. Solo necesitamos tu CURP para iniciar.",
+    details: ["Precio fijo de $85", "Requisito: CURP", "Solicitud desde el sistema de pedidos"],
+    delivery: "Sujeto a disponibilidad del sistema",
+    image: scan,
+    alt: "Servicio de solicitud de acta de nacimiento",
+  },
+  {
+    id: "acta-matrimonio",
+    title: "Acta de matrimonio",
+    tag: "Trámites",
+    description:
+      "Solicita tu acta de matrimonio por $85. Confirmaremos contigo los datos necesarios.",
+    details: ["Precio fijo de $85", "Validación de datos", "Solicitud desde el sistema de pedidos"],
+    delivery: "Sujeto a disponibilidad del sistema",
+    image: scan,
+    alt: "Servicio de solicitud de acta de matrimonio",
+  },
+  {
+    id: "acta-defuncion",
+    title: "Acta de defunción",
+    tag: "Trámites",
+    description:
+      "Solicita un acta de defunción por $85. Confirmaremos contigo los datos necesarios.",
+    details: ["Precio fijo de $85", "Validación de datos", "Solicitud desde el sistema de pedidos"],
+    delivery: "Sujeto a disponibilidad del sistema",
+    image: scan,
+    alt: "Servicio de solicitud de acta de defunción",
+  },
+  {
+    id: "constancia-situacion-fiscal",
+    title: "Constancia de situación fiscal",
+    tag: "SAT",
+    description:
+      "Obtén tu constancia de situación fiscal por $120 proporcionando RFC e ID de CIF.",
+    details: ["Precio fijo de $120", "Requisitos: RFC e ID de CIF", "Solicitud desde el sistema de pedidos"],
+    delivery: "Sujeto a disponibilidad del sistema",
+    image: scan,
+    alt: "Servicio de obtención de constancia de situación fiscal",
   },
 ];

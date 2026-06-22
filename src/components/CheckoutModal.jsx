@@ -18,6 +18,7 @@ import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
 import { supabase } from "../lib/supabaseClient";
 import { redeemCopyTicket } from "../lib/copyTickets";
 import { isTicketRequiredItem } from "../lib/ticketItems";
+import { notifyAdminOrder } from "../lib/adminNotifications";
 import MercadoPagoCardPayment, { MercadoPagoChallenge } from "./MercadoPagoCardPayment";
 import { validatePrintableFile } from "../utils/fileGuards";
 import GoogleSignInButton from "./GoogleSignInButton";
@@ -38,6 +39,29 @@ const STEPS = {
   CHALLENGE: "challenge",
   SUCCESS:   "success",
 };
+
+async function notifyBusinessAboutOrder(order, accessToken) {
+  const result = await notifyAdminOrder({
+    orderId: order?.id,
+    eventType: "new_order",
+    accessToken,
+  });
+  const whatsappResult = result?.results?.find?.((item) => item.channel === "whatsapp");
+  const needsWhatsappFallback =
+    !result?.duplicate &&
+    (!result?.ok ||
+      result.status === "skipped" ||
+      !whatsappResult ||
+      whatsappResult.skipped ||
+      whatsappResult.ok === false);
+
+  if (needsWhatsappFallback) {
+    const msg = buildOrderWhatsAppMessage({ order, isNew: true });
+    openWhatsApp(SHOP_PHONE, msg);
+  }
+
+  return result;
+}
 const UPLOAD_FOREGROUND_BUDGET_MS = 2200;
 const MIN_CHECKOUT_OPTION_MXN = 50;
 const ENABLE_EMBEDDED_CARD_FORM =
@@ -359,9 +383,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       setConfirmedOrder(order);
       clearCart();
       setStep(STEPS.SUCCESS);
-
-      const msg = buildOrderWhatsAppMessage({ order, isNew: true });
-      openWhatsApp(SHOP_PHONE, msg);
+      await notifyBusinessAboutOrder(order, accessToken);
       return;
     }
 
@@ -596,8 +618,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
             setConfirmedOrder(order);
             clearCart();
             setStep(STEPS.SUCCESS);
-            const msg = buildOrderWhatsAppMessage({ order, isNew: true });
-            openWhatsApp(SHOP_PHONE, msg);
+            await notifyBusinessAboutOrder(order, accessToken);
             return;
           }
 
@@ -632,9 +653,8 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       clearCart();
       setStep(STEPS.SUCCESS);
 
-      // 4. Notificar al negocio por WhatsApp
-      const msg = buildOrderWhatsAppMessage({ order, isNew: true });
-      openWhatsApp(SHOP_PHONE, msg);
+      // 4. Notificar al negocio por WhatsApp/email automatico.
+      await notifyBusinessAboutOrder(order, accessToken);
 
     } catch (err) {
       console.error("[checkout] Error inesperado:", err);

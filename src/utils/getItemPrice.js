@@ -164,6 +164,19 @@ export function getItemPrice(item) {
   const opts = item.options || {};
   const key  = normalizeKey(item);
 
+  // Trámites documentales con precio fijo
+  if (
+    key === "acta-nacimiento" ||
+    key === "acta-matrimonio" ||
+    key === "acta-defuncion"
+  ) {
+    return { total: 85, perUnit: 85, qty: 1, label: "1 acta" };
+  }
+
+  if (key === "constancia-situacion-fiscal") {
+    return { total: 120, perUnit: 120, qty: 1, label: "1 constancia" };
+  }
+
   // ── Fotobotones / pines ──────────────────────────────────────────────────
   if (key.includes("fotobot") || key === "pin" || key === "pines" ||
       (key.includes("pin") && !key.includes("imprimir") && !key.includes("impresion"))) {
@@ -279,10 +292,16 @@ export function getItemPrice(item) {
   if (key.includes("engargol")) {
     const bindType = opts.bindType || "metalico";
     const pages    = Math.max(1, Number(item.pageCount ?? opts.bindPages ?? 1));
+    const qty      = Math.max(1, Number(opts.bindQty ?? 1));
     const table    = ENGARGOLADO[bindType] ?? ENGARGOLADO.metalico;
     const price    = lookupPrice(table, pages);
     if (price === null) return null;
-    return { total: price, perUnit: price, qty: 1, label: `${pages} pág.` };
+    return {
+      total: price * qty,
+      perUnit: price,
+      qty,
+      label: `${qty} engargolado${qty !== 1 ? "s" : ""} de ${pages} pág.`,
+    };
   }
 
   // ── Impresión digital ────────────────────────────────────────────────────

@@ -7,6 +7,10 @@ const serverSecretNames = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "MP_ACCESS_TOKEN",
   "MP_WEBHOOK_SECRET",
+  "RESEND_API_KEY",
+  "TWILIO_AUTH_TOKEN",
+  "GOOGLE_OAUTH_CLIENT_SECRET",
+  "SUPABASE_ACCESS_TOKEN",
 ];
 const publicClientNames = [
   "VITE_SUPABASE_ANON_KEY",
@@ -129,6 +133,10 @@ for (const forbiddenName of [
   "VITE_SERVICE_ROLE_KEY",
   "VITE_MP_ACCESS_TOKEN",
   "VITE_MP_WEBHOOK_SECRET",
+  "VITE_RESEND_API_KEY",
+  "VITE_TWILIO_AUTH_TOKEN",
+  "VITE_GOOGLE_OAUTH_CLIENT_SECRET",
+  "VITE_SUPABASE_ACCESS_TOKEN",
 ]) {
   if (sourceText.includes(forbiddenName)) {
     errors.push(`Nombre de secreto inseguro detectado: ${forbiddenName}`);
@@ -142,8 +150,13 @@ const clientSourceText = sourceFiles
 if (/storage\s*\.\s*from\(\s*["']order-files["']\s*\)\s*\.\s*upload/s.test(clientSourceText)) {
   errors.push("Hay una subida directa al bucket order-files que evita la inspeccion del servidor.");
 }
-if (!sourceText.includes("[functions.upload-order-file]")) {
-  errors.push("La Edge Function upload-order-file no esta registrada.");
+for (const requiredFunction of [
+  "[functions.upload-order-file]",
+  "[functions.notify-admin-order]",
+]) {
+  if (!sourceText.includes(requiredFunction)) {
+    errors.push(`La Edge Function ${requiredFunction} no esta registrada.`);
+  }
 }
 if (!sourceText.includes("checkRateLimit(")) {
   errors.push("No se encontro el rate limiting de Edge Functions.");

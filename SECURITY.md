@@ -11,8 +11,8 @@ de Copy Center 2000.
 
 1. Aplicar todas las migraciones con `supabase db push`.
 2. Configurar los secretos de `supabase/functions/.env.example` en Supabase.
-3. Desplegar las cuatro Edge Functions despues de aplicar la migracion de seguridad,
-   incluida `upload-order-file`.
+3. Desplegar las Edge Functions despues de aplicar la migracion de seguridad,
+   incluidas `upload-order-file` y `notify-admin-order`.
 4. Confirmar que el hosting respeta `public/_headers`. Si el proveedor no soporta
    ese archivo, copiar las mismas cabeceras a su configuracion.
 5. Colocar el dominio detras de Cloudflare u otro CDN/WAF y activar:
@@ -26,14 +26,27 @@ de Copy Center 2000.
 
 ## Secretos
 
-- Nunca usar `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` o
-  `SUPABASE_SERVICE_ROLE_KEY` en variables `VITE_*`.
+- Nunca usar `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `RESEND_API_KEY`,
+  `TWILIO_AUTH_TOKEN`, `GOOGLE_OAUTH_CLIENT_SECRET`, `SUPABASE_ACCESS_TOKEN`
+  o `SUPABASE_SERVICE_ROLE_KEY` en variables `VITE_*`.
 - `VITE_SUPABASE_ANON_KEY` y `VITE_MP_PUBLIC_KEY` son identificadores publicos
   para el navegador; su seguridad depende de RLS, restricciones de origen y los
   permisos configurados, no de ocultarlos.
 - Rotar de inmediato cualquier secreto que haya sido publicado o compartido.
 - Mantener `.env` fuera de Git y usar el gestor de secretos del proveedor.
 - Ejecutar `npm run security:audit` antes de cada despliegue.
+
+## Notificaciones al administrador
+
+`notify-admin-order` envia avisos automaticos al admin cuando se crea un pedido
+por transferencia y cuando Mercado Pago confirma un pago. Usa Resend para correo
+y Twilio WhatsApp para WhatsApp. Los secretos requeridos estan documentados en
+`supabase/functions/.env.example`.
+
+Para WhatsApp en produccion, el numero/remitente debe estar habilitado en Twilio
+para WhatsApp. Si Twilio exige plantillas aprobadas para mensajes iniciados por
+el negocio, configura el remitente segun las reglas de Twilio antes de activar el
+canal.
 
 ## Archivos
 

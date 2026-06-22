@@ -11,6 +11,8 @@ import PvcOptionsEditor from "./editors/PvcOptionsEditor";
 import PinsOptionsEditor from "./editors/PinsOptionsEditor";
 import PloteoOptionsEditor from "./editors/PloteoOptionsEditor";
 import GenericOptionsEditor from "./editors/GenericOptionsEditor";
+import BindingOptionsEditor from "./editors/BindingOptionsEditor";
+import GovernmentDocumentsOptionsEditor from "./editors/GovernmentDocumentsOptionsEditor";
 
 export default function ServiceOptionsEditor({ item, onChangeOptions }) {
   if (!item) return null;
@@ -46,9 +48,13 @@ export default function ServiceOptionsEditor({ item, onChangeOptions }) {
 
   const isCopies =
     key.includes("copia") ||
-    key.includes("copias") ||
-    key.includes("engargol") ||
-    key.includes("engargolado");
+    key.includes("copias");
+
+  const isGovernmentDocument =
+    key === "acta-nacimiento" ||
+    key === "acta-matrimonio" ||
+    key === "acta-defuncion" ||
+    key === "constancia-situacion-fiscal";
 
   // ✅ Fotobotones / Pines
   const isPins =
@@ -74,7 +80,16 @@ export default function ServiceOptionsEditor({ item, onChangeOptions }) {
   if (isPloteo) return <PloteoOptionsEditor {...common} item={item} />;
   if (key === "sublimacion") return <SublimationOptionsEditor {...common} />;
   if (isStickers) return <StickersOptionsEditor {...common} />;
+  if (isGovernmentDocument) {
+    return (
+      <GovernmentDocumentsOptionsEditor
+        {...common}
+        serviceKey={key}
+      />
+    );
+  }
   if (isCopies) return <CopiesOptionsEditor {...common} />;
+  if (key.includes("engargol")) return <BindingOptionsEditor {...common} />;
   if (key === "pvc") return <PvcOptionsEditor {...common} />;
   if (isPins) return <PinsOptionsEditor {...common} />;
 

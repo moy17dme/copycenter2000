@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build && vite build --ssr src/entry-server.jsx --outDir dist-ssr && node scripts/generate-seo-pages.mjs",
     "preview": "vite preview",
+    "auth:enable-google": "node scripts/enable-google-auth.mjs",
     "security:audit": "node scripts/security-audit.mjs"
   },
   "dependencies": {

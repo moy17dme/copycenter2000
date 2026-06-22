@@ -48,6 +48,29 @@ export function fmtOptionsAdmin(item) {
       }
       break;
 
+    case "engargolado":
+      add("Tipo de arillo", o.bindType === "plastico" ? "Plástico" : "Metálico");
+      add("Páginas por juego", o.bindPages || 1);
+      add("Cantidad", o.bindQty || 1);
+      if (o.bindNotes) add("Notas", o.bindNotes);
+      break;
+
+    case "acta-nacimiento":
+      add("CURP", o.documentCurp);
+      if (o.documentNotes) add("Notas", o.documentNotes);
+      break;
+
+    case "acta-matrimonio":
+    case "acta-defuncion":
+      if (o.documentNotes) add("Datos / notas", o.documentNotes);
+      break;
+
+    case "constancia-situacion-fiscal":
+      add("RFC", o.documentRfc);
+      add("ID de CIF", o.documentIdCif);
+      if (o.documentNotes) add("Notas", o.documentNotes);
+      break;
+
     case "planos":
     case "ploteo":
       add("Color", o.planColorMode === "color" ? "Color" : "Blanco y negro");

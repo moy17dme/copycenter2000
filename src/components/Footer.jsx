@@ -96,10 +96,12 @@ export default function Footer() {
               </h3>
               <ul className="mt-4 space-y-2 text-sm">
                 <Li href="/servicios#impresion-digital">Impresión Digital</Li>
-                <Li href="/servicios#copias-engargolados">Copias B/N y Color</Li>
+                <Li href="/servicios#copias">Copias B/N y Color</Li>
+                <Li href="/servicios#engargolados">Engargolados</Li>
                 <Li href="/servicios#ploteo-planos">Ploteo de Planos</Li>
                 <Li href="/servicios#impresos-comerciales">Artes Gráficas</Li>
                 <Li href="/servicios#digitalizacion">Escaneo y Digitalización</Li>
+                <Li href="/servicios#acta-nacimiento">Actas y constancias</Li>
               </ul>
             </div>
 

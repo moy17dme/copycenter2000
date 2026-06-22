@@ -1,6 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { notifyAdminForOrder } from "../_shared/adminNotifications.ts";
 import { calculateOrderPricing, roundMoney } from "../_shared/orderPricing.js";
 import {
   checkRateLimit,
@@ -210,6 +211,20 @@ async function updateInternalOrder({
         order_id: order.id,
         status: "paid",
         message: "Pago con tarjeta confirmado por Mercado Pago",
+      });
+      await notifyAdminForOrder(
+        supabaseAdmin,
+        {
+          ...order,
+          payment_method: "mercadopago",
+          payment_status: "approved",
+          status: nextOrderStatus,
+          pricing_summary: pricing,
+          coupon_code: pricing.couponCode,
+        },
+        "payment_confirmed",
+      ).catch((error) => {
+        console.error("[admin-notify] payment_confirmed failed", error?.message || error);
       });
     }
     return update;

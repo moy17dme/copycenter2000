@@ -31,6 +31,7 @@ import pinsImg from "@/assets/pins.png";
 const IMG_MAP = {
   impresion:   digi,
   copias:      engar,
+  engargolado: engar,
   ploteo:      planos,
   artes:       artes,
   stickers:    stickers,
@@ -38,20 +39,73 @@ const IMG_MAP = {
   sublimacion: subliImg,
   fotobotones: pinsImg,
   escaneo:     scanImg,
+  "acta-nacimiento": scanImg,
+  "acta-matrimonio": scanImg,
+  "acta-defuncion": scanImg,
+  "constancia-situacion-fiscal": scanImg,
 };
 
 // Fallback estático (por si la BD tarda o falla)
 const SERVICIOS_FALLBACK = [
   { id: "impresion",   nombre: "Impresión Digital",         tag: "FULL COLOR / B/N", descripcion: "Desde 1 pieza sin mínimo. Color y B/N en bond, couché, opalina y más. Ideal para cortas tiradas o archivos con datos variables.",        desde_precio: "Desde $1.20/pieza", activo: true, orden: 1, requiere_archivo: true  },
-  { id: "copias",      nombre: "Copias y Engargolados",     tag: "OFICINA",          descripcion: "Copias rápidas y nítidas, engargolados y presentaciones.",                                                                                          desde_precio: "Desde $0.90/copia", activo: true, orden: 2, requiere_archivo: false },
-  { id: "ploteo",      nombre: "Impresiones gran formato",  tag: "GRAN FORMATO",     descripcion: "Ploteo en Bond, Opalina, Fotográfico, Canvas, Lona y Vinil. Precio por metro lineal.",                                                              desde_precio: "Cotización por m²", activo: true, orden: 3, requiere_archivo: true  },
+  { id: "copias",      nombre: "Copias",                    tag: "OFICINA",          descripcion: "Copias rápidas y nítidas en blanco y negro o color, a una o dos caras.",                                                                          desde_precio: "Desde $0.90/copia", activo: true, orden: 2, requiere_archivo: false },
+  { id: "engargolado", nombre: "Engargolados",              tag: "ACABADOS",         descripcion: "Engargolado metálico o plástico para tareas, manuales, informes y presentaciones.",                                                                desde_precio: "Desde $24",         activo: true, orden: 3, requiere_archivo: false },
+  { id: "ploteo",      nombre: "Impresiones gran formato",  tag: "GRAN FORMATO",     descripcion: "Ploteo en Bond, Opalina, Fotográfico, Canvas, Lona y Vinil. Precio por metro lineal.",                                                              desde_precio: "Cotización por m²", activo: true, orden: 4, requiere_archivo: true  },
   { id: "artes",       nombre: "Impresos Comerciales",      tag: "OFFSET · MILLAR",  descripcion: "Offset por millar (mín. 1,000 pzas) del mismo diseño. Couché 115g/150g/300g, bond y adhesivo. Mejor costo en grandes tiradas.",                   desde_precio: "Desde $315/millar", activo: true, orden: 4, requiere_archivo: false },
   { id: "stickers",    nombre: "Stickers",                  tag: "VINIL",            descripcion: "Stickers redondos, cuadrados o de contorno. Vinil mate/brillante.",                    desde_precio: "Cotización",        activo: true, orden: 5, requiere_archivo: true  },
   { id: "pvc",         nombre: "Tarjetas PVC",              tag: "CREDENCIALES",     descripcion: "Tarjetas plásticas, credenciales, códigos QR, folios y más.",                         desde_precio: "Desde $18/tarjeta", activo: true, orden: 6, requiere_archivo: true  },
   { id: "sublimacion", nombre: "Sublimación",               tag: "PERSONALIZADOS",   descripcion: "Tazas, termos, playeras, cojines y más con tu diseño.",                               desde_precio: "Desde $30/pieza",   activo: true, orden: 7, requiere_archivo: true  },
   { id: "fotobotones", nombre: "Fotobotones y Pines",       tag: "PROMOCIONALES",    descripcion: "Pines y fotobotones personalizados con tu foto o logo.",                              desde_precio: "Desde $9/pieza",    activo: true, orden: 8, requiere_archivo: true  },
   { id: "escaneo",     nombre: "Escaneos y Digitalización", tag: "DIGITAL",          descripcion: "Escaneo de documentos y planos, PDF/JPG y envío por correo.",                         desde_precio: "Desde $0.40/hoja",  activo: true, orden: 9, requiere_archivo: false },
+  { id: "acta-nacimiento", nombre: "Acta de nacimiento", tag: "TRÁMITES", descripcion: "Solicita tu acta de nacimiento proporcionando únicamente la CURP.", desde_precio: "$85", activo: true, orden: 10, requiere_archivo: false },
+  { id: "acta-matrimonio", nombre: "Acta de matrimonio", tag: "TRÁMITES", descripcion: "Solicitud de acta de matrimonio. Confirmaremos contigo los datos necesarios.", desde_precio: "$85", activo: true, orden: 11, requiere_archivo: false },
+  { id: "acta-defuncion", nombre: "Acta de defunción", tag: "TRÁMITES", descripcion: "Solicitud de acta de defunción. Confirmaremos contigo los datos necesarios.", desde_precio: "$85", activo: true, orden: 12, requiere_archivo: false },
+  { id: "constancia-situacion-fiscal", nombre: "Constancia de situación fiscal", tag: "SAT", descripcion: "Obtén tu constancia proporcionando RFC e ID de CIF.", desde_precio: "$120", activo: true, orden: 13, requiere_archivo: false },
 ];
+
+const CATALOG_CONTENT_KEYS = new Set([
+  "copias",
+  "engargolado",
+  "acta-nacimiento",
+  "acta-matrimonio",
+  "acta-defuncion",
+  "constancia-situacion-fiscal",
+]);
+
+function mergeServicesWithCatalog(remoteServices = []) {
+  const remoteByKey = new Map(
+    remoteServices.map((service) => {
+      const rawKey = service.id || service.serviceKey;
+      const key = rawKey === "copias-engargolados" ? "copias" : rawKey;
+      return [key, service];
+    })
+  );
+
+  const catalog = SERVICIOS_FALLBACK.map((localService) => {
+    const remoteService = remoteByKey.get(localService.id);
+    remoteByKey.delete(localService.id);
+    if (!remoteService) return localService;
+
+    const merged = { ...localService, ...remoteService };
+    if (CATALOG_CONTENT_KEYS.has(localService.id)) {
+      return {
+        ...merged,
+        id: localService.id,
+        nombre: localService.nombre,
+        tag: localService.tag,
+        descripcion: localService.descripcion,
+        desde_precio: localService.desde_precio,
+        orden: localService.orden,
+        requiere_archivo: localService.requiere_archivo,
+      };
+    }
+    return merged;
+  });
+
+  return [...catalog, ...remoteByKey.values()].sort(
+    (a, b) => Number(a.orden ?? 999) - Number(b.orden ?? 999)
+  );
+}
 
 // Badge de cantidad mínima por servicio (se muestra en la tarjeta)
 const QTY_BADGE = {
@@ -64,7 +118,33 @@ const ACCEPT = ".pdf,.png,.jpg,.jpeg";
 
 // ❌ Office bloqueado
 // Servicios que van directo a configurar opciones (sin pedir archivo primero)
-const CONFIGURAR_PRIMERO = ["stickers"];
+const CONFIGURAR_PRIMERO = [
+  "stickers",
+  "engargolado",
+  "acta-nacimiento",
+  "acta-matrimonio",
+  "acta-defuncion",
+  "constancia-situacion-fiscal",
+];
+
+const SOLO_CONFIGURACION = new Set([
+  "engargolado",
+  "acta-nacimiento",
+  "acta-matrimonio",
+  "acta-defuncion",
+  "constancia-situacion-fiscal",
+]);
+
+function getRequiredDocumentMessage(serviceKey, options) {
+  if (serviceKey === "acta-nacimiento" && !options.documentCurp?.trim()) {
+    return "Escribe la CURP para solicitar el acta de nacimiento.";
+  }
+  if (serviceKey === "constancia-situacion-fiscal") {
+    if (!options.documentRfc?.trim()) return "Escribe el RFC para solicitar la constancia.";
+    if (!options.documentIdCif?.trim()) return "Escribe el ID de CIF para solicitar la constancia.";
+  }
+  return "";
+}
 
 const STICKER_DEFAULTS = {
   stkSizePreset: "10x10",
@@ -74,6 +154,19 @@ const STICKER_DEFAULTS = {
   stkMaterial: "vinil-mate",
   stkCutType: "hoja",
   stkLaminado: false,
+};
+
+const CONFIG_DEFAULTS = {
+  stickers: STICKER_DEFAULTS,
+  engargolado: { bindType: "metalico", bindPages: 1, bindQty: 1, bindNotes: "" },
+  "acta-nacimiento": { documentCurp: "", documentNotes: "" },
+  "acta-matrimonio": { documentNotes: "" },
+  "acta-defuncion": { documentNotes: "" },
+  "constancia-situacion-fiscal": {
+    documentRfc: "",
+    documentIdCif: "",
+    documentNotes: "",
+  },
 };
 
 export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem }) {
@@ -191,7 +284,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
       .select("*")
       .order("orden")
       .then(({ data }) => {
-        if (data && data.length > 0) setServicios(data);
+        if (data && data.length > 0) setServicios(mergeServicesWithCatalog(data));
       });
   }, []);
 
@@ -227,18 +320,18 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
     shouldRestoreDialogFocusRef.current = true;
     setLocalMsg("");
 
+    // 🟠 Configurar primero (stickers): opciones + precio antes del archivo
+    if (CONFIGURAR_PRIMERO.includes(servicio.serviceKey)) {
+      setSeleccion(servicio);
+      setTempOptions({ ...(CONFIG_DEFAULTS[servicio.serviceKey] || {}) });
+      setPaso("configurar");
+      return;
+    }
+
     // 🔵 Sin archivo: copias, escaneos
     if (SIN_ARCHIVO_KEYS.includes(servicio.serviceKey)) {
       setSeleccion(servicio);
       setPaso("sinarchivo");
-      return;
-    }
-
-    // 🟠 Configurar primero (stickers): opciones + precio antes del archivo
-    if (CONFIGURAR_PRIMERO.includes(servicio.serviceKey)) {
-      setSeleccion(servicio);
-      setTempOptions(servicio.serviceKey === "stickers" ? { ...STICKER_DEFAULTS } : {});
-      setPaso("configurar");
       return;
     }
 
@@ -250,6 +343,14 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
   // Agrega al carrito con las opciones configuradas (sin archivo por ahora)
   const handleAgregarConfigurado = () => {
     if (!seleccion) return;
+    const validationMessage = getRequiredDocumentMessage(
+      seleccion.serviceKey,
+      tempOptions
+    );
+    if (validationMessage) {
+      setLocalMsg(validationMessage);
+      return;
+    }
     addItem({
       serviceKey:   seleccion.serviceKey,
       serviceLabel: seleccion.titulo,
@@ -263,6 +364,14 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
   // Agrega al carrito y luego va a subir archivo
   const handleAgregarYSubir = () => {
     if (!seleccion) return;
+    const validationMessage = getRequiredDocumentMessage(
+      seleccion.serviceKey,
+      tempOptions
+    );
+    if (validationMessage) {
+      setLocalMsg(validationMessage);
+      return;
+    }
     addItem({
       serviceKey:   seleccion.serviceKey,
       serviceLabel: seleccion.titulo,
@@ -563,7 +672,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
           <Search className="pointer-events-none absolute left-3.5 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Busca un servicio, por ejemplo: volantes, tarjetas, planos"
+            placeholder="Busca un servicio: copias, engargolados, actas, constancia..."
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Escape") handleSearch(""); }}
@@ -802,9 +911,26 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                 <div className="overflow-y-auto pr-1 mt-3" style={{ maxHeight: '55vh' }}>
                   <ServiceOptionsEditor
                     item={{ serviceKey: seleccion.serviceKey, options: tempOptions, quantity: 1 }}
-                    onChangeOptions={(patch) => setTempOptions((prev) => ({ ...prev, ...patch }))}
+                    onChangeOptions={(patch) => {
+                      setLocalMsg("");
+                      setTempOptions((prev) => ({ ...prev, ...patch }));
+                    }}
                   />
                 </div>
+
+                {localMsg && (
+                  <div
+                    role="alert"
+                    className="mt-3 rounded-lg px-3 py-2 text-[12px]"
+                    style={{
+                      border: "1px solid rgba(198,28,28,0.4)",
+                      background: "rgba(198,28,28,0.1)",
+                      color: "#F5A0A0",
+                    }}
+                  >
+                    {localMsg}
+                  </div>
+                )}
 
                 {/* Precio en tiempo real */}
                 <div className="mt-4 flex items-center justify-between gap-3 rounded-lg px-4 py-3"
@@ -839,18 +965,22 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                     <ShoppingCart className="h-4 w-4" />
                     Agregar al carrito
                   </button>
-                  <button type="button" onClick={handleAgregarYSubir}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition"
-                    style={{ border: '1px solid #273449', color: '#E5ECF6', backgroundColor: 'rgba(27,36,51,0.6)' }}>
-                    <Paperclip className="h-4 w-4" />
-                    Agregar y subir mi archivo de diseño
-                  </button>
-                  <button type="button" onClick={handleNecesitoDiseno}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition"
-                    style={{ border: '1px solid #273449', color: '#9AA6B2', backgroundColor: 'transparent' }}>
-                    <PencilLine className="h-4 w-4" />
-                    Necesito ayuda con el diseño
-                  </button>
+                  {!SOLO_CONFIGURACION.has(seleccion.serviceKey) && (
+                    <>
+                      <button type="button" onClick={handleAgregarYSubir}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition"
+                        style={{ border: '1px solid #273449', color: '#E5ECF6', backgroundColor: 'rgba(27,36,51,0.6)' }}>
+                        <Paperclip className="h-4 w-4" />
+                        Agregar y subir mi archivo de diseño
+                      </button>
+                      <button type="button" onClick={handleNecesitoDiseno}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition"
+                        style={{ border: '1px solid #273449', color: '#9AA6B2', backgroundColor: 'transparent' }}>
+                        <PencilLine className="h-4 w-4" />
+                        Necesito ayuda con el diseño
+                      </button>
+                    </>
+                  )}
                 </div>
               </>
             )}

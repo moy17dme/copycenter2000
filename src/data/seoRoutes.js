@@ -10,12 +10,12 @@ export const PUBLIC_ROUTE_SEO = {
   "/": {
     title: "Copy Center 2000 - Impresiones Digitales en Pachuca",
     description:
-      "Impresiones digitales, copias, ploteo de planos, artes gráficas, stickers, sublimación y más en Pachuca de Soto, Hidalgo.",
+      "Impresiones digitales, copias, engargolados, actas, constancias fiscales, ploteo, stickers y más en Pachuca de Soto, Hidalgo.",
   },
   "/servicios": {
     title: "Servicios de impresión en Pachuca | Copy Center 2000",
     description:
-      "Conoce los servicios de impresión digital, copiado, ploteo, stickers, tarjetas PVC, sublimación y digitalización en Pachuca.",
+      "Conoce los servicios de impresión, copias, engargolados, actas, constancias fiscales, ploteo, stickers y digitalización en Pachuca.",
   },
   "/precios": {
     title: "Precios de impresión en Pachuca | Copy Center 2000",

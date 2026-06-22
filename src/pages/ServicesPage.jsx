@@ -19,9 +19,9 @@ export default function ServicesPage() {
   return (
     <PageShell
       path="/servicios"
-      eyebrow="Soluciones de impresion"
-      title="Servicios para imprimir, producir y presentar tus ideas"
-      intro="Desde una copia hasta un proyecto en gran formato. Revisa las opciones, prepara tu archivo y configura el servicio desde el sistema de pedidos."
+      eyebrow="Impresión, acabados y trámites"
+      title="Servicios para imprimir, presentar y resolver lo que necesitas"
+      intro="Desde copias y engargolados hasta proyectos en gran formato, actas y constancias. Revisa los requisitos y configura el servicio desde el sistema de pedidos."
       breadcrumbLabel="Servicios"
       structuredData={servicesSchema}
     >

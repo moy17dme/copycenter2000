@@ -44,6 +44,17 @@ Redirect URL local: http://localhost:5173/auth/callback/
 Usa rutas exactas en produccion. No agregues comodines para
 `copycenter2000.com`.
 
+Tambien puedes activarlo desde este repo con la Management API de Supabase:
+
+```powershell
+$env:SUPABASE_ACCESS_TOKEN="TU_TOKEN_DE_SUPABASE"
+$env:GOOGLE_OAUTH_CLIENT_ID="TU_CLIENT_ID_WEB"
+$env:GOOGLE_OAUTH_CLIENT_SECRET="TU_CLIENT_SECRET_WEB"
+pnpm auth:enable-google
+```
+
+El token de Supabase debe tener permisos `auth:write` para el proyecto.
+
 ## 3. Verificacion
 
 Al habilitar el proveedor, el boton **Continuar con Google** aparece
