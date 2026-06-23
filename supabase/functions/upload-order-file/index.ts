@@ -17,6 +17,10 @@ import {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const MAX_MULTIPART_BYTES = MAX_UPLOAD_BYTES + 1024 * 1024;
+const LEGAL_TERMS_VERSION = "terms-2026-06-23";
+const FILE_UPLOAD_CONTRACT_VERSION = "file-responsibility-2026-06-23";
+const FILE_UPLOAD_RESPONSIBILITY_STATEMENT =
+  "Declaro que soy titular de los derechos o cuento con autorizacion suficiente para subir, almacenar, reproducir y solicitar el procesamiento del archivo. Acepto que soy el unico responsable del contenido y me obligo a sacar en paz y a salvo a Copy Center 2000 ante cualquier reclamacion de terceros.";
 
 if (!SUPABASE_URL) throw new Error("Missing SUPABASE_URL secret");
 if (!SUPABASE_SERVICE_ROLE_KEY) {
@@ -33,6 +37,53 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 function bearerToken(req: Request) {
   const auth = req.headers.get("Authorization") || "";
   return auth.match(/^Bearer\s+(.+)$/i)?.[1] || "";
+}
+
+function clientIp(req: Request) {
+  const forwarded = req.headers.get("x-forwarded-for") || "";
+  const firstForwarded = forwarded.split(",")[0]?.trim();
+  return (
+    req.headers.get("cf-connecting-ip") ||
+    req.headers.get("x-real-ip") ||
+    firstForwarded ||
+    null
+  );
+}
+
+function sanitizeText(value: unknown, maxLength: number) {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
+function isoDateOrNull(value: unknown) {
+  const date = new Date(String(value || ""));
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+async function sha256Hex(bytes: Uint8Array) {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function parseLegalAcceptance(raw: FormDataEntryValue | null) {
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  try {
+    const payload = JSON.parse(raw);
+    return {
+      accepted: payload?.accepted === true,
+      acceptedAt: isoDateOrNull(payload?.acceptedAt),
+      acceptedByName: sanitizeText(payload?.acceptedByName, 120),
+      acceptedByEmail: sanitizeText(payload?.acceptedByEmail, 254),
+      customerPhone: sanitizeText(payload?.customerPhone, 32),
+      clientTimezone: sanitizeText(payload?.clientTimezone, 80),
+      contractVersion: sanitizeText(payload?.contractVersion, 80),
+      termsVersion: sanitizeText(payload?.termsVersion, 80),
+      statement: sanitizeText(payload?.statement, 2000),
+    };
+  } catch {
+    return null;
+  }
 }
 
 function safeBaseName(fileName: string) {
@@ -126,6 +177,24 @@ Deno.serve(async (req: Request) => {
   if (!["order_file", "constancia_fiscal"].includes(kind)) {
     return jsonResponse(req, { error: "invalid_file_kind" }, 400);
   }
+  const legalAcceptance = parseLegalAcceptance(form.get("legalAcceptance"));
+  if (kind === "order_file") {
+    if (!legalAcceptance?.accepted) {
+      return jsonResponse(req, {
+        error: "legal_acceptance_required",
+        message: "Acepta la declaracion de responsabilidad para subir archivos.",
+      }, 400);
+    }
+    if (
+      legalAcceptance.contractVersion !== FILE_UPLOAD_CONTRACT_VERSION ||
+      legalAcceptance.termsVersion !== LEGAL_TERMS_VERSION
+    ) {
+      return jsonResponse(req, {
+        error: "stale_legal_acceptance",
+        message: "Actualiza la pagina y acepta la version vigente de terminos.",
+      }, 409);
+    }
+  }
   if (!(file instanceof File)) {
     return jsonResponse(req, { error: "file_required" }, 400);
   }
@@ -138,7 +207,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: order, error: orderError } = await supabaseAdmin
     .from("orders")
-    .select("id,user_id,status")
+    .select("id,user_id,status,customer_name,customer_email")
     .eq("id", orderId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -175,6 +244,7 @@ Deno.serve(async (req: Request) => {
       message: uploadErrorMessage(inspection.error),
     }, 422);
   }
+  const fileSha256 = await sha256Hex(bytes);
 
   const baseName = safeBaseName(file.name);
   const uniquePart = crypto.randomUUID();
@@ -200,11 +270,72 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(req, { error: "storage_upload_failed" }, 503);
   }
 
+  let acceptanceId: string | null = null;
+  if (kind === "order_file" && legalAcceptance) {
+    const acceptedByName =
+      legalAcceptance.acceptedByName ||
+      sanitizeText(order.customer_name, 120) ||
+      sanitizeText(user.user_metadata?.full_name, 120);
+    const acceptedByEmail =
+      legalAcceptance.acceptedByEmail ||
+      sanitizeText(order.customer_email, 254) ||
+      sanitizeText(user.email, 254);
+    const statement = legalAcceptance.statement || FILE_UPLOAD_RESPONSIBILITY_STATEMENT;
+    const contractText = [
+      statement,
+      `Archivo: ${file.name.slice(0, 180)}`,
+      `Usuario: ${acceptedByName || acceptedByEmail || user.id}`,
+      `Pedido: ${orderId}`,
+      `Hash SHA-256: ${fileSha256}`,
+    ].join("\n");
+
+    const { data: acceptance, error: acceptanceError } = await supabaseAdmin
+      .from("file_upload_acceptances")
+      .insert({
+        order_id: orderId,
+        user_id: user.id,
+        item_id: itemId || null,
+        storage_path: uploadData.path,
+        original_name: file.name.slice(0, 180),
+        mime_type: inspection.type.mimeType,
+        file_size: bytes.length,
+        file_sha256: fileSha256,
+        terms_version: legalAcceptance.termsVersion,
+        contract_version: legalAcceptance.contractVersion,
+        accepted_statement: statement,
+        contract_text: contractText,
+        accepted_by_name: acceptedByName || null,
+        accepted_by_email: acceptedByEmail || null,
+        customer_phone: legalAcceptance.customerPhone || null,
+        client_accepted_at: legalAcceptance.acceptedAt,
+        client_timezone: legalAcceptance.clientTimezone || null,
+        user_agent: sanitizeText(req.headers.get("user-agent"), 500) || null,
+        ip_address: clientIp(req),
+      })
+      .select("id")
+      .single();
+
+    if (acceptanceError) {
+      console.error("[upload-order-file] acceptance insert failed", {
+        orderId,
+        userId: user.id,
+        storagePath: uploadData.path,
+        code: acceptanceError.code,
+        message: acceptanceError.message,
+      });
+      await supabaseAdmin.storage.from("order-files").remove([uploadData.path]);
+      return jsonResponse(req, { error: "file_acceptance_record_failed" }, 503);
+    }
+    acceptanceId = acceptance?.id || null;
+  }
+
   return jsonResponse(req, {
     path: uploadData.path,
     originalName: file.name.slice(0, 180),
     size: bytes.length,
     mimeType: inspection.type.mimeType,
+    fileSha256,
+    acceptanceId,
     type: kind,
   }, 201);
 });

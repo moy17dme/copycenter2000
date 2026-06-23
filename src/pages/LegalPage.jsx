@@ -4,7 +4,7 @@ import Seo from "../components/Seo";
 
 const CONTACT_EMAIL = "copy.center@hotmail.com";
 const WHATSAPP_URL = "https://wa.me/527713531668";
-const LAST_UPDATED = "11 de junio de 2026";
+const LAST_UPDATED = "23 de junio de 2026";
 
 const privacySections = [
   {
@@ -185,13 +185,21 @@ const termsSections = [
   {
     title: "1. Aceptación y alcance",
     content: (
-      <p>
-        Al navegar por el sitio, crear una cuenta o confirmar un pedido aceptas
-        estos términos. Copy Center 2000 presta servicios de impresión digital,
-        copiado, ploteo, acabados, artes gráficas, sublimación y productos
-        personalizados. Las condiciones específicas mostradas en la cotización o
-        resumen de compra forman parte del acuerdo.
-      </p>
+      <>
+        <p>
+          Al navegar por el sitio, crear una cuenta o confirmar un pedido aceptas
+          estos términos. Copy Center 2000 presta servicios de impresión digital,
+          copiado, ploteo, acabados, artes gráficas, sublimación y productos
+          personalizados. Las condiciones específicas mostradas en la cotización o
+          resumen de compra forman parte del acuerdo.
+        </p>
+        <p>
+          Para crear una cuenta se requiere una aceptación electrónica expresa de
+          estos términos y del aviso de privacidad. El sitio podrá conservar la
+          fecha, hora, versión aceptada, cuenta y datos técnicos necesarios para
+          acreditar dicha aceptación.
+        </p>
+      </>
     ),
   },
   {
@@ -222,6 +230,13 @@ const termsSections = [
           resolución, márgenes, orientación, tipografías y versión final de los
           archivos que envías. También declaras contar con los derechos o
           permisos necesarios para reproducirlos.
+        </p>
+        <p>
+          Cada vez que adjuntes archivos para un pedido, especialmente PDFs u
+          otros documentos de impresión, deberás confirmar una declaración de
+          responsabilidad. Esa aceptación podrá generar un anexo electrónico por
+          archivo con tu nombre, cuenta, nombre del archivo, ruta interna,
+          tamaño, hash técnico y versión de estos términos.
         </p>
         <p>
           No aceptamos contenido ilícito, fraudulento, que vulnere derechos de

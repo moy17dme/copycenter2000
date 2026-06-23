@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { signInAndCheckMfa } from "../lib/authFlow";
+import { buildAccountTermsMetadata } from "../lib/legalConsents";
 import GoogleSignInButton from "./GoogleSignInButton";
+import TermsConsentCheckbox from "./TermsConsentCheckbox";
 
 function isValidWhatsapp(raw) {
   return /^\+?\d{10,15}$/.test(String(raw || "").trim());
@@ -64,6 +66,7 @@ export default function CheckoutAuthModalMfa({ open, onClose, onReady }) {
   const [address, setAddress] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regPassword2, setRegPassword2] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [mfaFactorId, setMfaFactorId] = useState(null);
   const [mfaChallengeId, setMfaChallengeId] = useState(null);
   const [mfaCode, setMfaCode] = useState("");
@@ -140,13 +143,22 @@ export default function CheckoutAuthModalMfa({ open, onClose, onReady }) {
     if (!addr) return setErr("Escribe tu direccion.");
     if (!isStrongPassword(regPassword)) return setErr("La contrasena no cumple los requisitos de seguridad.");
     if (regPassword !== regPassword2) return setErr("Las contrasenas no coinciden.");
+    if (!termsAccepted) return setErr("Acepta los terminos y condiciones para crear tu cuenta.");
 
     setLoading(true);
     try {
+      const termsMetadata = buildAccountTermsMetadata();
       const { error } = await supabase.auth.signUp({
         email,
         password: regPassword,
-        options: { data: { full_name: nombre.trim(), whatsapp: whatsapp.trim(), address: addr } },
+        options: {
+          data: {
+            full_name: nombre.trim(),
+            whatsapp: whatsapp.trim(),
+            address: addr,
+            ...termsMetadata,
+          },
+        },
       });
       if (error) return setErr(humanizeError(error.message));
       setMsg("Cuenta creada. Revisa tu correo para confirmar y luego inicia sesion.");
@@ -175,14 +187,14 @@ export default function CheckoutAuthModalMfa({ open, onClose, onReady }) {
           <div className="inline-flex rounded-xl bg-white/5 p-1 border border-white/10">
             <button
               type="button"
-              onClick={() => { setMode("signin"); setMfaCode(""); reset(); }}
+              onClick={() => { setMode("signin"); setMfaCode(""); setTermsAccepted(false); reset(); }}
               className={`px-3 py-1.5 text-xs rounded-lg ${mode === "signin" ? "bg-white/15 text-white" : "text-slate-300"}`}
             >
               Iniciar sesion
             </button>
             <button
               type="button"
-              onClick={() => { setMode("signup"); setMfaCode(""); reset(); }}
+              onClick={() => { setMode("signup"); setMfaCode(""); setTermsAccepted(false); reset(); }}
               className={`px-3 py-1.5 text-xs rounded-lg ${mode === "signup" ? "bg-white/15 text-white" : "text-slate-300"}`}
             >
               Crear cuenta
@@ -347,10 +359,15 @@ export default function CheckoutAuthModalMfa({ open, onClose, onReady }) {
                   className="w-full rounded-xl bg-white text-slate-900 px-3 py-2 text-sm outline-none"
                 />
               </div>
+              <TermsConsentCheckbox
+                checked={termsAccepted}
+                onChange={setTermsAccepted}
+                disabled={loading}
+              />
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !termsAccepted}
                   className="flex-1 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-black font-semibold disabled:opacity-60"
                 >
                   {loading ? "Creando cuenta..." : "Crear cuenta"}

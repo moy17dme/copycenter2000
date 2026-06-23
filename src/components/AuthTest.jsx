@@ -10,6 +10,7 @@ export default function AuthTest() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [company, setCompany] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [msg, setMsg] = useState("");
 
@@ -25,6 +26,7 @@ export default function AuthTest() {
           full_name: fullName,
           phone,
           company,
+          termsAccepted,
         });
         setMsg("✅ Registro listo. Revisa tu correo si la confirmación está activa.");
       } else {
@@ -60,6 +62,14 @@ export default function AuthTest() {
             <input placeholder="Nombre completo" value={fullName} onChange={(e) => setFullName(e.target.value)} />
             <input placeholder="Teléfono" value={phone} onChange={(e) => setPhone(e.target.value)} />
             <input placeholder="Empresa" value={company} onChange={(e) => setCompany(e.target.value)} />
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12 }}>
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+              />
+              Acepto terminos, aviso de privacidad y responsabilidad sobre archivos.
+            </label>
           </>
         )}
 

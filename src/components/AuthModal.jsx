@@ -2,7 +2,9 @@
 import { useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { isPhoneInput, signInAndCheckMfa } from "../lib/authFlow";
+import { buildAccountTermsMetadata } from "../lib/legalConsents";
 import GoogleSignInButton from "./GoogleSignInButton";
+import TermsConsentCheckbox from "./TermsConsentCheckbox";
 
 // ─── Utilidades ────────────────────────────────────────────────────────────────
 
@@ -117,6 +119,7 @@ export default function AuthModal({ open, onClose, onSignedOut, user: userProp, 
   const [regAddress, setRegAddress] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regPassword2, setRegPassword2] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // 2FA — verificacion
   const [mfaFactorId, setMfaFactorId] = useState(null);
@@ -147,6 +150,7 @@ export default function AuthModal({ open, onClose, onSignedOut, user: userProp, 
     setRegPassword("");
     setRegPassword2("");
     setRegAddress("");
+    setTermsAccepted(false);
     setMfaCode("");
   };
 
@@ -195,13 +199,22 @@ export default function AuthModal({ open, onClose, onSignedOut, user: userProp, 
     if (!regPassword) return setErr("Escribe una contrasena.");
     if (!isStrongPassword(regPassword)) return setErr("La contrasena no cumple los requisitos.");
     if (regPassword !== regPassword2) return setErr("Las contrasenas no coinciden.");
+    if (!termsAccepted) return setErr("Acepta los terminos y condiciones para crear tu cuenta.");
 
     try {
       setLoading(true);
+      const termsMetadata = buildAccountTermsMetadata();
       const { error } = await supabase.auth.signUp({
         email: e,
         password: regPassword,
-        options: { data: { full_name: nombre.trim(), whatsapp: w, address: a } },
+        options: {
+          data: {
+            full_name: nombre.trim(),
+            whatsapp: w,
+            address: a,
+            ...termsMetadata,
+          },
+        },
       });
       if (error) return setErr(humanizeAuthError(error.message));
       setMsg("Cuenta creada. Revisa tu correo para confirmar.");
@@ -624,6 +637,12 @@ export default function AuthModal({ open, onClose, onSignedOut, user: userProp, 
                         className="w-full rounded-xl bg-white text-slate-900 px-3 py-2 text-sm outline-none"
                       />
                     </div>
+
+                    <TermsConsentCheckbox
+                      checked={termsAccepted}
+                      onChange={setTermsAccepted}
+                      disabled={loading}
+                    />
                   </>
                 )}
 
@@ -665,7 +684,7 @@ export default function AuthModal({ open, onClose, onSignedOut, user: userProp, 
                   <button
                     type="button"
                     onClick={mode === "login" ? handleLogin : handleRegister}
-                    disabled={loading}
+                    disabled={loading || (mode === "register" && !termsAccepted)}
                     className="flex-1 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-black font-semibold disabled:opacity-60"
                   >
                     {loading

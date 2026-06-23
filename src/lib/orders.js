@@ -445,6 +445,7 @@ async function uploadValidatedOrderFile({
   file,
   fileName,
   accessToken,
+  legalAcceptance,
 }) {
   if (!accessToken) throw new Error("Inicia sesion para subir archivos.");
   if (!file || !(file instanceof File || file instanceof Blob)) {
@@ -468,6 +469,9 @@ async function uploadValidatedOrderFile({
   body.append("orderId", orderId);
   body.append("itemId", itemId || "");
   body.append("kind", kind);
+  if (legalAcceptance) {
+    body.append("legalAcceptance", JSON.stringify(legalAcceptance));
+  }
   body.append("file", file, originalName);
 
   const response = await withTimeout(
@@ -761,7 +765,7 @@ export function queryMercadoPagoCardStatus({ orderId, accessToken }) {
   });
 }
 
-export async function uploadOrderFiles(orderId, items, { accessToken } = {}) {
+export async function uploadOrderFiles(orderId, items, { accessToken, legalAcceptance } = {}) {
   const candidates = items.slice(0, MAX_FILES_PER_ORDER).flatMap((item) => {
     const file = item.file || item.pdfFile || item.fileObject || item.blob;
     return file && (file instanceof File || file instanceof Blob)
@@ -782,6 +786,7 @@ export async function uploadOrderFiles(orderId, items, { accessToken } = {}) {
         file,
         fileName: originalName,
         accessToken,
+        legalAcceptance,
       });
       return {
         itemId: item.id,
@@ -789,6 +794,8 @@ export async function uploadOrderFiles(orderId, items, { accessToken } = {}) {
         originalName: data.originalName || originalName,
         size: data.size || file.size,
         type: "order_file",
+        fileSha256: data.fileSha256 || null,
+        acceptanceId: data.acceptanceId || null,
       };
     }));
     results.push(...uploaded);

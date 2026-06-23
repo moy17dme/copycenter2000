@@ -5,7 +5,12 @@ import {
   OAUTH_RESUME_CHECKOUT_KEY,
   sanitizeOAuthReturnPath,
 } from "../lib/googleAuth";
+import {
+  buildAccountTermsMetadata,
+  LEGAL_TERMS_VERSION,
+} from "../lib/legalConsents";
 import { supabase } from "../lib/supabaseClient";
+import TermsConsentCheckbox from "../components/TermsConsentCheckbox";
 
 function readAuthParams() {
   const search = new URLSearchParams(window.location.search);
@@ -35,14 +40,23 @@ function humanizeCallbackError(message) {
   return value || "No se pudo conectar la cuenta.";
 }
 
+function hasAcceptedCurrentTerms(user) {
+  return (
+    user?.user_metadata?.terms_accepted === true &&
+    user?.user_metadata?.terms_version === LEGAL_TERMS_VERSION
+  );
+}
+
 export default function AuthCallback() {
   const navigate = useNavigate();
   const destinationRef = useRef({ next: "/", resumeCheckout: false });
+  const pendingSessionRef = useRef(null);
   const [status, setStatus] = useState("connecting");
   const [error, setError] = useState("");
   const [mfaFactorId, setMfaFactorId] = useState(null);
   const [mfaChallengeId, setMfaChallengeId] = useState(null);
   const [mfaCode, setMfaCode] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const finishSignIn = useCallback(() => {
     const destination = destinationRef.current;
@@ -55,6 +69,16 @@ export default function AuthCallback() {
     }
     navigate(destination.next, { replace: true });
   }, [navigate]);
+
+  const finishOrRequestTerms = useCallback((session) => {
+    if (!hasAcceptedCurrentTerms(session?.user)) {
+      pendingSessionRef.current = session;
+      setTermsAccepted(false);
+      setStatus("terms");
+      return;
+    }
+    finishSignIn();
+  }, [finishSignIn]);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,7 +125,7 @@ export default function AuthCallback() {
           return;
         }
 
-        finishSignIn();
+        finishOrRequestTerms(session);
       } catch (authError) {
         const message = authError?.message || "";
         if (!message.toLowerCase().includes("access_denied")) {
@@ -117,7 +141,7 @@ export default function AuthCallback() {
     return () => {
       cancelled = true;
     };
-  }, [finishSignIn]);
+  }, [finishOrRequestTerms]);
 
   const verifyMfa = async (event) => {
     event.preventDefault();
@@ -132,10 +156,46 @@ export default function AuthCallback() {
         code: mfaCode,
       });
       if (verifyError) throw verifyError;
-      finishSignIn();
+      const { data } = await supabase.auth.getSession();
+      finishOrRequestTerms(data?.session || pendingSessionRef.current);
     } catch {
       setError("El codigo no es correcto. Intenta de nuevo.");
       setStatus("mfa");
+    }
+  };
+
+  const acceptTerms = async (event) => {
+    event.preventDefault();
+    if (!termsAccepted) return;
+
+    setStatus("saving_terms");
+    setError("");
+    try {
+      const metadata = buildAccountTermsMetadata();
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: metadata,
+      });
+      if (updateError) throw updateError;
+
+      const { data } = await supabase.auth.getSession();
+      const session = data?.session || pendingSessionRef.current;
+      const user = session?.user;
+      if (user?.id) {
+        await supabase
+          .from("profiles")
+          .update({
+            terms_accepted_at: metadata.terms_accepted_at,
+            terms_version: metadata.terms_version,
+            terms_acceptance_method: metadata.terms_acceptance_method,
+          })
+          .eq("id", user.id);
+      }
+
+      pendingSessionRef.current = session;
+      finishSignIn();
+    } catch (termsError) {
+      setError(termsError?.message || "No se pudo guardar la aceptacion.");
+      setStatus("terms");
     }
   };
 
@@ -150,6 +210,44 @@ export default function AuthCallback() {
         >
           Volver al inicio
         </button>
+      </div>
+    );
+  }
+
+  if (status === "terms" || status === "saving_terms") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 text-white">
+        <form
+          onSubmit={acceptTerms}
+          className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950 p-6 shadow-2xl"
+        >
+          <h1 className="text-lg font-semibold">Antes de continuar</h1>
+          <p className="mt-1 text-sm text-slate-400">
+            Confirma las condiciones de uso de la cuenta para terminar el acceso con Google.
+          </p>
+
+          {error && (
+            <p className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+              {error}
+            </p>
+          )}
+
+          <div className="mt-5">
+            <TermsConsentCheckbox
+              checked={termsAccepted}
+              onChange={setTermsAccepted}
+              disabled={status === "saving_terms"}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={status === "saving_terms" || !termsAccepted}
+            className="mt-4 w-full rounded-xl bg-orange-500 px-4 py-3 font-semibold text-black transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {status === "saving_terms" ? "Guardando..." : "Aceptar y continuar"}
+          </button>
+        </form>
       </div>
     );
   }

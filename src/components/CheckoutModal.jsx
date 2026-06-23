@@ -19,6 +19,7 @@ import { supabase } from "../lib/supabaseClient";
 import { redeemCopyTicket } from "../lib/copyTickets";
 import { isTicketRequiredItem } from "../lib/ticketItems";
 import { notifyAdminOrder } from "../lib/adminNotifications";
+import { buildFileUploadAcceptance } from "../lib/legalConsents";
 import MercadoPagoCardPayment, { MercadoPagoChallenge } from "./MercadoPagoCardPayment";
 import { validatePrintableFile } from "../utils/fileGuards";
 import GoogleSignInButton from "./GoogleSignInButton";
@@ -202,6 +203,14 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function extractOrderFile(item) {
+  return item?.file || item?.pdfFile || item?.fileObject || item?.blob || null;
+}
+
+function orderFileName(item, file) {
+  return item?.fileName || file?.name || "archivo";
+}
+
 async function waitForUploadBudget(uploadWork, ms) {
   const result = await Promise.race([
     uploadWork.then(() => ({ timedOut: false })),
@@ -226,6 +235,8 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
   const [payment,   setPayment]   = useState("transfer");
   const [nameError, setNameError] = useState("");
   const [phoneError,setPhoneError]= useState("");
+  const [fileResponsibilityAccepted, setFileResponsibilityAccepted] = useState(false);
+  const [fileResponsibilityAcceptedAt, setFileResponsibilityAcceptedAt] = useState("");
 
   // Cupón
   const [couponInput,   setCouponInput]   = useState("");
@@ -258,6 +269,8 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       setPhoneError("");
       setCouponInput("");
       setCouponState(null);
+      setFileResponsibilityAccepted(false);
+      setFileResponsibilityAcceptedAt("");
       setName(profile?.full_name || user?.user_metadata?.full_name || "");
       setPhone(profile?.phone || user?.user_metadata?.phone || user?.user_metadata?.whatsapp || "");
       setNotes("");
@@ -300,6 +313,20 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
     const total = Math.max(0, sum - discount);
     return { lines, sum, hasUnknown, discount, total };
   }, [items, couponApplied, couponState, ticketData, ticketTotal]);
+
+  const responsibilityFiles = useMemo(() => {
+    return items.flatMap((item) => {
+      const file = extractOrderFile(item);
+      if (!file) return [];
+      return [{
+        id: item.id,
+        name: orderFileName(item, file),
+        size: file.size || null,
+      }];
+    });
+  }, [items]);
+
+  const hasResponsibilityFiles = responsibilityFiles.length > 0;
 
   useEffect(() => {
     if (orderSummary.total >= MIN_CHECKOUT_OPTION_MXN) return;
@@ -464,6 +491,11 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       return;
     }
 
+    if (hasResponsibilityFiles && !fileResponsibilityAccepted) {
+      setError("Acepta la declaracion de responsabilidad para los archivos adjuntos.");
+      return;
+    }
+
     setStep(STEPS.LOADING);
 
     try {
@@ -559,6 +591,15 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       }
 
       // 2. Subir archivos — esperar a que terminen antes de mostrar éxito
+      const fileUploadAcceptance = hasResponsibilityFiles
+        ? buildFileUploadAcceptance({
+            acceptedAt: fileResponsibilityAcceptedAt || new Date().toISOString(),
+            acceptedByName: name.trim(),
+            acceptedByEmail: activeUser.email || "",
+            customerPhone: phone.trim(),
+          })
+        : null;
+
       const hasFiles = items.some((it) => it.file || it.pdfFile || it.fileObject || it.blob);
       const mustFinishUploads = true;
       if (hasFiles || (requiresInvoice && constanciaFile)) {
@@ -566,7 +607,10 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
         const uploadTasks = [];
 
         if (hasFiles) {
-          uploadTasks.push(uploadOrderFiles(order.id, items, { accessToken }));
+          uploadTasks.push(uploadOrderFiles(order.id, items, {
+            accessToken,
+            legalAcceptance: fileUploadAcceptance,
+          }));
         }
 
         if (requiresInvoice && constanciaFile) {
@@ -1177,6 +1221,34 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                 )}
               </div>
 
+              {hasResponsibilityFiles && (
+                <label
+                  className="flex items-start gap-3 rounded-2xl p-4 text-left"
+                  style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={fileResponsibilityAccepted}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setFileResponsibilityAccepted(checked);
+                      setFileResponsibilityAcceptedAt(checked ? new Date().toISOString() : "");
+                      if (checked) setError("");
+                    }}
+                    className="mt-1 h-4 w-4 shrink-0 rounded border-slate-500 bg-slate-950 text-orange-500 focus:ring-2 focus:ring-orange-400"
+                  />
+                  <span className="min-w-0 text-xs leading-5" style={{ color: '#FCD34D' }}>
+                    Declaro que tengo derechos o autorizacion para subir y solicitar el procesamiento de estos archivos:
+                    <span className="mt-1 block truncate font-medium" style={{ color: '#F5F7FA' }}>
+                      {responsibilityFiles.map((file) => file.name).join(", ")}
+                    </span>
+                    <span className="mt-1 block" style={{ color: '#D1D5DB' }}>
+                      Acepto que queda registrado un anexo electronico por archivo con mi nombre, cuenta y datos tecnicos de subida.
+                    </span>
+                  </span>
+                </label>
+              )}
+
               {/* Error */}
               {error && (
                 <div className="rounded-xl px-3 py-2 text-sm"
@@ -1190,6 +1262,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                 type="submit"
                 disabled={
                   !hasItems ||
+                  (hasResponsibilityFiles && !fileResponsibilityAccepted) ||
                   (payment === "mercadopago" && orderSummary.total < MIN_CHECKOUT_OPTION_MXN)
                 }
                 className="w-full py-3 rounded-2xl font-semibold text-sm transition-all hover:scale-[1.01] active:scale-[.99] disabled:opacity-40"

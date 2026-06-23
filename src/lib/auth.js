@@ -1,12 +1,31 @@
 import { supabase } from "./supabaseClient";
+import { buildAccountTermsMetadata } from "./legalConsents";
 
 // REGISTRO (sign up)
-export async function signUpWithEmail({ email, password, full_name, phone, address }) {
+export async function signUpWithEmail({
+  email,
+  password,
+  full_name,
+  phone,
+  address,
+  company,
+  termsAccepted = false,
+}) {
+  if (!termsAccepted) {
+    throw new Error("Acepta los terminos y condiciones para crear tu cuenta.");
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { full_name, phone, address }, // esto llega a raw_user_meta_data
+      data: {
+        full_name,
+        phone,
+        address,
+        company,
+        ...buildAccountTermsMetadata(),
+      }, // esto llega a raw_user_meta_data
     },
   });
 
