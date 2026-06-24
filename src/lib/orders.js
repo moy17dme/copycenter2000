@@ -151,11 +151,21 @@ function normalizePaymentAdjustment(adjustment, fallback = null) {
   if (!source || !Number.isFinite(Number(source.amount))) return null;
 
   const amount = roundMoney(source.amount) ?? 0;
+  const sourceLabel = String(source.label || "");
+  const hasCommissionLabel = /comisi[oó]n/i.test(sourceLabel);
+  const hasRateLabel = /\d+(?:\.\d+)?\s*%/.test(sourceLabel);
+  const label = sourceLabel && !hasCommissionLabel && !hasRateLabel
+    ? sourceLabel
+    : amount < 0
+      ? "Descuento por transferencia"
+      : amount > 0
+        ? "Ajuste de pago"
+        : "Sin ajuste por metodo de pago";
   return {
     ...source,
     amount,
     type: source.type || (amount < 0 ? "discount" : amount > 0 ? "fee" : "none"),
-    label: source.label || "Ajuste por metodo de pago",
+    label,
   };
 }
 

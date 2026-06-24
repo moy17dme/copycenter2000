@@ -1,7 +1,5 @@
-export const MERCADO_PAGO_COMMISSION_RATE = 0.035;
-export const MERCADO_PAGO_FIXED_FEE_MXN = 4;
-export const IVA_RATE = 0.16;
-export const TRANSFER_DISCOUNT_RATE = 0.04;
+export const TRANSFER_DISCOUNT_RATE = 0.05;
+export const TRANSFER_DISCOUNT_MIN_MXN = 50;
 
 function roundMoney(value) {
   const n = Number(value);
@@ -11,15 +9,7 @@ function roundMoney(value) {
 
 export function getPaymentBaseAmount(subtotal, discount = 0) {
   const net = Math.max(0, roundMoney(subtotal) - roundMoney(discount));
-  return roundMoney(net + calculateIncludedMercadoPagoCost(net));
-}
-
-export function calculateIncludedMercadoPagoCost(baseAmount) {
-  const base = roundMoney(baseAmount);
-  if (base <= 0) return 0;
-  const feeBeforeIva = roundMoney(base * MERCADO_PAGO_COMMISSION_RATE + MERCADO_PAGO_FIXED_FEE_MXN);
-  const iva = roundMoney(feeBeforeIva * IVA_RATE);
-  return roundMoney(feeBeforeIva + iva);
+  return roundMoney(net);
 }
 
 export function emptyPaymentAdjustment(paymentMethod = "") {
@@ -39,13 +29,15 @@ export function calculatePaymentAdjustment(paymentMethod, baseAmount) {
   if (method === "mercadopago" || method === "card") return emptyPaymentAdjustment("mercadopago");
 
   if (method === "transfer" || method === "transferencia") {
+    if (base <= TRANSFER_DISCOUNT_MIN_MXN) return emptyPaymentAdjustment("transfer");
     const discount = roundMoney(base * TRANSFER_DISCOUNT_RATE);
     return {
       method: "transfer",
       type: "discount",
-      label: "Descuento por transferencia (4%)",
+      label: "Descuento por transferencia",
       amount: -discount,
       rate: TRANSFER_DISCOUNT_RATE,
+      minAmount: TRANSFER_DISCOUNT_MIN_MXN,
     };
   }
 
@@ -59,9 +51,6 @@ export function calculatePaymentTotal({ subtotal, discount = 0, paymentMethod })
   return {
     paymentBase,
     paymentAdjustment,
-    includedMercadoPagoCost: calculateIncludedMercadoPagoCost(
-      Math.max(0, roundMoney(subtotal) - roundMoney(discount))
-    ),
     total,
   };
 }

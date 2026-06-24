@@ -15,7 +15,7 @@ import {
   SHOP_PHONE,
 } from "../lib/orders";
 import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
-import { calculatePaymentTotal } from "../lib/paymentAdjustments";
+import { calculatePaymentTotal, TRANSFER_DISCOUNT_MIN_MXN } from "../lib/paymentAdjustments";
 import { supabase } from "../lib/supabaseClient";
 import { redeemCopyTicket } from "../lib/copyTickets";
 import { isTicketRequiredItem } from "../lib/ticketItems";
@@ -233,7 +233,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
   const [name,      setName]      = useState("");
   const [phone,     setPhone]     = useState("");
   const [notes,     setNotes]     = useState("");
-  const [payment,   setPayment]   = useState("transfer");
+  const [payment,   setPayment]   = useState("mercadopago");
   const [nameError, setNameError] = useState("");
   const [phoneError,setPhoneError]= useState("");
   const [fileResponsibilityAccepted, setFileResponsibilityAccepted] = useState(false);
@@ -275,6 +275,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       setName(profile?.full_name || user?.user_metadata?.full_name || "");
       setPhone(profile?.phone || user?.user_metadata?.phone || user?.user_metadata?.whatsapp || "");
       setNotes("");
+      setPayment("mercadopago");
       // Facturación — resetear y pre-llenar si el perfil ya tiene RFC
       setRequiresInvoice(false);
       setBillingRfc(profile?.rfc || "");
@@ -311,20 +312,26 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       return { it, p };
     });
     const discount = couponApplied ? (couponState.discount || 0) : 0;
+    const onlinePaymentTotal = calculatePaymentTotal({
+      subtotal: sum,
+      discount,
+      paymentMethod: "mercadopago",
+    });
     const paymentTotal = calculatePaymentTotal({
       subtotal: sum,
       discount,
       paymentMethod: payment,
     });
-    const displaySubtotal = Math.round((paymentTotal.paymentBase + discount) * 100) / 100;
+    const displaySubtotal = Math.round((onlinePaymentTotal.paymentBase + discount) * 100) / 100;
     return {
       lines,
       sum,
       hasUnknown,
       discount,
       displaySubtotal,
-      paymentBase: paymentTotal.paymentBase,
+      paymentBase: onlinePaymentTotal.paymentBase,
       paymentAdjustment: paymentTotal.paymentAdjustment,
+      onlineTotal: onlinePaymentTotal.total,
       total: paymentTotal.total,
     };
   }, [items, couponApplied, couponState, ticketData, ticketTotal, payment]);
@@ -879,9 +886,18 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                         {orderSummary.hasUnknown ? "Total parcial estimado" : "Total estimado"}
                       </span>
                       <span className="text-[16px] font-bold tabular-nums" style={{ color: '#34D399' }}>
-                        ${fmtMXN(orderSummary.total)}
+                        ${fmtMXN(orderSummary.onlineTotal)}
                       </span>
                     </div>
+                    {orderSummary.paymentAdjustment.amount < 0 && (
+                      <div className="px-3 py-2 flex items-center justify-between"
+                        style={{ backgroundColor: 'rgba(16,185,129,0.08)' }}>
+                        <span className="text-[12px]" style={{ color: '#34D399' }}>Total por transferencia</span>
+                        <span className="text-[15px] font-semibold tabular-nums" style={{ color: '#34D399' }}>
+                          ${fmtMXN(orderSummary.total)}
+                        </span>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -1003,7 +1019,14 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                 <p className="text-xs mb-2 uppercase tracking-wider" style={{ color: '#9AA6B2' }}>Método de pago</p>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { key: "transfer", icon: "🏦", label: "Transferencia", sub: "4% de descuento al confirmar comprobante" },
+                    {
+                      key: "transfer",
+                      icon: "🏦",
+                      label: "Transferencia",
+                      sub: orderSummary.paymentBase > TRANSFER_DISCOUNT_MIN_MXN
+                        ? "Descuento al confirmar comprobante"
+                        : `Descuento disponible arriba de $${fmtMXN(TRANSFER_DISCOUNT_MIN_MXN)} MXN`,
+                    },
                     {
                       key: "mercadopago",
                       icon: "💳",
