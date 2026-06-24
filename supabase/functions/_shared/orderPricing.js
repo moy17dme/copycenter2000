@@ -80,6 +80,7 @@ export async function calculateOrderPricing(client, order) {
     currency: "MXN",
     subtotal,
     discount,
+    displaySubtotal: roundMoney(paymentTotal.paymentBase + discount) ?? paymentTotal.paymentBase,
     paymentBase: paymentTotal.paymentBase,
     paymentAdjustment: paymentTotal.paymentAdjustment,
     total: paymentTotal.total,

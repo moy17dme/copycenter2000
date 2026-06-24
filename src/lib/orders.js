@@ -243,12 +243,15 @@ export function getOrderFinancials(order) {
     pricing.total,
   );
   const total = savedTotal ?? Math.max(0, roundMoney(subtotal - discount) ?? 0);
+  const paymentBase = firstMoney(pricing.paymentBase, pricing.payment_base, subtotal - discount) ?? 0;
+  const displaySubtotal = roundMoney(paymentBase + discount) ?? paymentBase;
 
   return {
     subtotal,
     discount,
     total,
-    paymentBase: firstMoney(pricing.paymentBase, pricing.payment_base, subtotal - discount) ?? 0,
+    displaySubtotal,
+    paymentBase,
     paymentAdjustment,
     currency: pricing.currency || "MXN",
     hasKnownTotal: !pricing.hasUnknownTotal && (savedTotal !== null || !hasUnknownItems),
@@ -404,7 +407,7 @@ export function buildOrderWhatsAppMessage({ order, isNew = true }) {
   if (financials.hasKnownTotal && financials.total > 0) {
     msg += `\n💰 *Total a pagar:* $${formatMoney(financials.total)} MXN\n`;
     if (financials.discount > 0 || financials.paymentAdjustment?.amount) {
-      msg += `   Subtotal: $${formatMoney(financials.subtotal)} MXN\n`;
+      msg += `   Subtotal estimado: $${formatMoney(financials.displaySubtotal)} MXN\n`;
     }
     if (financials.discount > 0) {
       msg += `   Descuento: -$${formatMoney(financials.discount)} MXN\n`;
@@ -437,7 +440,8 @@ export function openWhatsApp(phone, message) {
 function appendOrderDetailsNote(notes, pricingSummary, couponCode, billingInfo) {
   const lines = [];
   if (couponCode) lines.push(`Cupon: ${couponCode}`);
-  lines.push(`Subtotal: $${formatMoney(pricingSummary.subtotal)}`);
+  const displaySubtotal = roundMoney((pricingSummary.paymentBase || 0) + (pricingSummary.discount || 0)) ?? pricingSummary.subtotal;
+  lines.push(`Subtotal estimado: $${formatMoney(displaySubtotal)}`);
   if (pricingSummary.discount > 0) lines.push(`Descuento: -$${formatMoney(pricingSummary.discount)}`);
   const paymentAdjustment = normalizePaymentAdjustment(pricingSummary.paymentAdjustment);
   if (paymentAdjustment?.amount) {
@@ -613,6 +617,7 @@ export async function createOrder({
     currency: "MXN",
     subtotal: inferredSubtotal,
     discount: discountAmount,
+    displaySubtotal: roundMoney(paymentBaseAmount + discountAmount) ?? paymentBaseAmount,
     paymentBase: paymentBaseAmount,
     paymentAdjustment: normalizedPaymentAdjustment || calculatePaymentAdjustment(paymentMethod, paymentBaseAmount),
     total: totalAmount,

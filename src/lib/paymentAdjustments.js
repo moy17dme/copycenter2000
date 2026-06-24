@@ -10,7 +10,16 @@ function roundMoney(value) {
 }
 
 export function getPaymentBaseAmount(subtotal, discount = 0) {
-  return Math.max(0, roundMoney(subtotal) - roundMoney(discount));
+  const net = Math.max(0, roundMoney(subtotal) - roundMoney(discount));
+  return roundMoney(net + calculateIncludedMercadoPagoCost(net));
+}
+
+export function calculateIncludedMercadoPagoCost(baseAmount) {
+  const base = roundMoney(baseAmount);
+  if (base <= 0) return 0;
+  const feeBeforeIva = roundMoney(base * MERCADO_PAGO_COMMISSION_RATE + MERCADO_PAGO_FIXED_FEE_MXN);
+  const iva = roundMoney(feeBeforeIva * IVA_RATE);
+  return roundMoney(feeBeforeIva + iva);
 }
 
 export function emptyPaymentAdjustment(paymentMethod = "") {
@@ -27,21 +36,7 @@ export function calculatePaymentAdjustment(paymentMethod, baseAmount) {
   const base = roundMoney(baseAmount);
   if (base <= 0) return emptyPaymentAdjustment(method);
 
-  if (method === "mercadopago" || method === "card") {
-    const feeBeforeIva = roundMoney(base * MERCADO_PAGO_COMMISSION_RATE + MERCADO_PAGO_FIXED_FEE_MXN);
-    const iva = roundMoney(feeBeforeIva * IVA_RATE);
-    return {
-      method: "mercadopago",
-      type: "fee",
-      label: "Comision Mercado Pago (3.5% + $4 + IVA)",
-      amount: roundMoney(feeBeforeIva + iva),
-      rate: MERCADO_PAGO_COMMISSION_RATE,
-      fixedFee: MERCADO_PAGO_FIXED_FEE_MXN,
-      ivaRate: IVA_RATE,
-      feeBeforeIva,
-      iva,
-    };
-  }
+  if (method === "mercadopago" || method === "card") return emptyPaymentAdjustment("mercadopago");
 
   if (method === "transfer" || method === "transferencia") {
     const discount = roundMoney(base * TRANSFER_DISCOUNT_RATE);
@@ -61,5 +56,12 @@ export function calculatePaymentTotal({ subtotal, discount = 0, paymentMethod })
   const paymentBase = getPaymentBaseAmount(subtotal, discount);
   const paymentAdjustment = calculatePaymentAdjustment(paymentMethod, paymentBase);
   const total = Math.max(0, roundMoney(paymentBase + paymentAdjustment.amount));
-  return { paymentBase, paymentAdjustment, total };
+  return {
+    paymentBase,
+    paymentAdjustment,
+    includedMercadoPagoCost: calculateIncludedMercadoPagoCost(
+      Math.max(0, roundMoney(subtotal) - roundMoney(discount))
+    ),
+    total,
+  };
 }

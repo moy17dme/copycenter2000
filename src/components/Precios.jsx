@@ -21,7 +21,7 @@ const SERVICIOS_PRECIOS = [
     titulo: "Copias B/N",
     icon: "🖨️",
     color: "blue",
-    desde: "$0.70",
+    desde: "$1.00 carta (1-99)",
     tabla: [
       { label: "1-99 hojas", items: ["Carta $1.00", "Oficio $1.50", "Doble carta $3.00"] },
       { label: "100-499 hojas", items: ["Carta $0.90", "Oficio $1.00", "Doble carta $2.50"] },

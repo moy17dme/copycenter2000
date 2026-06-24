@@ -174,7 +174,7 @@ export function generateReceiptPdf(order) {
     normal(9);
     rgb(100, 120, 150);
     doc.text(latin("Subtotal:"), W - MARGIN - 58, y);
-    doc.text(`$${formatMoney(financials.subtotal)} MXN`, W - MARGIN, y, { align: "right" });
+    doc.text(`$${formatMoney(financials.displaySubtotal)} MXN`, W - MARGIN, y, { align: "right" });
     y += 5;
   }
 
@@ -191,7 +191,7 @@ export function generateReceiptPdf(order) {
     const isDiscount = adjustmentAmount < 0;
     normal(9);
     rgb(isDiscount ? 16 : 180, isDiscount ? 160 : 120, isDiscount ? 100 : 20);
-    doc.text(latin(isDiscount ? "Desc. transferencia:" : "Comision MP:"), W - MARGIN - 58, y);
+    doc.text(latin(isDiscount ? "Desc. transferencia:" : "Ajuste de pago:"), W - MARGIN - 58, y);
     doc.text(
       `${isDiscount ? "-" : "+"}$${formatMoney(Math.abs(adjustmentAmount))} MXN`,
       W - MARGIN,

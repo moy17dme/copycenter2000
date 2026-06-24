@@ -316,11 +316,13 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       discount,
       paymentMethod: payment,
     });
+    const displaySubtotal = Math.round((paymentTotal.paymentBase + discount) * 100) / 100;
     return {
       lines,
       sum,
       hasUnknown,
       discount,
+      displaySubtotal,
       paymentBase: paymentTotal.paymentBase,
       paymentAdjustment: paymentTotal.paymentAdjustment,
       total: paymentTotal.total,
@@ -842,9 +844,9 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                     {(couponApplied || orderSummary.paymentAdjustment.amount !== 0) && (
                       <div className="px-3 py-2 flex items-center justify-between"
                         style={{ backgroundColor: 'rgba(16,185,129,0.04)', borderTop: '1px solid rgba(16,185,129,0.1)' }}>
-                        <span className="text-[12px]" style={{ color: '#9AA6B2' }}>Subtotal</span>
+                        <span className="text-[12px]" style={{ color: '#9AA6B2' }}>Subtotal estimado</span>
                         <span className="text-[13px] tabular-nums" style={{ color: '#D1D5DB' }}>
-                          ${fmtMXN(orderSummary.sum)}
+                          ${fmtMXN(orderSummary.displaySubtotal)}
                         </span>
                       </div>
                     )}
@@ -1007,7 +1009,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                       icon: "💳",
                       label: "Pago en linea",
                       sub: orderSummary.paymentBase >= MIN_CHECKOUT_OPTION_MXN
-                        ? "Incluye comision 3.5% + $4 + IVA"
+                        ? "Pago seguro con Mercado Pago"
                         : `Disponible desde $${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN`,
                     },
                   ].map((opt) => {
@@ -1066,13 +1068,8 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                     Pago en linea con Mercado Pago
                   </p>
                   <p className="mt-1 text-xs" style={{ color: '#9AA6B2' }}>
-                    Al confirmar, el backend recalcula el total con la comision y te envia al checkout seguro.
+                    Al confirmar, te enviamos al checkout seguro para pagar en linea.
                   </p>
-                  {orderSummary.paymentAdjustment.amount > 0 && (
-                    <p className="mt-2 text-[11px]" style={{ color: '#FCD34D' }}>
-                      Comision agregada: +${fmtMXN(orderSummary.paymentAdjustment.amount)} MXN.
-                    </p>
-                  )}
                   {orderSummary.hasUnknown && (
                     <p className="mt-2 text-[11px]" style={{ color: '#FCD34D' }}>
                       Este pedido incluye servicios por cotizar. Si no hay precio calculable, quedara registrado y te contactaremos antes de cobrar.
