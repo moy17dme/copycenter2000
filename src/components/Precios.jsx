@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ArrowRight,
+  BookOpen,
   Camera,
   ChevronDown,
   ChevronUp,
@@ -20,26 +21,41 @@ const SERVICIOS_PRECIOS = [
     titulo: "Copias B/N",
     icon: "🖨️",
     color: "blue",
-    desde: "$0.50",
+    desde: "$0.70",
     tabla: [
-      { label: "1–99 hojas",    items: ["Carta $1.20", "Oficio $1.92", "Doble carta $2.72"] },
-      { label: "100–499 hojas", items: ["Carta $1.10", "Oficio $1.68", "Doble carta $2.48"] },
-      { label: "500–999 hojas", items: ["Carta $1.00", "Oficio $1.36", "Doble carta $2.16"] },
-      { label: "1,000+ hojas",  items: ["Carta $0.70", "Oficio $1.20", "Doble carta $2.00"] },
+      { label: "1-99 hojas", items: ["Carta $1.00", "Oficio $1.50", "Doble carta $3.00"] },
+      { label: "100-499 hojas", items: ["Carta $0.90", "Oficio $1.00", "Doble carta $2.50"] },
+      { label: "500-999 hojas", items: ["Carta $0.80", "Oficio $0.90", "Doble carta $2.00"] },
+      { label: "1,000-4,999 hojas", items: ["Carta $0.70", "Oficio $0.80", "Doble carta $1.80"] },
+      { label: "10,000+ hojas", items: ["Carta $0.70", "Oficio $0.80", "Doble carta $1.47"] },
     ],
-    extras: ["Engargolado desde $20", "Pasta térmica disponible"],
+    extras: ["Engargolado desde $22", "Enmicado disponible"],
+  },
+  {
+    id: "acabados",
+    titulo: "Engargolado / Enmicado",
+    icon: "📌",
+    color: "cyan",
+    desde: "$14.00",
+    tabla: [
+      { label: "Engargolado metalico", items: ["1-45 pags $25", "46-85 pags $30", "181-280 pags $40"] },
+      { label: "Engargolado plastico", items: ["0-30 pags $22", "111-140 pags $26", "451-500 pags $50"] },
+      { label: "Enmicado 1-10 pzas", items: ["Carta $20", "Oficio $30", "Doble carta $45"] },
+      { label: "Enmicado 21+ pzas", items: ["Carta $14", "Oficio $17", "Doble carta $25"] },
+    ],
+    extras: ["Pastas y micas segun disponibilidad", "Precio por pieza o documento"],
   },
   {
     id: "impresion",
     titulo: "Impresión Color",
     icon: "🎨",
     color: "orange",
-    desde: "$3.00",
+    desde: "$1.80",
     tabla: [
-      { label: "Bond — Inyección",  items: ["Carta desde $4.00", "Oficio desde $5.00", "Doble carta desde $12.00"] },
-      { label: "Bond — Láser",      items: ["Carta desde $8.00", "Oficio desde $10.00", "Doble carta desde $15.60"] },
-      { label: "Opalina — Láser",   items: ["Carta desde $14.00", "Doble carta desde $17.60", "13×19″ desde $30.00"] },
-      { label: "Couché / Kromacote",items: ["Carta desde $10.00", "Doble carta desde $18.00", "13×19″ desde $35.00"] },
+      { label: "Bond - Inyeccion", items: ["Carta desde $1.80", "Oficio desde $2.50", "Doble carta desde $9.50"] },
+      { label: "Bond - Laser", items: ["Carta desde $5.50", "Oficio desde $7.00", "Doble carta desde $12.40"] },
+      { label: "Opalina - Laser", items: ["Carta desde $8.00", "Doble carta desde $18.00", "13x19 desde $25.00"] },
+      { label: "Couche / Kromacote", items: ["Carta desde $8.00", "Doble carta desde $18.00", "13x19 desde $28.00"] },
     ],
     extras: ["Laminado / Enmicado disponible", "Impresión a doble cara"],
   },
@@ -89,11 +105,12 @@ const SERVICIOS_PRECIOS = [
     titulo: "Tarjetas PVC",
     icon: "💳",
     color: "cyan",
-    desde: "$12.00 c/u",
+    desde: "$18.00 c/u",
     tabla: [
-      { label: "Frente solo",       items: ["50 pzas $850", "100 pzas $1,400", "250 pzas $2,800"] },
-      { label: "Ambos lados",       items: ["50 pzas $1,100", "100 pzas $1,800", "250 pzas $3,500"] },
-      { label: "Con chip NFC / QR", items: ["Desde $25 c/u — cotizar volumen"] },
+      { label: "Frente normal", items: ["1-10 $30 c/u", "26-100 $20 c/u", "101+ $18 c/u"] },
+      { label: "Frente especial", items: ["Perforada desde $20", "NFC desde $25", "Tira magnetica desde $30"] },
+      { label: "Ambos lados", items: ["Normal desde $25", "Perforada desde $30", "NFC desde $35"] },
+      { label: "Ambos + magnetica", items: ["1-10 $57 c/u", "26-100 $46 c/u", "101+ $40 c/u"] },
     ],
     extras: ["Credenciales, membresías, tarjetas de presentación", "Formato estándar CR80"],
   },
@@ -102,11 +119,12 @@ const SERVICIOS_PRECIOS = [
     titulo: "Sublimación",
     icon: "☕",
     color: "yellow",
-    desde: "$55.00",
+    desde: "$30.00",
     tabla: [
-      { label: "Tazas",         items: ["Blanca 11 oz $55", "Mágica $90", "Termo metálico $110"] },
-      { label: "Textiles",      items: ["Playera CH–XL $120", "Cojín 40×40 $140", "Mousepad $65"] },
-      { label: "Varios",        items: ["Rompecabezas 15×21 $85", "Botella aluminio $120"] },
+      { label: "Tazas", items: ["1-5 $60 c/u", "16-25 $50 c/u", "31+ $30 c/u"] },
+      { label: "Tazas magicas", items: ["1-5 $95 c/u", "16-25 $80 c/u", "31+ $60 c/u"] },
+      { label: "Playeras", items: ["Nino desde $150", "CH/M/G desde $150", "1-2 adulto $280"] },
+      { label: "Termos", items: ["1-5 $450 c/u", "16-25 $400 c/u", "31+ $350 c/u"] },
     ],
     extras: ["Personalización con foto o diseño", "Pedidos en lote con descuento"],
   },
@@ -115,11 +133,12 @@ const SERVICIOS_PRECIOS = [
     titulo: "Fotobotones / Pines",
     icon: "📌",
     color: "red",
-    desde: "$8.00 c/u",
+    desde: "$9.00 c/u",
     tabla: [
-      { label: "25 mm",  items: ["10 pzas $120", "25 pzas $220", "50 pzas $380"] },
-      { label: "38 mm",  items: ["10 pzas $140", "25 pzas $260", "50 pzas $450"] },
-      { label: "58 mm",  items: ["10 pzas $180", "25 pzas $320", "50 pzas $580"] },
+      { label: "Normal 5.8 cm", items: ["1-10 $17 c/u", "51-100 $13.42 c/u", "200+ $9 c/u"] },
+      { label: "Destapador 5.8 cm", items: ["1-10 $20 c/u", "51-100 $13.42 c/u", "200+ $9 c/u"] },
+      { label: "Imantado 5.8 cm", items: ["1-10 $25 c/u", "101-200 $12 c/u", "200+ $10 c/u"] },
+      { label: "Llavero 5.8 cm", items: ["1-10 $28 c/u", "101-200 $15 c/u", "200+ $12 c/u"] },
     ],
     extras: ["Pin metálico de seguridad", "Imán disponible", "Diseño incluido"],
   },
@@ -128,11 +147,11 @@ const SERVICIOS_PRECIOS = [
     titulo: "Escaneo / Digitalización",
     icon: "📷",
     color: "teal",
-    desde: "$5.00 / hoja",
+    desde: "$0.40 / hoja",
     tabla: [
-      { label: "Carta / Oficio",  items: ["1–10 pzas $5 c/u", "11–50 pzas $4 c/u", "51+ pzas $3 c/u"] },
-      { label: "Tabloide / A3",   items: ["1–10 pzas $8 c/u", "11–50 pzas $6 c/u", "51+ pzas $5 c/u"] },
-      { label: "Planos grandes",  items: ["Hasta 90×60 cm $25", "Hasta 120×90 cm $40"] },
+      { label: "Carta / Oficio", items: ["1-50 $3 c/u", "101-200 $1.47 c/u", "1000+ $0.40 c/u"] },
+      { label: "Doble carta", items: ["1-50 $6 c/u", "201-500 $3 c/u", "1000+ $1 c/u"] },
+      { label: "Planos", items: ["1-50 $30 c/u", "201-500 $15 c/u", "1000+ $6 c/u"] },
     ],
     extras: ["Salida PDF, JPG o TIFF", "Alta resolución 300–600 DPI", "USB o correo electrónico"],
   },
@@ -152,6 +171,7 @@ const COLOR_MAP = {
 
 const ICON_MAP = {
   copias: Printer,
+  acabados: BookOpen,
   impresion: Palette,
   ploteo: Ruler,
   artes: Newspaper,
@@ -252,7 +272,7 @@ export default function Precios() {
           Precios de referencia
         </h2>
         <p className="text-sm leading-6 text-muted-foreground md:max-w-md md:text-right">
-          Precios aproximados · El total exacto se confirma en tu pedido
+          Precios aproximados · Transferencia descuenta 4%; Mercado Pago agrega comision
         </p>
       </div>
 

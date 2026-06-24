@@ -164,7 +164,8 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  if (pricing.total < MIN_ONLINE_PAYMENT_MXN) {
+  const minimumBasis = Number(pricing.paymentBase ?? pricing.total);
+  if (minimumBasis < MIN_ONLINE_PAYMENT_MXN) {
     return jsonResponse(
       req,
       {
@@ -193,6 +194,7 @@ Deno.serve(async (req: Request) => {
 
   if (
     existingPayment?.checkout_url &&
+    Math.abs(Number(existingPayment.amount) - pricing.total) <= 0.01 &&
     checkoutUrlMatchesMode(existingPayment.checkout_url, useSandboxCheckout)
   ) {
     return jsonResponse(req, {

@@ -1,4 +1,5 @@
 import { getItemPrice } from "./getItemPrice.js";
+import { calculatePaymentTotal } from "./paymentAdjustments.js";
 
 export function roundMoney(value) {
   const n = Number(value);
@@ -68,13 +69,20 @@ export async function calculateOrderPricing(client, order) {
   const couponCode = extractCouponCode(order);
   const coupon = await resolveCoupon(client, couponCode, subtotal);
   const discount = coupon?.discount || 0;
-  const total = Math.max(0, roundMoney(subtotal - discount) ?? 0);
+  const paymentMethod = String(order?.payment_method || "").toLowerCase();
+  const paymentTotal = calculatePaymentTotal({
+    subtotal,
+    discount,
+    paymentMethod,
+  });
 
   return {
     currency: "MXN",
     subtotal,
     discount,
-    total,
+    paymentBase: paymentTotal.paymentBase,
+    paymentAdjustment: paymentTotal.paymentAdjustment,
+    total: paymentTotal.total,
     couponCode: coupon?.code || couponCode || null,
     coupon,
     items: pricedItems,

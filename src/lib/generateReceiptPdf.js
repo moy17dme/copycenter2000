@@ -170,17 +170,34 @@ export function generateReceiptPdf(order) {
   doc.line(W - MARGIN - 60, y, W - MARGIN, y);
   y += 7;
 
-  if (financials.discount > 0) {
+  if (financials.discount > 0 || financials.paymentAdjustment?.amount) {
     normal(9);
     rgb(100, 120, 150);
     doc.text(latin("Subtotal:"), W - MARGIN - 58, y);
     doc.text(`$${formatMoney(financials.subtotal)} MXN`, W - MARGIN, y, { align: "right" });
     y += 5;
+  }
 
+  if (financials.discount > 0) {
     normal(9);
     rgb(16, 160, 100);
     doc.text(latin("Descuento:"), W - MARGIN - 58, y);
     doc.text(`-$${formatMoney(financials.discount)} MXN`, W - MARGIN, y, { align: "right" });
+    y += 5;
+  }
+
+  if (financials.paymentAdjustment?.amount) {
+    const adjustmentAmount = Number(financials.paymentAdjustment.amount) || 0;
+    const isDiscount = adjustmentAmount < 0;
+    normal(9);
+    rgb(isDiscount ? 16 : 180, isDiscount ? 160 : 120, isDiscount ? 100 : 20);
+    doc.text(latin(isDiscount ? "Desc. transferencia:" : "Comision MP:"), W - MARGIN - 58, y);
+    doc.text(
+      `${isDiscount ? "-" : "+"}$${formatMoney(Math.abs(adjustmentAmount))} MXN`,
+      W - MARGIN,
+      y,
+      { align: "right" }
+    );
     y += 5;
   }
 

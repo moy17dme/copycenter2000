@@ -46,8 +46,8 @@ const LEGACY_ADMIN_ACTA_KEYS = new Set([
 ]);
 
 const REQUIRED_ADMIN_SERVICES = [
-  { id: "copias", nombre: "Copias", tag: "OFICINA", descripcion: "Copias rápidas y nítidas en blanco y negro o color, a una o dos caras.", desde_precio: "Desde $0.90/copia", activo: true, orden: 2, requiere_archivo: false },
-  { id: "engargolado", nombre: "Engargolados", tag: "ACABADOS", descripcion: "Engargolado metálico o plástico para tareas, manuales, informes y presentaciones.", desde_precio: "Desde $24", activo: true, orden: 3, requiere_archivo: false },
+  { id: "copias", nombre: "Copias", tag: "OFICINA", descripcion: "Copias rápidas y nítidas en blanco y negro o color, a una o dos caras.", desde_precio: "Desde $0.70/copia", activo: true, orden: 2, requiere_archivo: false },
+  { id: "engargolado", nombre: "Engargolados", tag: "ACABADOS", descripcion: "Engargolado metálico o plástico para tareas, manuales, informes y presentaciones.", desde_precio: "Desde $22", activo: true, orden: 3, requiere_archivo: false },
   { id: "actas", nombre: "Actas", tag: "TRÁMITES", descripcion: "Actas de nacimiento, matrimonio o defunción. El cliente selecciona el tipo al configurar.", desde_precio: "$85", activo: true, orden: 4, requiere_archivo: false },
   { id: "constancia-situacion-fiscal", nombre: "Constancia de situación fiscal", tag: "SAT", descripcion: "Obtén tu constancia proporcionando RFC e ID de CIF.", desde_precio: "$120", activo: true, orden: 5, requiere_archivo: false },
 ];

@@ -37,7 +37,7 @@ export const PUBLIC_SERVICES = [
     tag: "Acabados",
     description:
       "Presentacion y proteccion de tareas, manuales, informes y documentos con arillo y pastas.",
-    details: ["Arillo metalico o plastico", "Pastas y respaldos", "Desde $24"],
+    details: ["Arillo metalico o plastico", "Pastas y respaldos", "Desde $22"],
     delivery: "Mismo día, según volumen",
     image: engar,
     alt: "Documentos con engargolado y pastas",

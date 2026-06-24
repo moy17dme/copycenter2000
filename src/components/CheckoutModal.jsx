@@ -15,6 +15,7 @@ import {
   SHOP_PHONE,
 } from "../lib/orders";
 import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
+import { calculatePaymentTotal } from "../lib/paymentAdjustments";
 import { supabase } from "../lib/supabaseClient";
 import { redeemCopyTicket } from "../lib/copyTickets";
 import { isTicketRequiredItem } from "../lib/ticketItems";
@@ -310,9 +311,21 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       return { it, p };
     });
     const discount = couponApplied ? (couponState.discount || 0) : 0;
-    const total = Math.max(0, sum - discount);
-    return { lines, sum, hasUnknown, discount, total };
-  }, [items, couponApplied, couponState, ticketData, ticketTotal]);
+    const paymentTotal = calculatePaymentTotal({
+      subtotal: sum,
+      discount,
+      paymentMethod: payment,
+    });
+    return {
+      lines,
+      sum,
+      hasUnknown,
+      discount,
+      paymentBase: paymentTotal.paymentBase,
+      paymentAdjustment: paymentTotal.paymentAdjustment,
+      total: paymentTotal.total,
+    };
+  }, [items, couponApplied, couponState, ticketData, ticketTotal, payment]);
 
   const responsibilityFiles = useMemo(() => {
     return items.flatMap((item) => {
@@ -329,14 +342,14 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
   const hasResponsibilityFiles = responsibilityFiles.length > 0;
 
   useEffect(() => {
-    if (orderSummary.total >= MIN_CHECKOUT_OPTION_MXN) return;
+    if (orderSummary.paymentBase >= MIN_CHECKOUT_OPTION_MXN) return;
 
     if (payment === "mercadopago") setPayment("transfer");
     if (requiresInvoice) {
       setRequiresInvoice(false);
       setBillingError("");
     }
-  }, [orderSummary.total, payment, requiresInvoice]);
+  }, [orderSummary.paymentBase, payment, requiresInvoice]);
 
   const hasItems = items.length > 0;
 
@@ -464,7 +477,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
 
     // Validar facturacion
     if (requiresInvoice) {
-      if (orderSummary.total < MIN_CHECKOUT_OPTION_MXN) {
+      if (orderSummary.paymentBase < MIN_CHECKOUT_OPTION_MXN) {
         setBillingError(
           `La factura esta disponible en pedidos desde $${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN.`
         );
@@ -483,7 +496,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       }
     }
 
-    if (payment === "mercadopago" && orderSummary.total < MIN_CHECKOUT_OPTION_MXN) {
+    if (payment === "mercadopago" && orderSummary.paymentBase < MIN_CHECKOUT_OPTION_MXN) {
       setError(
         `El pago en linea requiere un total minimo de $${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN. ` +
         "Agrega productos o selecciona transferencia."
@@ -574,6 +587,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
         discount:      couponApplied ? couponState.discount : 0,
         subtotal:      orderSummary.sum,
         total:         orderSummary.total,
+        paymentAdjustment: orderSummary.paymentAdjustment,
         billingInfo,
       });
       console.log("[checkout] createOrder resultado:", { order, orderErr });
@@ -825,11 +839,11 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                 </div>
                 {orderSummary.sum > 0 && (
                   <>
-                    {couponApplied && (
+                    {(couponApplied || orderSummary.paymentAdjustment.amount !== 0) && (
                       <div className="px-3 py-2 flex items-center justify-between"
                         style={{ backgroundColor: 'rgba(16,185,129,0.04)', borderTop: '1px solid rgba(16,185,129,0.1)' }}>
                         <span className="text-[12px]" style={{ color: '#9AA6B2' }}>Subtotal</span>
-                        <span className="text-[13px] tabular-nums line-through" style={{ color: '#6B7280' }}>
+                        <span className="text-[13px] tabular-nums" style={{ color: '#D1D5DB' }}>
                           ${fmtMXN(orderSummary.sum)}
                         </span>
                       </div>
@@ -838,10 +852,22 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                       <div className="px-3 py-2 flex items-center justify-between"
                         style={{ backgroundColor: 'rgba(16,185,129,0.06)' }}>
                         <span className="text-[12px] flex items-center gap-1" style={{ color: '#34D399' }}>
-                          🎟️ {couponState.description}
+                          {couponState.description}
                         </span>
                         <span className="text-[13px] font-semibold tabular-nums" style={{ color: '#34D399' }}>
-                          −${fmtMXN(orderSummary.discount)}
+                          -${fmtMXN(orderSummary.discount)}
+                        </span>
+                      </div>
+                    )}
+                    {orderSummary.paymentAdjustment.amount !== 0 && (
+                      <div className="px-3 py-2 flex items-center justify-between"
+                        style={{ backgroundColor: orderSummary.paymentAdjustment.amount < 0 ? 'rgba(16,185,129,0.06)' : 'rgba(245,158,11,0.08)' }}>
+                        <span className="min-w-0 pr-3 text-[12px] leading-4" style={{ color: orderSummary.paymentAdjustment.amount < 0 ? '#34D399' : '#FCD34D' }}>
+                          {orderSummary.paymentAdjustment.label}
+                        </span>
+                        <span className="text-[13px] font-semibold tabular-nums"
+                          style={{ color: orderSummary.paymentAdjustment.amount < 0 ? '#34D399' : '#FCD34D' }}>
+                          {orderSummary.paymentAdjustment.amount < 0 ? "-" : "+"}${fmtMXN(Math.abs(orderSummary.paymentAdjustment.amount))}
                         </span>
                       </div>
                     )}
@@ -851,7 +877,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                         {orderSummary.hasUnknown ? "Total parcial estimado" : "Total estimado"}
                       </span>
                       <span className="text-[16px] font-bold tabular-nums" style={{ color: '#34D399' }}>
-                        ${fmtMXN(couponApplied ? orderSummary.total : orderSummary.sum)}
+                        ${fmtMXN(orderSummary.total)}
                       </span>
                     </div>
                   </>
@@ -975,19 +1001,19 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                 <p className="text-xs mb-2 uppercase tracking-wider" style={{ color: '#9AA6B2' }}>Método de pago</p>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { key: "transfer", icon: "🏦", label: "Transferencia", sub: "El pedido inicia al confirmar comprobante" },
+                    { key: "transfer", icon: "🏦", label: "Transferencia", sub: "4% de descuento al confirmar comprobante" },
                     {
                       key: "mercadopago",
                       icon: "💳",
                       label: "Pago en linea",
-                      sub: orderSummary.total >= MIN_CHECKOUT_OPTION_MXN
-                        ? "Mercado Pago valida el total"
+                      sub: orderSummary.paymentBase >= MIN_CHECKOUT_OPTION_MXN
+                        ? "Incluye comision 3.5% + $4 + IVA"
                         : `Disponible desde $${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN`,
                     },
                   ].map((opt) => {
                     const isUnavailable =
                       opt.key === "mercadopago" &&
-                      orderSummary.total < MIN_CHECKOUT_OPTION_MXN;
+                      orderSummary.paymentBase < MIN_CHECKOUT_OPTION_MXN;
 
                     return (
                       <button
@@ -1024,6 +1050,11 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                   <p className="text-[11px] mt-2" style={{ color: '#4E7BDA' }}>
                     Al confirmar, se abrirá WhatsApp. Envía tu comprobante en esa conversación.
                   </p>
+                  {orderSummary.paymentAdjustment.amount < 0 && (
+                    <p className="text-[11px]" style={{ color: '#34D399' }}>
+                      Descuento aplicado: -${fmtMXN(Math.abs(orderSummary.paymentAdjustment.amount))} MXN.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1035,14 +1066,19 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                     Pago en linea con Mercado Pago
                   </p>
                   <p className="mt-1 text-xs" style={{ color: '#9AA6B2' }}>
-                    Al confirmar, el backend recalcula el total y te envia al checkout seguro para pagar.
+                    Al confirmar, el backend recalcula el total con la comision y te envia al checkout seguro.
                   </p>
+                  {orderSummary.paymentAdjustment.amount > 0 && (
+                    <p className="mt-2 text-[11px]" style={{ color: '#FCD34D' }}>
+                      Comision agregada: +${fmtMXN(orderSummary.paymentAdjustment.amount)} MXN.
+                    </p>
+                  )}
                   {orderSummary.hasUnknown && (
                     <p className="mt-2 text-[11px]" style={{ color: '#FCD34D' }}>
                       Este pedido incluye servicios por cotizar. Si no hay precio calculable, quedara registrado y te contactaremos antes de cobrar.
                     </p>
                   )}
-                  {!orderSummary.hasUnknown && orderSummary.total < MIN_CHECKOUT_OPTION_MXN && (
+                  {!orderSummary.hasUnknown && orderSummary.paymentBase < MIN_CHECKOUT_OPTION_MXN && (
                     <p className="mt-2 text-[11px]" style={{ color: '#FCA5A5' }}>
                       El pago en linea esta disponible desde ${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN.
                       Agrega productos o selecciona transferencia.
@@ -1058,7 +1094,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                   type="button"
                   role="switch"
                   aria-checked={requiresInvoice}
-                  disabled={orderSummary.total < MIN_CHECKOUT_OPTION_MXN}
+                  disabled={orderSummary.paymentBase < MIN_CHECKOUT_OPTION_MXN}
                   onClick={() => { setRequiresInvoice((v) => !v); setBillingError(""); }}
                   className="w-full flex items-center gap-3 text-left rounded-2xl px-3 py-2.5 transition disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ border: '1px solid #273449', backgroundColor: requiresInvoice ? 'rgba(31,74,168,0.08)' : '#1B2433' }}
@@ -1075,7 +1111,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                   <div>
                     <p className="text-sm font-medium" style={{ color: '#E5ECF6' }}>¿Requieres factura?</p>
                     <p className="text-[11px]" style={{ color: '#6B7280' }}>
-                      {orderSummary.total >= MIN_CHECKOUT_OPTION_MXN
+                      {orderSummary.paymentBase >= MIN_CHECKOUT_OPTION_MXN
                         ? "Factura CFDI al correo indicado"
                         : `Disponible desde $${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN`}
                     </p>
@@ -1263,7 +1299,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                 disabled={
                   !hasItems ||
                   (hasResponsibilityFiles && !fileResponsibilityAccepted) ||
-                  (payment === "mercadopago" && orderSummary.total < MIN_CHECKOUT_OPTION_MXN)
+                  (payment === "mercadopago" && orderSummary.paymentBase < MIN_CHECKOUT_OPTION_MXN)
                 }
                 className="w-full py-3 rounded-2xl font-semibold text-sm transition-all hover:scale-[1.01] active:scale-[.99] disabled:opacity-40"
                 style={{ backgroundColor: '#C61C1C', color: '#FFFFFF' }}

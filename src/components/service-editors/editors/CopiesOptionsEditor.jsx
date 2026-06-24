@@ -1,40 +1,10 @@
 import { useMemo } from "react";
+import { COPIAS, lookupPrice } from "../../../data/priceList";
 
 // ---------------------------------------------------------------------------
-// Tabla de precios — hoja "Copias" de listadepreciospagina2026_modificada_v2.xlsx
+// Tabla de precios — hoja "Copias" de listadepreciospagina2026_modificada23_06_2026.xlsx
 // Precio unitario por copia (un lado)
 // ---------------------------------------------------------------------------
-const COPIES_PRICES = {
-  negro: {
-    ranges: [
-      { min: 1,     max: 99,       Carta: 0.96, Oficio: 1.54, "Doble Carta": 2.18 },
-      { min: 100,   max: 499,      Carta: 0.90, Oficio: 1.34, "Doble Carta": 1.98 },
-      { min: 500,   max: 999,      Carta: 0.83, Oficio: 1.09, "Doble Carta": 1.73 },
-      { min: 1000,  max: 4999,     Carta: 0.77, Oficio: 0.96, "Doble Carta": 1.60 },
-      { min: 10000, max: Infinity,  Carta: 0.70, Oficio: 0.83, "Doble Carta": 1.47 },
-    ],
-  },
-  colorLaser: {
-    ranges: [
-      { min: 1,    max: 49,        Carta: 9.54, Oficio: 10.11, "Doble Carta": 12.48 },
-      { min: 50,   max: 99,        Carta: 9.41, Oficio: 10.05, "Doble Carta": 11.52 },
-      { min: 100,  max: 499,       Carta: 9.28, Oficio:  9.92, "Doble Carta": 10.88 },
-      { min: 500,  max: 999,       Carta: 8.64, Oficio:  9.28, "Doble Carta": 10.56 },
-      { min: 1000, max: 4999,      Carta: 7.68, Oficio:  8.96, "Doble Carta": 10.24 },
-      { min: 5000, max: Infinity,   Carta: 6.72, Oficio:  8.64, "Doble Carta":  9.92 },
-    ],
-  },
-  colorInkjet: {
-    ranges: [
-      { min: 1,    max: 49,        Carta: 4.00, Oficio: 4.80, "Doble Carta": 9.60 },
-      { min: 50,   max: 99,        Carta: 3.60, Oficio: 4.40, "Doble Carta": 9.20 },
-      { min: 100,  max: 499,       Carta: 3.20, Oficio: 4.00, "Doble Carta": 8.80 },
-      { min: 500,  max: 999,       Carta: 2.80, Oficio: 3.60, "Doble Carta": 8.40 },
-      { min: 1000, max: 4999,      Carta: 2.40, Oficio: 3.20, "Doble Carta": 8.00 },
-      { min: 5000, max: Infinity,   Carta: 2.00, Oficio: 2.80, "Doble Carta": 7.60 },
-    ],
-  },
-};
 
 function normFormat(size) {
   if (size === "Doble carta") return "Doble Carta";
@@ -47,11 +17,10 @@ function lookupCopyPrice(colorMode, colorTech, qty, size) {
   else if (colorTech === "inkjet") key = "colorInkjet";
   else key = "colorLaser";
 
-  const table = COPIES_PRICES[key];
+  const table = COPIAS[key];
   if (!table) return null;
   const fmt = normFormat(size);
-  const row = table.ranges.findLast((r) => qty >= r.min) || table.ranges[0];
-  return row[fmt] ?? null;
+  return lookupPrice(table, qty, fmt);
 }
 
 export default function CopiesOptionsEditor({ opts, onChangeOptions }) {

@@ -306,7 +306,8 @@ Deno.serve(async (req: Request) => {
       pricing,
     }, 422);
   }
-  if (pricing.total < MIN_ONLINE_PAYMENT_MXN) {
+  const minimumBasis = Number(pricing.paymentBase ?? pricing.total);
+  if (minimumBasis < MIN_ONLINE_PAYMENT_MXN) {
     return jsonResponse(req, {
       error: "minimum_payment_amount",
       message: `El pago en linea requiere un total minimo de $${MIN_ONLINE_PAYMENT_MXN.toFixed(2)} MXN.`,

@@ -3,6 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 import { supabase, supabaseAnonKey, supabaseUrl } from "./supabaseClient";
 import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
 import {
+  calculatePaymentAdjustment,
+  getPaymentBaseAmount,
+} from "./paymentAdjustments";
+import {
   MAX_FILES_PER_ORDER,
   validatePrintableFile,
 } from "../utils/fileGuards";
@@ -140,6 +144,26 @@ export function formatMoney(value) {
   return fmtMXN(n);
 }
 
+function normalizePaymentAdjustment(adjustment, fallback = null) {
+  const source = adjustment && Number.isFinite(Number(adjustment.amount))
+    ? adjustment
+    : fallback;
+  if (!source || !Number.isFinite(Number(source.amount))) return null;
+
+  const amount = roundMoney(source.amount) ?? 0;
+  return {
+    ...source,
+    amount,
+    type: source.type || (amount < 0 ? "discount" : amount > 0 ? "fee" : "none"),
+    label: source.label || "Ajuste por metodo de pago",
+  };
+}
+
+function formatAdjustmentAmount(amount) {
+  const n = roundMoney(amount) ?? 0;
+  return `${n < 0 ? "-" : "+"}$${formatMoney(Math.abs(n))}`;
+}
+
 export function isTrustedMercadoPagoUrl(value) {
   try {
     const url = new URL(value);
@@ -195,6 +219,9 @@ export function getOrderFinancials(order) {
   ) ?? 0;
 
   const pricing = order?.pricing || order?.pricing_summary || {};
+  const paymentAdjustment = normalizePaymentAdjustment(
+    pricing.paymentAdjustment || pricing.payment_adjustment
+  );
   const subtotal = firstMoney(
     order?.subtotal,
     order?.subtotal_amount,
@@ -221,6 +248,8 @@ export function getOrderFinancials(order) {
     subtotal,
     discount,
     total,
+    paymentBase: firstMoney(pricing.paymentBase, pricing.payment_base, subtotal - discount) ?? 0,
+    paymentAdjustment,
     currency: pricing.currency || "MXN",
     hasKnownTotal: !pricing.hasUnknownTotal && (savedTotal !== null || !hasUnknownItems),
     hasUnknownItems: Boolean(pricing.hasUnknownTotal || hasUnknownItems),
@@ -374,9 +403,14 @@ export function buildOrderWhatsAppMessage({ order, isNew = true }) {
   msg += `\n*SERVICIOS SOLICITADOS:*\n${itemsText}\n`;
   if (financials.hasKnownTotal && financials.total > 0) {
     msg += `\n💰 *Total a pagar:* $${formatMoney(financials.total)} MXN\n`;
-    if (financials.discount > 0) {
+    if (financials.discount > 0 || financials.paymentAdjustment?.amount) {
       msg += `   Subtotal: $${formatMoney(financials.subtotal)} MXN\n`;
+    }
+    if (financials.discount > 0) {
       msg += `   Descuento: -$${formatMoney(financials.discount)} MXN\n`;
+    }
+    if (financials.paymentAdjustment?.amount) {
+      msg += `   ${financials.paymentAdjustment.label}: ${formatAdjustmentAmount(financials.paymentAdjustment.amount)} MXN\n`;
     }
   } else {
     msg += `\n💰 *Total:* por cotizar\n`;
@@ -405,6 +439,10 @@ function appendOrderDetailsNote(notes, pricingSummary, couponCode, billingInfo) 
   if (couponCode) lines.push(`Cupon: ${couponCode}`);
   lines.push(`Subtotal: $${formatMoney(pricingSummary.subtotal)}`);
   if (pricingSummary.discount > 0) lines.push(`Descuento: -$${formatMoney(pricingSummary.discount)}`);
+  const paymentAdjustment = normalizePaymentAdjustment(pricingSummary.paymentAdjustment);
+  if (paymentAdjustment?.amount) {
+    lines.push(`${paymentAdjustment.label}: ${formatAdjustmentAmount(paymentAdjustment.amount)}`);
+  }
   lines.push(`Total: $${formatMoney(pricingSummary.total)}`);
 
   const blocks = [notes, `[Resumen de pago]\n${lines.join("\n")}`];
@@ -537,6 +575,7 @@ export async function createOrder({
   discount,
   subtotal,
   total,
+  paymentAdjustment,
   billingInfo,
 }) {
   if (!user?.id || !accessToken) {
@@ -563,11 +602,19 @@ export async function createOrder({
     cleanItems.reduce((sum, item) => sum + (getItemPricing(item)?.total || 0), 0)
   ) ?? 0;
   const discountAmount = roundMoney(discount) ?? 0;
-  const totalAmount = roundMoney(total) ?? Math.max(0, roundMoney(inferredSubtotal - discountAmount) ?? 0);
+  const paymentBaseAmount = getPaymentBaseAmount(inferredSubtotal, discountAmount);
+  const normalizedPaymentAdjustment = normalizePaymentAdjustment(
+    paymentAdjustment,
+    calculatePaymentAdjustment(paymentMethod, paymentBaseAmount)
+  );
+  const totalAmount = roundMoney(total) ??
+    Math.max(0, roundMoney(paymentBaseAmount + (normalizedPaymentAdjustment?.amount || 0)) ?? 0);
   const pricingSummary = {
     currency: "MXN",
     subtotal: inferredSubtotal,
     discount: discountAmount,
+    paymentBase: paymentBaseAmount,
+    paymentAdjustment: normalizedPaymentAdjustment || calculatePaymentAdjustment(paymentMethod, paymentBaseAmount),
     total: totalAmount,
     hasUnknownTotal: cleanItems.some((item) => !getItemPricing(item)),
   };

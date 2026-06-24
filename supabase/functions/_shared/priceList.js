@@ -1,6 +1,6 @@
 /**
  * Lista de precios 2026 — CopyCenter 2000
- * Fuente: listadepreciospagina2026_modificada_v2.xlsx
+ * Fuente: listadepreciospagina2026_modificada23_06_2026.xlsx
  *
  * Estructura de cada tabla: Array de rangos.
  * Cada rango: { min, max, [formato|tipo]: precio, ... }
@@ -40,11 +40,11 @@ function r(min, max, fields) {
 export const BOND = {
   /** Impresión en negro (inyección o laser B/N) */
   negro: [
-    r(1,    99,   { Carta: 1.20, Oficio: 1.92, "Doble Carta": 2.72 }),
-    r(100,  499,  { Carta: 1.10, Oficio: 1.68, "Doble Carta": 2.48 }),
-    r(500,  999,  { Carta: 1.00, Oficio: 1.36, "Doble Carta": 2.16 }),
-    r(1000, 4999, { Carta: 0.70, Oficio: 1.20, "Doble Carta": 2.00 }),
-    r(10000, Infinity, { Carta: 0.60, Oficio: 1.04, "Doble Carta": 1.84 }),
+    r(1,    99,   { Carta: 1.00, Oficio: 1.50, "Doble Carta": 6.00 }),
+    r(100,  499,  { Carta: 0.70, Oficio: 1.00, "Doble Carta": 6.00 }),
+    r(500,  999,  { Carta: 0.70, Oficio: 0.90, "Doble Carta": 5.50 }),
+    r(1000, 4999, { Carta: 0.70, Oficio: 0.90, "Doble Carta": 5.00 }),
+    r(10000, Infinity, { Carta: 0.60, Oficio: 0.90, "Doble Carta": 4.50 }),
   ],
   /** Color láser */
   colorLaser: [
@@ -57,11 +57,11 @@ export const BOND = {
   ],
   /** Color inyección de tinta */
   colorInkjet: [
-    r(1,    49,   { Carta:  4.00, Oficio:  5.00, "Doble Carta": 12.00 }),
-    r(50,   99,   { Carta:  3.50, Oficio:  4.50, "Doble Carta": 11.50 }),
-    r(100,  499,  { Carta:  3.00, Oficio:  4.00, "Doble Carta": 11.00 }),
-    r(500,  999,  { Carta:  2.50, Oficio:  3.50, "Doble Carta": 10.50 }),
-    r(1000, 4999, { Carta:  2.00, Oficio:  3.00, "Doble Carta": 10.00 }),
+    r(1,    49,   { Carta:  3.00, Oficio:  4.00, "Doble Carta": 12.00 }),
+    r(50,   99,   { Carta:  2.50, Oficio:  3.50, "Doble Carta": 11.50 }),
+    r(100,  499,  { Carta:  2.00, Oficio:  3.00, "Doble Carta": 11.00 }),
+    r(500,  999,  { Carta:  2.50, Oficio:  3.00, "Doble Carta": 10.50 }),
+    r(1000, 4999, { Carta:  2.00, Oficio:  2.50, "Doble Carta": 10.00 }),
     r(5000, Infinity, { Carta: 1.80, Oficio:  2.50, "Doble Carta":  9.50 }),
   ],
 };
@@ -77,17 +77,17 @@ export const OPALINA = {
     r(101, Infinity, { Carta: 3.36, "Doble Carta": 6.00, "13x19": 25.00 }),
   ],
   colorLaser: [
-    r(1,   50,  { Carta: 14.00, "Doble Carta": 17.60, "13x19": 30.00 }),
-    r(51,  100, { Carta: 12.80, "Doble Carta": 16.00, "13x19": 27.27 }),
-    r(101, Infinity, { Carta: 12.40, "Doble Carta": 15.60, "13x19": 26.59 }),
+    r(1,   50,  { Carta: 12.00, "Doble Carta": 25.00, "13x19": 35.00 }),
+    r(51,  100, { Carta: 10.00, "Doble Carta": 20.00, "13x19": 30.00 }),
+    r(101, Infinity, { Carta: 8.00, "Doble Carta": 18.00, "13x19": 25.00 }),
   ],
   colorInkjet: [
-    r(1,    49,   { Carta:  7.00, Oficio:  8.00, "Doble Carta": 15.00 }),
-    r(50,   99,   { Carta:  6.50, Oficio:  7.50, "Doble Carta": 14.50 }),
-    r(100,  499,  { Carta:  6.00, Oficio:  7.00, "Doble Carta": 14.00 }),
-    r(500,  999,  { Carta:  5.50, Oficio:  4.50, "Doble Carta": 10.50 }),
-    r(1000, 4999, { Carta:  5.00, Oficio:  4.00, "Doble Carta": 10.00 }),
-    r(5000, Infinity, { Carta: 4.50, Oficio: 3.50, "Doble Carta": 9.50 }),
+    r(1,    49,   { Carta:  6.00, Oficio:  8.00, "Doble Carta": 15.00 }),
+    r(50,   99,   { Carta:  5.50, Oficio:  7.50, "Doble Carta": 14.50 }),
+    r(100,  499,  { Carta:  5.00, Oficio:  7.00, "Doble Carta": 14.00 }),
+    r(500,  999,  { Carta:  4.50, Oficio:  6.50, "Doble Carta": 10.50 }),
+    r(1000, 4999, { Carta:  4.00, Oficio:  6.00, "Doble Carta": 10.00 }),
+    r(5000, Infinity, { Carta: 3.50, Oficio: 5.50, "Doble Carta": 9.50 }),
   ],
 };
 
@@ -97,9 +97,9 @@ export const OPALINA = {
 
 export const AUTOADHESIVO = {
   negro: [
-    r(1,   50,  { Carta: 5.00, "Doble Carta": 8.00,  "13x19": 30.00 }),
-    r(51,  100, { Carta: 4.00, "Doble Carta": 7.20,  "13x19": 27.00 }),
-    r(101, Infinity, { Carta: 3.60, "Doble Carta": 6.80, "13x19": 25.50 }),
+    r(1,   50,  { Carta: 12.00, "Doble Carta": 25.00, "13x19": 35.00 }),
+    r(51,  100, { Carta: 10.00, "Doble Carta": 20.00, "13x19": 30.00 }),
+    r(101, Infinity, { Carta: 8.00, "Doble Carta": 18.00, "13x19": 28.00 }),
   ],
   colorLaser: [
     r(1,   50,  { Carta: 14.00, "Doble Carta": 16.80, "13x19": 30.00 }),
@@ -114,16 +114,16 @@ export const AUTOADHESIVO = {
 
 export const ACETATO = {
   negro: [
-    r(1,   99,  { Carta: 7.60 }),
-    r(100, 499, { Carta: 7.20 }),
-    r(500, 999, { Carta: 6.80 }),
-    r(1000, Infinity, { Carta: 6.40 }),
+    r(1,   99,  { Carta: 6.00 }),
+    r(100, 499, { Carta: 5.50 }),
+    r(500, 999, { Carta: 5.00 }),
+    r(1000, Infinity, { Carta: 4.00 }),
   ],
   colorLaser: [
-    r(1,   49,  { Carta: 16.00 }),
-    r(50,  99,  { Carta: 15.20 }),
-    r(100, 499, { Carta: 14.40 }),
-    r(500, Infinity, { Carta: 13.60 }),
+    r(1,   49,  { Carta: 12.00 }),
+    r(50,  99,  { Carta: 10.00 }),
+    r(100, 499, { Carta: 8.00 }),
+    r(500, Infinity, { Carta: 8.00 }),
   ],
 };
 
@@ -133,9 +133,9 @@ export const ACETATO = {
 
 export const KROMACOTE = {
   colorLaser: [
-    r(1,   50,  { Carta: 16.00, "Doble Carta": 21.60 }),
-    r(51,  100, { Carta: 15.20, "Doble Carta": 20.40 }),
-    r(101, Infinity, { Carta: 14.80, "Doble Carta": 19.20 }),
+    r(1,   50,  { Carta: 12.00, "Doble Carta": 25.00 }),
+    r(51,  100, { Carta: 10.00, "Doble Carta": 20.00 }),
+    r(101, Infinity, { Carta: 8.00, "Doble Carta": 18.00 }),
   ],
 };
 
@@ -145,9 +145,9 @@ export const KROMACOTE = {
 
 export const COUCHE = {
   colorLaser: [
-    r(1,   50,  { Carta: 14.00, "Doble Carta": 18.40, "13x19": 30.00 }),
-    r(51,  100, { Carta: 13.52, "Doble Carta": 17.20, "13x19": 28.04 }),
-    r(101, Infinity, { Carta: 12.96, "Doble Carta": 16.96, "13x19": 27.65 }),
+    r(1,   50,  { Carta: 12.00, "Doble Carta": 25.00, "13x19": 35.00 }),
+    r(51,  100, { Carta: 10.00, "Doble Carta": 20.00, "13x19": 30.00 }),
+    r(101, Infinity, { Carta: 8.00, "Doble Carta": 18.00, "13x19": 28.00 }),
   ],
 };
 
@@ -157,9 +157,9 @@ export const COUCHE = {
 
 export const SULFATADA = {
   colorLaser: [
-    r(1,   50,  { Carta: 12.40, "Doble Carta": 19.20, "13x19": 30.00 }),
-    r(51,  100, { Carta: 12.00, "Doble Carta": 17.60, "13x19": 27.50 }),
-    r(101, Infinity, { Carta: 11.60, "Doble Carta": 16.00, "13x19": 25.00 }),
+    r(1,   50,  { Carta: 12.00, "Doble Carta": 25.00, "13x19": 35.00 }),
+    r(51,  100, { Carta: 10.00, "Doble Carta": 20.00, "13x19": 30.00 }),
+    r(101, Infinity, { Carta: 8.00, "Doble Carta": 18.00, "13x19": 28.00 }),
   ],
 };
 
@@ -169,27 +169,27 @@ export const SULFATADA = {
 
 export const COPIAS = {
   negro: [
-    r(1,    99,   { Carta: 0.96, Oficio: 1.54, "Doble Carta": 2.18 }),
-    r(100,  499,  { Carta: 0.90, Oficio: 1.34, "Doble Carta": 1.98 }),
-    r(500,  999,  { Carta: 0.83, Oficio: 1.09, "Doble Carta": 1.73 }),
-    r(1000, 4999, { Carta: 0.77, Oficio: 0.96, "Doble Carta": 1.60 }),
-    r(10000, Infinity, { Carta: 0.70, Oficio: 0.83, "Doble Carta": 1.47 }),
+    r(1,    99,   { Carta: 1.00, Oficio: 1.50, "Doble Carta": 3.00 }),
+    r(100,  499,  { Carta: 0.90, Oficio: 1.00, "Doble Carta": 2.50 }),
+    r(500,  999,  { Carta: 0.80, Oficio: 0.90, "Doble Carta": 2.00 }),
+    r(1000, 4999, { Carta: 0.70, Oficio: 0.80, "Doble Carta": 1.80 }),
+    r(10000, Infinity, { Carta: 0.70, Oficio: 0.80, "Doble Carta": 1.47 }),
   ],
   colorLaser: [
-    r(1,    49,   { Carta: 9.54, Oficio: 10.11, "Doble Carta": 12.48 }),
-    r(50,   99,   { Carta: 9.41, Oficio: 10.05, "Doble Carta": 11.52 }),
-    r(100,  499,  { Carta: 9.28, Oficio:  9.92, "Doble Carta": 10.88 }),
-    r(500,  999,  { Carta: 8.64, Oficio:  9.28, "Doble Carta": 10.56 }),
-    r(1000, 4999, { Carta: 7.68, Oficio:  8.96, "Doble Carta": 10.24 }),
-    r(5000, Infinity, { Carta: 6.72, Oficio: 8.64, "Doble Carta": 9.92 }),
+    r(1,    49,   { Carta: 8.00, Oficio: 10.00, "Doble Carta": 15.00 }),
+    r(50,   99,   { Carta: 7.50, Oficio: 9.50, "Doble Carta": 14.50 }),
+    r(100,  499,  { Carta: 7.00, Oficio: 9.20, "Doble Carta": 14.00 }),
+    r(500,  999,  { Carta: 6.50, Oficio: 9.00, "Doble Carta": 13.50 }),
+    r(1000, 4999, { Carta: 6.00, Oficio: 8.60, "Doble Carta": 13.00 }),
+    r(5000, Infinity, { Carta: 5.50, Oficio: 8.20, "Doble Carta": 12.50 }),
   ],
   colorInkjet: [
-    r(1,    49,   { Carta: 4.00, Oficio: 4.80, "Doble Carta": 9.60 }),
-    r(50,   99,   { Carta: 3.60, Oficio: 4.40, "Doble Carta": 9.20 }),
-    r(100,  499,  { Carta: 3.20, Oficio: 4.00, "Doble Carta": 8.80 }),
-    r(500,  999,  { Carta: 2.80, Oficio: 3.60, "Doble Carta": 8.40 }),
-    r(1000, 4999, { Carta: 2.40, Oficio: 3.20, "Doble Carta": 8.00 }),
-    r(5000, Infinity, { Carta: 2.00, Oficio: 2.80, "Doble Carta": 7.60 }),
+    r(1,    49,   { Carta: 3.00, Oficio: 4.00, "Doble Carta": 12.00 }),
+    r(50,   99,   { Carta: 2.50, Oficio: 3.80, "Doble Carta": 10.00 }),
+    r(100,  499,  { Carta: 2.20, Oficio: 3.50, "Doble Carta": 8.80 }),
+    r(500,  999,  { Carta: 2.00, Oficio: 3.20, "Doble Carta": 8.40 }),
+    r(1000, 4999, { Carta: 1.80, Oficio: 3.00, "Doble Carta": 8.00 }),
+    r(5000, Infinity, { Carta: 1.50, Oficio: 2.80, "Doble Carta": 7.60 }),
   ],
 };
 
@@ -210,9 +210,9 @@ export const ENMICADOS = [
 export const ENGARGOLADO = {
   /** Arillo metálico (máx 280 páginas) */
   metalico: [
-    r(1,   45,  { price: 24.00 }),
-    r(46,  85,  { price: 26.00 }),
-    r(86,  105, { price: 30.00 }),
+    r(1,   45,  { price: 25.00 }),
+    r(46,  85,  { price: 30.00 }),
+    r(86,  105, { price: 31.00 }),
     r(106, 180, { price: 35.00 }),
     r(181, 280, { price: 40.00 }),
   ],
@@ -221,13 +221,13 @@ export const ENGARGOLADO = {
     r(0,   30,  { price: 22.00 }),
     r(31,  74,  { price: 23.00 }),
     r(75,  110, { price: 24.00 }),
-    r(111, 140, { price: 25.00 }),
-    r(141, 160, { price: 26.00 }),
-    r(161, 190, { price: 27.00 }),
-    r(191, 220, { price: 29.00 }),
-    r(221, 250, { price: 31.00 }),
-    r(251, 340, { price: 33.00 }),
-    r(341, 440, { price: 35.00 }),
+    r(111, 140, { price: 26.00 }),
+    r(141, 160, { price: 28.00 }),
+    r(161, 190, { price: 29.00 }),
+    r(191, 220, { price: 31.00 }),
+    r(221, 250, { price: 33.00 }),
+    r(251, 340, { price: 35.00 }),
+    r(341, 440, { price: 40.00 }),
     r(441, 450, { price: 40.00 }),
     r(451, 500, { price: 50.00 }),
   ],
