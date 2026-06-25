@@ -6,6 +6,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Seo from "./components/Seo";
 import { CartProvider } from "./components/CartContext";
+import { LocaleProvider } from "./i18n/LocaleContext";
 import { OAUTH_RESUME_CHECKOUT_KEY } from "./lib/googleAuth";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
@@ -262,19 +263,20 @@ export default function App() {
   }, []);
 
   return (
-    <CartProvider>
-      <div className="relative min-h-screen flex flex-col bg-background text-foreground">
-        <ScrollToHash />
+    <LocaleProvider>
+      <CartProvider>
+        <div className="relative min-h-screen flex flex-col bg-background text-foreground">
+          <ScrollToHash />
 
-        <div className="relative z-10 flex flex-col min-h-screen">
-          <Navbar
-            onOpenCart={() => openCart({ tab: "pedido" })}
-            onOpenAuth={openAuth}
-            user={user}
-            session={session}
-            profile={profile}
-            displayName={displayName}
-          />
+          <div className="relative z-10 flex flex-col min-h-screen">
+            <Navbar
+              onOpenCart={() => openCart({ tab: "pedido" })}
+              onOpenAuth={openAuth}
+              user={user}
+              session={session}
+              profile={profile}
+              displayName={displayName}
+            />
 
           <Suspense fallback={<div className="min-h-[55vh]" aria-hidden="true" />}>
           <Routes>
@@ -387,8 +389,9 @@ export default function App() {
               <WhatsAppWidget phone="527713531668" />
             </Suspense>
           ) : null}
+          </div>
         </div>
-      </div>
-    </CartProvider>
+      </CartProvider>
+    </LocaleProvider>
   );
 }

@@ -4,6 +4,8 @@ import { CheckCircle2, Paperclip, PencilLine, Search, ShoppingCart, Upload, X } 
 import { useCart } from "./CartContext";
 import { supabase } from "@/lib/supabaseClient";
 import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
+import { useLocale } from "../i18n/LocaleContext";
+import { getLocalizedQtyBadgeLabel, localizeCatalogService } from "../i18n/serviceContent";
 import {
   getExt,
   MAX_FILES_PER_ORDER,
@@ -230,6 +232,7 @@ const CONFIG_DEFAULTS = {
 };
 
 export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem }) {
+  const { locale, t } = useLocale();
   const [seleccion, setSeleccion] = useState(null);
   const [paso, setPaso] = useState("pregunta");
   const [localMsg, setLocalMsg] = useState("");
@@ -256,6 +259,10 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
   processingFilesRef.current = processingFiles.active;
 
   const { addItem } = useCart();
+  const localizedServicios = useMemo(
+    () => servicios.map((service) => localizeCatalogService(service, locale)),
+    [servicios, locale]
+  );
 
   // ── Buscador ────────────────────────────────────────────────────────────────
   const handleSearch = useCallback((query) => {
@@ -271,7 +278,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
       const q = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const normalize = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-      const match = servicios.find((s) => {
+      const match = localizedServicios.find((s) => {
         const nombre = normalize(s.nombre || s.titulo);
         const desc   = normalize(s.descripcion || s.desc);
         const tag    = normalize(s.tag);
@@ -301,7 +308,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
         setHighlightKey(null);
       }
     }, 280);
-  }, [servicios]);
+  }, [localizedServicios]);
 
   // Limpiar highlight al borrar el query
   useEffect(() => {
@@ -528,7 +535,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
   const handleNecesitoDiseno = () => {
     if (!seleccion) return;
     const mensaje = encodeURIComponent(
-      `Hola, me interesa el servicio de "${seleccion.titulo}" y necesito ayuda con el diseño.`
+      t("homeServices.whatsappDesignHelp", { service: seleccion.titulo })
     );
     window.open(`https://wa.me/527713531668?text=${mensaje}`, "_blank");
     handleCloseModal();
@@ -663,7 +670,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
       }
     } catch (error) {
       console.error("[Servicios] Error al procesar archivos:", error);
-      setLocalMsg("No se pudo procesar el archivo. Intenta de nuevo o conviertelo a PDF.");
+      setLocalMsg(t("homeServices.fileProcessError"));
     } finally {
       setProcessingFiles({ active: false, current: 0, total: 0, name: "" });
     }
@@ -693,17 +700,17 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
     setIsDragging(false);
   };
 
-  const activeCount = servicios.filter((s) => s.activo !== false).length;
+  const activeCount = localizedServicios.filter((s) => s.activo !== false).length;
 
   return (
     <section className="space-y-5">
       <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-        <h2 className="text-2xl font-semibold text-white">Servicios</h2>
+        <h2 className="text-2xl font-semibold text-white">{t("homeServices.title")}</h2>
         <p className="text-sm leading-6 text-muted-foreground md:max-w-xl md:text-right">
-          Sube tus archivos por servicio, configura cómo lo quieres y agrégalo al carrito.
+          {t("homeServices.intro")}
         </p>
         <div className="rounded-lg border border-border bg-secondary/50 px-3 py-2 text-sm text-secondary-foreground md:justify-self-end">
-          {activeCount} servicios activos
+          {t("homeServices.activeCount", { count: activeCount })}
         </div>
       </div>
 
@@ -713,7 +720,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
           <Search className="pointer-events-none absolute left-3.5 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Busca un servicio: copias, engargolados, actas, constancia..."
+            placeholder={t("homeServices.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Escape") handleSearch(""); }}
@@ -732,7 +739,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
               type="button"
               onClick={() => handleSearch("")}
               className="absolute right-2.5 grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-white"
-              aria-label="Limpiar busqueda"
+              aria-label={t("homeServices.clearSearch")}
             >
               <X className="h-4 w-4" />
             </button>
@@ -743,14 +750,16 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
         {searchQuery && (
           <p className="mt-1.5 text-[11px] pl-1" style={{ color: highlightKey ? '#34D399' : '#F87171' }}>
             {highlightKey
-              ? `Encontrado: ${servicios.find(s => (s.id || s.serviceKey) === highlightKey)?.nombre || highlightKey}`
-              : "No se encontró ningún servicio con ese término"}
+              ? t("homeServices.found", {
+                  name: localizedServicios.find(s => (s.id || s.serviceKey) === highlightKey)?.nombre || highlightKey,
+                })
+              : t("homeServices.notFound")}
           </p>
         )}
       </div>
 
       <div ref={gridRef} className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {servicios.map((s) => {
+        {localizedServicios.map((s) => {
           const key = s.id || s.serviceKey;
           const img = IMG_MAP[key];
           const nombre = s.nombre || s.titulo;
@@ -790,7 +799,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                 <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/50 backdrop-blur-[2px]">
                   <span className="rounded-md px-4 py-2 text-xs font-semibold uppercase tracking-wider"
                     style={{ background: 'rgba(198,28,28,0.85)', color: '#fff', border: '1px solid rgba(255,100,100,0.4)' }}>
-                    {s.suspendido_msg || "Temporalmente no disponible"}
+                    {s.suspendido_msg || t("homeServices.unavailable")}
                   </span>
                 </div>
               )}
@@ -819,13 +828,13 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                   {QTY_BADGE[key] && (
                     <span className="inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
                       style={{ backgroundColor: QTY_BADGE[key].bg, color: QTY_BADGE[key].color, border: `1px solid ${QTY_BADGE[key].border}` }}>
-                      {QTY_BADGE[key].label}
+                      {getLocalizedQtyBadgeLabel(key, locale, QTY_BADGE[key].label)}
                     </span>
                   )}
                   {s.cadBadge && (
                     <span className="inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-medium"
                       style={{ backgroundColor: 'rgba(234,179,8,0.1)', color: '#FDE047', border: '1px solid rgba(234,179,8,0.25)' }}>
-                      🎉 Desc. por volumen
+                      {t("homeServices.volumeDiscount")}
                     </span>
                   )}
                 </div>
@@ -834,7 +843,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                   className="mt-auto inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-all"
                   style={{ border: '1px solid #273449', color: '#E5ECF6', backgroundColor: 'rgba(27,36,51,0.5)' }}
                 >
-                  {activo ? "Elegir servicio" : "No disponible"}
+                  {activo ? t("homeServices.choose") : t("homeServices.unavailableShort")}
                 </span>
               </div>
             </button>
@@ -860,10 +869,10 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="service-dialog-title" className="sr-only">
-              Configurar {seleccion.titulo}
+              {t("homeServices.dialogTitle", { service: seleccion.titulo })}
             </h2>
             <p id="service-dialog-description" className="sr-only">
-              Selecciona las opciones del servicio y agrega tu pedido al carrito.
+              {t("homeServices.dialogDescription")}
             </p>
 
             <button
@@ -872,7 +881,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
               onClick={handleCloseModal}
               className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg text-sm transition"
               style={{ background: 'rgba(27,36,51,0.8)', color: '#9AA6B2' }}
-              aria-label={`Cerrar configuración de ${seleccion.titulo}`}
+              aria-label={t("homeServices.closeConfig", { service: seleccion.titulo })}
             >
               ✕
             </button>
@@ -880,7 +889,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
             {paso === "pregunta" && (
               <>
                 <p className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#9AA6B2' }}>
-                  SERVICIO SELECCIONADO
+                  {t("homeServices.selectedService")}
                 </p>
                 <h3 className="text-lg md:text-xl font-semibold" style={{ color: '#F5F7FA' }}>
                   {seleccion.titulo}
@@ -902,7 +911,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
 
                 <div className="mt-5">
                   <p className="text-sm mb-3" style={{ color: '#E5ECF6' }}>
-                    ¿Tu diseño ya está listo o necesitas apoyo para desarrollarlo?
+                    {t("homeServices.designQuestion")}
                   </p>
                   <div className="flex flex-col gap-3">
                     <button
@@ -912,7 +921,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                       style={{ backgroundColor: '#1F4AA8', color: '#FFFFFF' }}
                     >
                       <CheckCircle2 className="h-4 w-4" />
-                      Sí, ya tengo mi archivo listo
+                      {t("homeServices.fileReady")}
                     </button>
 
                     <button
@@ -922,12 +931,12 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                       style={{ border: '1px solid #273449', color: '#E5ECF6', backgroundColor: 'rgba(27,36,51,0.6)' }}
                     >
                       <PencilLine className="h-4 w-4" />
-                      No, necesito que me ayuden con el diseño
+                      {t("homeServices.needDesign")}
                     </button>
                   </div>
                   {processingFiles.active && (
                     <div className="mt-3 rounded-lg border border-blue-400/25 bg-blue-500/10 px-3 py-2 text-xs text-blue-200">
-                      Leyendo el archivo para calcular paginas y medidas. Esto puede tardar si el PDF es pesado.
+                      {t("homeServices.processingHint")}
                     </div>
                   )}
                 </div>
@@ -937,7 +946,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
             {paso === "configurar" && (
               <>
                 <p className="text-xs uppercase tracking-[0.18em] mb-1" style={{ color: '#9AA6B2' }}>
-                  {seleccion.tag || "SERVICIO"}
+                  {seleccion.tag || t("homeServices.service")}
                 </p>
                 <h3 className="text-lg font-semibold mb-1" style={{ color: '#F5F7FA' }}>
                   {seleccion.titulo}
@@ -945,7 +954,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
 
                 {/* Editor de opciones con scroll */}
                 <div className="overflow-y-auto pr-1 mt-3" style={{ maxHeight: '55vh' }}>
-                  <Suspense fallback={<p className="py-6 text-center text-sm text-muted-foreground">Cargando opciones…</p>}>
+                  <Suspense fallback={<p className="py-6 text-center text-sm text-muted-foreground">{t("homeServices.loadingOptions")}</p>}>
                     <ServiceOptionsEditor
                       item={{ serviceKey: seleccion.serviceKey, options: tempOptions, quantity: 1 }}
                       onChangeOptions={(patch) => {
@@ -976,13 +985,13 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                   {precioTemp ? (
                     <>
                       <div>
-                        <p className="text-[11px]" style={{ color: '#6EE7B7' }}>Por unidad</p>
+                        <p className="text-[11px]" style={{ color: '#6EE7B7' }}>{t("homeServices.unitPrice")}</p>
                         <p className="text-sm font-bold tabular-nums" style={{ color: '#F5F7FA' }}>
                           ${fmtMXN(precioTemp.perUnit)}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[11px]" style={{ color: '#6EE7B7' }}>Total estimado</p>
+                        <p className="text-[11px]" style={{ color: '#6EE7B7' }}>{t("homeServices.estimatedTotal")}</p>
                         <p className="text-xl font-bold tabular-nums" style={{ color: '#34D399' }}>
                           ${fmtMXN(precioTemp.total)}
                         </p>
@@ -990,7 +999,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                     </>
                   ) : (
                     <p className="text-[12px] w-full text-center" style={{ color: '#9AA6B2' }}>
-                      Completa tamaño y cantidad para ver el precio
+                      {t("homeServices.completeToSeePrice")}
                     </p>
                   )}
                 </div>
@@ -1001,7 +1010,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                     className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold shadow-sm transition"
                     style={{ backgroundColor: '#1F4AA8', color: '#fff' }}>
                     <ShoppingCart className="h-4 w-4" />
-                    Agregar al carrito
+                    {t("homeServices.addToCart")}
                   </button>
                   {!SOLO_CONFIGURACION.has(seleccion.serviceKey) && (
                     <>
@@ -1009,13 +1018,13 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                         className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition"
                         style={{ border: '1px solid #273449', color: '#E5ECF6', backgroundColor: 'rgba(27,36,51,0.6)' }}>
                         <Paperclip className="h-4 w-4" />
-                        Agregar y subir mi archivo de diseño
+                        {t("homeServices.addAndUpload")}
                       </button>
                       <button type="button" onClick={handleNecesitoDiseno}
                         className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition"
                         style={{ border: '1px solid #273449', color: '#9AA6B2', backgroundColor: 'transparent' }}>
                         <PencilLine className="h-4 w-4" />
-                        Necesito ayuda con el diseño
+                        {t("homeServices.needDesign")}
                       </button>
                     </>
                   )}
@@ -1026,14 +1035,13 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
             {paso === "subir" && (
               <>
                 <p className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#9AA6B2' }}>
-                  SUBE TUS ARCHIVOS
+                  {t("homeServices.uploadFiles")}
                 </p>
                 <h3 className="text-lg md:text-xl font-semibold" style={{ color: '#F5F7FA' }}>
-                  Archivos para {seleccion.titulo}
+                  {t("homeServices.filesFor", { service: seleccion.titulo })}
                 </h3>
                 <p className="text-sm mt-1" style={{ color: '#9AA6B2' }}>
-                  Adjunta tus archivos. Cada archivo se agregará como un elemento
-                  independiente en tu carrito.
+                  {t("homeServices.uploadIntro")}
                 </p>
 
                 {localMsg && (
@@ -1071,17 +1079,20 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                     <div className="text-center">
                       <p className="text-sm font-medium" style={{ color: isDragging ? '#93C5FD' : '#E5ECF6' }}>
                         {processingFiles.active
-                          ? `Procesando ${processingFiles.current || 1} de ${processingFiles.total || 1}`
-                          : isDragging ? 'Suelta aquí tus archivos' : 'Arrastra tus archivos aquí'}
+                          ? t("homeServices.dropProcessing", {
+                              current: processingFiles.current || 1,
+                              total: processingFiles.total || 1,
+                            })
+                          : isDragging ? t("homeServices.dropActive") : t("homeServices.dropIdle")}
                       </p>
                       <p className="text-xs mt-1" style={{ color: '#9AA6B2' }}>
                         {processingFiles.active
-                          ? processingFiles.name || "Leyendo archivo..."
-                          : "o haz clic para seleccionar"}
+                          ? processingFiles.name || t("homeServices.fileReading")
+                          : t("homeServices.clickToSelect")}
                       </p>
                     </div>
                     <p className="text-[11px] text-center" style={{ color: '#6B7280' }}>
-                      PDF, PNG o JPG/JPEG (maximo 25 MB)
+                      {t("homeServices.fileTypes")}
                     </p>
                   </div>
                 </div>
@@ -1094,7 +1105,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                     className="w-full rounded-lg px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50"
                     style={{ border: '1px solid #273449', color: '#E5ECF6', backgroundColor: 'rgba(27,36,51,0.6)' }}
                   >
-                    Cerrar
+                    {t("homeServices.close")}
                   </button>
                 </div>
               </>
@@ -1103,7 +1114,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
             {paso === "sinarchivo" && (
               <>
                 <p className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#9AA6B2' }}>
-                  SERVICIO SELECCIONADO
+                  {t("homeServices.selectedService")}
                 </p>
                 <h3 className="text-lg md:text-xl font-semibold" style={{ color: '#F5F7FA' }}>
                   {seleccion.titulo}
@@ -1113,7 +1124,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                 </p>
 
                 <p className="text-sm mt-4" style={{ color: '#E5ECF6' }}>
-                  Este servicio trabaja con tus <strong>originales físicos</strong>. Agrégalo al carrito y ajusta las opciones antes de confirmar.
+                  {t("homeServices.physicalOriginals")}
                 </p>
 
                 <div className="mt-5 flex flex-col gap-3">
@@ -1124,7 +1135,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                     style={{ backgroundColor: '#1F4AA8', color: '#FFFFFF' }}
                   >
                     <ShoppingCart className="h-4 w-4" />
-                    Agregar al carrito
+                    {t("homeServices.addToCart")}
                   </button>
 
                   <button
@@ -1133,7 +1144,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                     className="w-full rounded-lg px-4 py-3 text-sm font-semibold shadow-sm transition"
                     style={{ backgroundColor: '#C61C1C', color: '#FFFFFF' }}
                   >
-                    Confirmar pedido →
+                    {t("homeServices.confirmOrder")}
                   </button>
 
                   <button
@@ -1142,7 +1153,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
                     className="w-full rounded-lg px-4 py-3 text-sm font-medium transition"
                     style={{ border: '1px solid #273449', color: '#9AA6B2', backgroundColor: 'transparent' }}
                   >
-                    Cancelar
+                    {t("homeServices.cancel")}
                   </button>
                 </div>
               </>

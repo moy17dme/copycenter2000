@@ -5,17 +5,19 @@ import { ChevronDown, LogOut, Menu, Package, ShieldCheck, ShoppingCart, Ticket, 
 import logo from "../assets/LOGOcopy-330.webp";
 import { supabase } from "../lib/supabaseClient";
 import { hasAdminRole, useIsAdmin } from "../lib/useIsAdmin";
+import { useLocale } from "../i18n/LocaleContext";
+import LanguageSwitcher from "./locale/LanguageSwitcher";
 
 const primaryLinks = [
-  { to: "/", label: "Inicio" },
-  { to: "/servicios", label: "Servicios" },
-  { to: "/precios", label: "Precios" },
-  { to: "/contacto", label: "Contacto" },
+  { to: "/", labelKey: "nav.home" },
+  { to: "/servicios", labelKey: "nav.services" },
+  { to: "/precios", labelKey: "nav.prices" },
+  { to: "/contacto", labelKey: "nav.contact" },
 ];
 
 const moreLinks = [
-  { to: "/portafolio", label: "Portafolio" },
-  { to: "/recursos", label: "Recursos" },
+  { to: "/portafolio", labelKey: "nav.portfolio" },
+  { to: "/recursos", labelKey: "nav.resources" },
 ];
 
 const mobileLinks = [...primaryLinks.slice(0, 3), ...moreLinks, primaryLinks[3]];
@@ -27,6 +29,7 @@ export default function Navbar({
   profile,
   displayName,
 }) {
+  const { t } = useLocale();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -119,7 +122,7 @@ export default function Navbar({
           {primaryLinks.map((l) => (
             <li key={l.to}>
               <Link to={l.to} className={linkClass(l.to)}>
-                {l.label}
+                {t(l.labelKey)}
               </Link>
             </li>
           ))}
@@ -136,7 +139,7 @@ export default function Navbar({
               aria-haspopup="menu"
               aria-expanded={moreOpen}
             >
-              Más
+              {t("nav.more")}
               <ChevronDown
                 className={`h-3.5 w-3.5 transition-transform duration-150 ${moreOpen ? "rotate-180" : ""}`}
               />
@@ -154,7 +157,7 @@ export default function Navbar({
                     role="menuitem"
                     className={`${linkClass(link.to)} w-full justify-start py-2`}
                   >
-                    {link.label}
+                    {t(link.labelKey)}
                   </Link>
                 ))}
               </div>
@@ -163,12 +166,14 @@ export default function Navbar({
         </ul>
 
         <div className="flex shrink-0 items-center gap-2">
+          <LanguageSwitcher className="hidden lg:inline-flex" />
+
           <Link
             to="/ticket"
             className="hidden shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-white xl:inline-flex"
           >
             <Ticket className="h-4 w-4" />
-            Pagar ticket
+            {t("nav.payTicket")}
           </Link>
 
           {!user ? (
@@ -177,7 +182,7 @@ export default function Navbar({
               onClick={onOpenAuth}
               className="hidden items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-600 sm:inline-flex"
             >
-              Ingresar
+              {t("nav.signIn")}
             </button>
           ) : (
             <div className="hidden shrink-0 items-center gap-2 lg:flex">
@@ -187,7 +192,7 @@ export default function Navbar({
                   className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-orange-300/40 bg-orange-400/10 px-3 py-2 text-sm font-medium text-orange-200 transition hover:bg-orange-400/15"
                 >
                   <ShieldCheck className="h-4 w-4" />
-                  Admin
+                  {t("nav.admin")}
                 </Link>
               )}
 
@@ -196,25 +201,25 @@ export default function Navbar({
                 className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary/70 px-3 py-2 text-sm font-medium text-secondary-foreground transition hover:bg-muted"
               >
                 <Package className="h-4 w-4" />
-                Mis pedidos
+                {t("nav.myOrders")}
               </Link>
 
               <button
                 type="button"
                 onClick={onOpenAuth}
                 className="inline-flex max-w-36 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary/70 px-3 py-2 text-sm font-medium text-secondary-foreground transition hover:bg-muted"
-                title="Mi cuenta"
+                title={t("nav.myAccount")}
               >
                 <UserRound className="h-4 w-4" />
-                <span className="truncate">{name || "Mi cuenta"}</span>
+                <span className="truncate">{name || t("nav.myAccount")}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleLogout}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-secondary/40 text-muted-foreground transition hover:bg-muted hover:text-white"
-                aria-label="Salir"
-                title="Salir"
+                aria-label={t("nav.signOut")}
+                title={t("nav.signOut")}
               >
                 <LogOut className="h-4 w-4" />
               </button>
@@ -225,7 +230,7 @@ export default function Navbar({
             type="button"
             onClick={() => setMobileOpen((open) => !open)}
             className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary/70 text-secondary-foreground transition hover:bg-muted xl:hidden"
-            aria-label={mobileOpen ? "Cerrar menu" : "Abrir menu"}
+            aria-label={mobileOpen ? t("nav.closeMenu") : t("nav.openMenu")}
             aria-expanded={mobileOpen}
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -234,11 +239,11 @@ export default function Navbar({
           <button
             type="button"
             onClick={onOpenCart}
-            aria-label="Abrir carrito"
-            title="Abrir carrito"
+            aria-label={t("nav.openCart")}
+            title={t("nav.openCart")}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-600 active:scale-[.99] sm:px-4"
           >
-            <span className="hidden sm:inline">Carrito</span>
+            <span className="hidden sm:inline">{t("nav.cart")}</span>
             <ShoppingCart className="h-4 w-4" />
           </button>
         </div>
@@ -254,18 +259,20 @@ export default function Navbar({
                 onClick={() => setMobileOpen(false)}
                 className={`${linkClass(l.to)} w-full justify-between py-2.5`}
               >
-                {l.label}
+                {t(l.labelKey)}
               </Link>
             ))}
 
             <div className="mt-2 grid gap-2 border-t border-border/70 pt-3">
+              <LanguageSwitcher fullWidth />
+
               <Link
                 to="/ticket"
                 onClick={() => setMobileOpen(false)}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-400/25 bg-blue-500/10 px-4 py-2.5 text-sm font-semibold text-blue-200 transition-colors hover:bg-blue-500/15"
               >
                 <Ticket className="h-4 w-4" />
-                Pagar ticket
+                {t("nav.payTicket")}
               </Link>
 
               {!user ? (
@@ -277,7 +284,7 @@ export default function Navbar({
                   }}
                   className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-600"
                 >
-                  Ingresar
+                  {t("nav.signIn")}
                 </button>
               ) : (
                 <>
@@ -288,7 +295,7 @@ export default function Navbar({
                       className="inline-flex items-center justify-center gap-2 rounded-lg border border-orange-300/40 bg-orange-400/10 px-4 py-2.5 text-sm font-medium text-orange-200 transition hover:bg-orange-400/15"
                     >
                       <ShieldCheck className="h-4 w-4" />
-                      Admin
+                      {t("nav.admin")}
                     </Link>
                   )}
 
@@ -298,7 +305,7 @@ export default function Navbar({
                     className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-secondary/70 px-4 py-2.5 text-sm font-medium text-secondary-foreground transition hover:bg-muted"
                   >
                     <Package className="h-4 w-4" />
-                    Mis pedidos
+                    {t("nav.myOrders")}
                   </Link>
 
                   <button
@@ -310,7 +317,7 @@ export default function Navbar({
                     className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary/70 px-4 py-2.5 text-sm font-medium text-secondary-foreground transition hover:bg-muted"
                   >
                     <UserRound className="h-4 w-4" />
-                    {name || "Mi cuenta"}
+                    {name || t("nav.myAccount")}
                   </button>
 
                   <button
@@ -322,7 +329,7 @@ export default function Navbar({
                     className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-secondary/40 px-4 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-white"
                   >
                     <LogOut className="h-4 w-4" />
-                    Salir
+                    {t("nav.signOut")}
                   </button>
                 </>
               )}

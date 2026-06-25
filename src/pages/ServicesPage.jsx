@@ -1,36 +1,40 @@
+import { useMemo } from "react";
 import { ArrowRight, CheckCircle2, Clock3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import PageShell from "../components/PageShell";
-import { PUBLIC_SERVICES } from "../data/publicServices";
-
-const servicesSchema = {
-  "@context": "https://schema.org",
-  "@type": "ItemList",
-  name: "Servicios de Copy Center 2000",
-  itemListElement: PUBLIC_SERVICES.map((service, index) => ({
-    "@type": "ListItem",
-    position: index + 1,
-    url: `https://copycenter2000.com/servicios/#${service.id}`,
-    name: service.title,
-  })),
-};
+import { getPublicServices } from "../data/publicServices";
+import { useLocale } from "../i18n/LocaleContext";
 
 export default function ServicesPage() {
+  const { locale, t } = useLocale();
+  const services = useMemo(() => getPublicServices(locale), [locale]);
+  const servicesSchema = useMemo(() => ({
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: locale === "en" ? "Copy Center 2000 services" : "Servicios de Copy Center 2000",
+    itemListElement: services.map((service, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: `https://copycenter2000.com/servicios/#${service.id}`,
+      name: service.title,
+    })),
+  }), [locale, services]);
+
   return (
     <PageShell
       path="/servicios"
-      eyebrow="Impresión, acabados y trámites"
-      title="Servicios para imprimir, presentar y resolver lo que necesitas"
-      intro="Desde copias y engargolados hasta proyectos en gran formato, actas y constancias. Revisa los requisitos y configura el servicio desde el sistema de pedidos."
-      breadcrumbLabel="Servicios"
+      eyebrow={t("servicesPage.eyebrow")}
+      title={t("servicesPage.title")}
+      intro={t("servicesPage.intro")}
+      breadcrumbLabel={t("servicesPage.breadcrumb")}
       structuredData={servicesSchema}
     >
       <section aria-labelledby="catalogo-servicios" className="py-10">
         <h2 id="catalogo-servicios" className="sr-only">
-          Catalogo de servicios
+          {t("servicesPage.catalogLabel")}
         </h2>
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {PUBLIC_SERVICES.map((service) => (
+          {services.map((service) => (
             <article
               key={service.id}
               id={service.id}
@@ -56,7 +60,7 @@ export default function ServicesPage() {
                   <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
                   <div>
                     <span className="font-semibold text-slate-200">
-                      Entrega estimada:
+                      {t("servicesPage.deliveryLabel")}
                     </span>{" "}
                     <span className="text-muted-foreground">
                       {service.delivery}
@@ -78,7 +82,7 @@ export default function ServicesPage() {
                   to={`/#servicios`}
                   className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-300 transition hover:text-blue-200"
                 >
-                  Configurar servicio
+                  {t("servicesPage.configure")}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -89,24 +93,20 @@ export default function ServicesPage() {
 
       <aside className="rounded-xl border border-blue-400/20 bg-blue-500/5 p-6">
         <h2 className="text-xl font-semibold text-white">
-          ¿No encuentras exactamente lo que necesitas?
+          {t("servicesPage.asideTitle")}
         </h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-          Los materiales, medidas y acabados pueden combinarse según el proyecto.
-          Comparte cantidad, tamaño, fecha de entrega y archivo para recibir una
-          cotización precisa.
+          {t("servicesPage.asideText")}
         </p>
         <p className="mt-3 max-w-3xl text-xs leading-5 text-slate-400">
-          Los tiempos son orientativos y comienzan al confirmar archivo, pago y
-          especificaciones. La cantidad, disponibilidad de material y acabados
-          pueden modificar la fecha final.
+          {t("servicesPage.asideNote")}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link to="/#servicios" className="btn-blue">
-            Iniciar pedido
+            {t("servicesPage.startOrder")}
           </Link>
           <Link to="/contacto" className="btn-outline">
-            Solicitar orientación
+            {t("servicesPage.requestHelp")}
           </Link>
         </div>
       </aside>

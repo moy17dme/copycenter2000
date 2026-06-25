@@ -1,15 +1,18 @@
 import { Link } from "react-router-dom";
 import PageShell from "../components/PageShell";
 import Precios from "../components/Precios";
+import { useLocale } from "../i18n/LocaleContext";
 
 export default function PricesPage() {
+  const { t } = useLocale();
+
   return (
     <PageShell
       path="/precios"
-      eyebrow="Costos claros"
-      title="Precios de referencia para tus impresiones"
-      intro="Compara rangos por servicio y cantidad. El total final depende del archivo, medida, material, acabado y tiempo de producción."
-      breadcrumbLabel="Precios"
+      eyebrow={t("pricesPage.eyebrow")}
+      title={t("pricesPage.title")}
+      intro={t("pricesPage.intro")}
+      breadcrumbLabel={t("pricesPage.breadcrumb")}
     >
       <section className="py-10">
         <Precios />
@@ -17,18 +20,17 @@ export default function PricesPage() {
 
       <aside className="rounded-xl border border-border bg-secondary/35 p-6">
         <h2 className="text-lg font-semibold text-white">
-          Antes de confirmar el precio
+          {t("pricesPage.beforeTitle")}
         </h2>
         <p className="mt-2 text-sm leading-6 text-slate-300">
-          Revisa resolución, tamaño final, cantidad y acabado. Para proyectos
-          especiales, solicita una cotización antes de enviar el pago.
+          {t("pricesPage.beforeText")}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link to="/#servicios" className="btn-blue">
-            Configurar pedido
+            {t("pricesPage.configure")}
           </Link>
           <Link to="/preguntas-frecuentes" className="btn-outline">
-            Preparar mis archivos
+            {t("pricesPage.prepareFiles")}
           </Link>
         </div>
       </aside>

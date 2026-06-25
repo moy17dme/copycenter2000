@@ -161,3 +161,126 @@ const PUBLIC_SERVICE_ORDER = [
 PUBLIC_SERVICES.sort(
   (a, b) => PUBLIC_SERVICE_ORDER.indexOf(a.id) - PUBLIC_SERVICE_ORDER.indexOf(b.id)
 );
+
+const PUBLIC_SERVICE_TRANSLATIONS = {
+  en: {
+    "impresion-digital": {
+      title: "Digital printing",
+      tag: "Color and black-and-white",
+      description:
+        "Print from a single piece on bond, coated, opaline and other papers for documents, presentations and promotional materials.",
+      details: ["PDF or image files", "Letter, legal and custom formats", "Single or double-sided printing"],
+      delivery: "30 minutes to 1 business day",
+      alt: "Digital printing equipment and print samples",
+    },
+    copias: {
+      title: "Copies",
+      tag: "Documents and office",
+      description:
+        "Sharp black-and-white or color copies for schoolwork, records, manuals and presentations.",
+      details: ["Black-and-white or color", "Letter, legal and tabloid", "Single or double-sided"],
+      delivery: "Same day, depending on volume",
+      alt: "Copied documents ready for pickup",
+    },
+    engargolados: {
+      title: "Binding",
+      tag: "Finishing",
+      description:
+        "Present and protect assignments, manuals, reports and documents with coils and covers.",
+      details: ["Metal or plastic coil", "Covers and backs", "From $22 MXN"],
+      delivery: "Same day, depending on volume",
+      alt: "Bound documents with covers",
+    },
+    "ploteo-planos": {
+      title: "Blueprint plotting",
+      tag: "Large format",
+      description:
+        "Print architectural plans, engineering drawings, maps and boards in different widths, papers and scales.",
+      details: ["Bond, opaline and photo paper", "Black-and-white or color", "Folded or rolled delivery"],
+      delivery: "1 to 2 business days",
+      alt: "Plotter and large-format printed plans",
+    },
+    "impresos-comerciales": {
+      title: "Business prints",
+      tag: "Promotion and sales",
+      description:
+        "Flyers, brochures, business cards, menus and materials for promotions, services and events.",
+      details: ["Short runs or thousands", "Various papers and weights", "Cutting, folding and perforation"],
+      delivery: "3 to 7 business days",
+      alt: "Business print samples and graphic arts",
+    },
+    stickers: {
+      title: "Custom stickers",
+      tag: "Vinyl and labels",
+      description:
+        "Round, square or contour-cut labels and stickers for packaging, identity and promotion.",
+      details: ["Matte or glossy vinyl", "Individual cut or sheet", "Optional lamination"],
+      delivery: "2 to 4 business days",
+      alt: "Custom sticker cutting process",
+    },
+    "tarjetas-pvc": {
+      title: "PVC cards",
+      tag: "Credentials",
+      description:
+        "Custom credentials, memberships and plastic cards with variable data, QR codes or folios.",
+      details: ["Standard CR80 format", "One or two-sided printing", "Variable data available"],
+      delivery: "2 to 5 business days",
+      alt: "Custom PVC cards and credentials",
+    },
+    sublimacion: {
+      title: "Sublimation",
+      tag: "Custom products",
+      description:
+        "Customize mugs, tumblers, textiles and promotional products with photos, logos or illustrations.",
+      details: ["Single items or volume orders", "Design review before production", "Gift and event options"],
+      delivery: "2 to 5 business days",
+      alt: "Products for sublimation customization",
+    },
+    "fotobotones-pines": {
+      title: "Photo buttons and pins",
+      tag: "Promotional",
+      description:
+        "Pins and photo buttons for events, teams, brands, schools and campaigns in different diameters.",
+      details: ["Image, logo or message", "Several sizes", "Quantity pricing"],
+      delivery: "2 to 4 business days",
+      alt: "Samples of pins and photo buttons",
+    },
+    digitalizacion: {
+      title: "Scanning and digitization",
+      tag: "Digital archive",
+      description:
+        "Convert documents, photographs and plans into organized digital files for consultation, backup or delivery.",
+      details: ["PDF, JPG or TIFF", "300 to 600 DPI resolution", "Digital delivery by agreement"],
+      delivery: "Same day or 1 to 2 days by volume",
+      alt: "Illustrative scanning and digitization process",
+    },
+    actas: {
+      title: "Official certificates",
+      tag: "Documents",
+      description:
+        "Request birth, marriage or death certificates for $85 MXN. Choose the type when configuring the service.",
+      details: ["Fixed price of $85 MXN", "Birth certificate: one CURP", "Marriage certificate: both CURPs"],
+      delivery: "Subject to system availability",
+      alt: "Official certificate request service",
+    },
+    "constancia-situacion-fiscal": {
+      title: "Mexican tax status certificate",
+      tag: "SAT",
+      description:
+        "Get your Mexican tax status certificate for $120 MXN by providing RFC and CIF ID.",
+      details: ["Fixed price of $120 MXN", "Requirements: RFC and CIF ID", "Request from the ordering system"],
+      delivery: "Subject to system availability",
+      alt: "Mexican tax status certificate service",
+    },
+  },
+};
+
+export function getPublicServices(locale = "es") {
+  const translations = PUBLIC_SERVICE_TRANSLATIONS[locale];
+  if (!translations) return PUBLIC_SERVICES;
+
+  return PUBLIC_SERVICES.map((service) => ({
+    ...service,
+    ...(translations[service.id] || {}),
+  }));
+}

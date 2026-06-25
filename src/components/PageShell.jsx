@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import Seo from "./Seo";
+import { useLocale } from "../i18n/LocaleContext";
 
 export default function PageShell({
   path,
@@ -13,6 +14,7 @@ export default function PageShell({
   children,
   width = "max-w-6xl",
 }) {
+  const { t } = useLocale();
   const breadcrumbs = breadcrumbItems || [{ label: breadcrumbLabel, path }];
 
   return (
@@ -24,11 +26,11 @@ export default function PageShell({
       />
 
       <div className={`mx-auto ${width}`}>
-        <nav aria-label="Migas de pan" className="mb-8">
+        <nav aria-label={t("pageShell.breadcrumbs")} className="mb-8">
           <ol className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <li>
               <Link to="/" className="transition hover:text-white">
-                Inicio
+                {t("pageShell.home")}
               </Link>
             </li>
             {breadcrumbs.map((item, index) => {

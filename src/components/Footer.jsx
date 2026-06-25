@@ -3,8 +3,11 @@ import React from "react";
 import { Link } from "react-router-dom";
 import logo from "../assets/LOGOcopy-330.webp";
 import { GOOGLE_BUSINESS_PROFILE } from "../data/trustEvidence";
+import { useLocale } from "../i18n/LocaleContext";
 
 export default function Footer() {
+  const { t } = useLocale();
+
   return (
     <footer className="relative mt-20 text-slate-100">
       {/* Separador ondulado opcional */}
@@ -27,8 +30,8 @@ export default function Footer() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <p className="text-lg md:text-xl font-semibold" style={{ color: '#F5F7FA' }}>
-                  ¿Listo para imprimir?{" "}
-                  <span className="font-normal" style={{ color: '#9AA6B2' }}>Sube tus archivos y realiza tu pedido en segundos.</span>
+                  {t("footer.ctaTitle")}{" "}
+                  <span className="font-normal" style={{ color: '#9AA6B2' }}>{t("footer.ctaText")}</span>
                 </p>
               </div>
               <div className="flex gap-3">
@@ -37,14 +40,14 @@ export default function Footer() {
                   className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold transition"
                   style={{ backgroundColor: '#C61C1C', color: '#FFFFFF' }}
                 >
-                  ¡Realiza tu pedido!
+                  {t("footer.ctaOrder")}
                 </Link>
                 <Link
                   to="/precios"
                   className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-medium transition"
                   style={{ border: '1px solid rgba(255,255,255,0.2)', color: '#E5ECF6' }}
                 >
-                  Ver precios
+                  {t("footer.ctaPrices")}
                 </Link>
               </div>
             </div>
@@ -72,7 +75,7 @@ export default function Footer() {
                 />
               </div>
               <p className="mt-4 text-sm" style={{ color: '#9AA6B2' }}>
-                Impresiones digitales, ploteo de planos y artes gráficas con calidad y rapidez.
+                {t("footer.about")}
               </p>
               <div className="mt-4 flex gap-3">
                 <SocialIcon href="https://wa.me/527713531668" label="WhatsApp">
@@ -96,47 +99,47 @@ export default function Footer() {
             {/* Servicios */}
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#9AA6B2' }}>
-                Servicios
+                {t("footer.servicesHeading")}
               </h3>
               <ul className="mt-4 space-y-2 text-sm">
-                <Li href="/servicios#impresion-digital">Impresión Digital</Li>
-                <Li href="/servicios#copias">Copias B/N y Color</Li>
-                <Li href="/servicios#engargolados">Engargolados</Li>
-                <Li href="/servicios#ploteo-planos">Ploteo de Planos</Li>
-                <Li href="/servicios#impresos-comerciales">Artes Gráficas</Li>
-                <Li href="/servicios#digitalizacion">Escaneo y Digitalización</Li>
-                <Li href="/servicios#actas">Actas y constancias</Li>
+                <Li href="/servicios#impresion-digital">{t("footer.services.digitalPrint")}</Li>
+                <Li href="/servicios#copias">{t("footer.services.copies")}</Li>
+                <Li href="/servicios#engargolados">{t("footer.services.binding")}</Li>
+                <Li href="/servicios#ploteo-planos">{t("footer.services.plans")}</Li>
+                <Li href="/servicios#impresos-comerciales">{t("footer.services.graphics")}</Li>
+                <Li href="/servicios#digitalizacion">{t("footer.services.scanning")}</Li>
+                <Li href="/servicios#actas">{t("footer.services.documents")}</Li>
               </ul>
             </div>
 
             {/* Enlaces */}
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#9AA6B2' }}>
-                Enlaces
+                {t("footer.linksHeading")}
               </h3>
               <ul className="mt-4 space-y-2 text-sm">
-                <Li href="/">Inicio</Li>
-                <Li href="/servicios">Servicios</Li>
-                <Li href="/precios">Precios</Li>
-                <Li href="/acerca-de">Acerca de</Li>
-                <Li href="/portafolio">Portafolio</Li>
-                <Li href="/recursos">Recursos de impresión</Li>
-                <Li href="/preguntas-frecuentes">Preguntas frecuentes</Li>
-                <Li href="/contacto">Contacto</Li>
-                <Li href="/aviso-privacidad">Aviso de privacidad</Li>
-                <Li href="/terminos">Términos y condiciones</Li>
+                <Li href="/">{t("footer.links.home")}</Li>
+                <Li href="/servicios">{t("footer.links.services")}</Li>
+                <Li href="/precios">{t("footer.links.prices")}</Li>
+                <Li href="/acerca-de">{t("footer.links.about")}</Li>
+                <Li href="/portafolio">{t("footer.links.portfolio")}</Li>
+                <Li href="/recursos">{t("footer.links.resources")}</Li>
+                <Li href="/preguntas-frecuentes">{t("footer.links.faq")}</Li>
+                <Li href="/contacto">{t("footer.links.contact")}</Li>
+                <Li href="/aviso-privacidad">{t("footer.links.privacy")}</Li>
+                <Li href="/terminos">{t("footer.links.terms")}</Li>
               </ul>
             </div>
 
             {/* Contacto */}
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#9AA6B2' }}>
-                Contacto
+                {t("footer.contactHeading")}
               </h3>
               <ul className="mt-4 space-y-3 text-sm">
                 <li className="flex items-start gap-3">
                   <IconMap />
-                  <span>Calle Gral. Vicente Segura 301-A, col. Periodistas, 42060 Pachuca de Soto, Hidalgo</span>
+                  <span>{t("footer.address")}</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <IconPhone />
@@ -152,7 +155,7 @@ export default function Footer() {
                 </li>
                 <li className="flex items-start gap-3">
                   <IconClock />
-                  <span>Lun–vie: 8:00–19:30 · Sáb: 9:00–15:00</span>
+                  <span>{t("footer.hours")}</span>
                 </li>
               </ul>
             </div>
@@ -166,15 +169,17 @@ export default function Footer() {
               <svg className="h-3.5 w-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
-              Pago seguro · Mercado Pago
+              {t("footer.securePayment")}
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium"
               style={{ borderColor: '#273449', color: '#9AA6B2' }}>
               <svg className="h-3.5 w-3.5 text-amber-400" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
               </svg>
-              {GOOGLE_BUSINESS_PROFILE.rating} / 5 en Google ·{" "}
-              {GOOGLE_BUSINESS_PROFILE.reviewCount} opiniones
+              {t("footer.googleRating", {
+                rating: GOOGLE_BUSINESS_PROFILE.rating,
+                count: GOOGLE_BUSINESS_PROFILE.reviewCount,
+              })}
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium"
               style={{ borderColor: '#273449', color: '#9AA6B2' }}>
@@ -182,7 +187,7 @@ export default function Footer() {
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0110 0v4" />
               </svg>
-              Sitio con HTTPS
+              {t("footer.https")}
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium"
               style={{ borderColor: '#273449', color: '#9AA6B2' }}>
@@ -190,7 +195,7 @@ export default function Footer() {
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 6v6l4 2" />
               </svg>
-              Negocio establecido desde 1999
+              {t("footer.since")}
             </span>
           </div>
 
@@ -198,13 +203,13 @@ export default function Footer() {
           <div className="mt-4 pt-4 text-xs flex flex-col md:flex-row items-center justify-between gap-3"
             style={{ borderTop: '1px solid #273449', color: '#9AA6B2' }}>
             <p>
-              © {new Date().getFullYear()} Copy Center 2000. Todos los derechos reservados.
+              © {new Date().getFullYear()} {t("footer.rights")}
             </p>
             <p className="opacity-80">
-              Hecho en México |{" "}
-              <Link to="/aviso-privacidad" className="hover:underline">Aviso de privacidad</Link>
+              {t("footer.madeIn")} |{" "}
+              <Link to="/aviso-privacidad" className="hover:underline">{t("footer.links.privacy")}</Link>
               {" "}|{" "}
-              <Link to="/terminos" className="hover:underline">Términos y condiciones</Link>
+              <Link to="/terminos" className="hover:underline">{t("footer.links.terms")}</Link>
             </p>
           </div>
         </div>

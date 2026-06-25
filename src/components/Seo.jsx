@@ -4,6 +4,7 @@ import {
   PUBLIC_ROUTE_SEO,
   SITE_URL,
 } from "../data/seoRoutes";
+import { useLocale } from "../i18n/LocaleContext";
 
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
 
@@ -29,11 +30,19 @@ function upsertCanonical(href) {
   element.setAttribute("href", href);
 }
 
-function buildBreadcrumbData(breadcrumbs) {
+function getSeoKey(path) {
+  if (path === "/") return "home";
+  if (path === "/servicios") return "services";
+  if (path === "/precios") return "prices";
+  if (path === "/contacto") return "contact";
+  return "";
+}
+
+function buildBreadcrumbData(breadcrumbs, homeLabel) {
   if (!breadcrumbs?.length) return null;
 
   const items = [
-    { label: "Inicio", path: "/" },
+    { label: homeLabel, path: "/" },
     ...breadcrumbs,
   ];
 
@@ -58,10 +67,13 @@ export default function Seo({
   breadcrumbs = [],
   structuredData,
 }) {
+  const { htmlLang, t } = useLocale();
+
   useEffect(() => {
     const routeSeo = PUBLIC_ROUTE_SEO[path] || PUBLIC_ROUTE_SEO["/"];
-    const pageTitle = title || routeSeo.title;
-    const pageDescription = description || routeSeo.description;
+    const seoKey = getSeoKey(path);
+    const pageTitle = title || (seoKey ? t(`seo.${seoKey}.title`, {}, routeSeo.title) : routeSeo.title);
+    const pageDescription = description || (seoKey ? t(`seo.${seoKey}.description`, {}, routeSeo.description) : routeSeo.description);
     const canonicalUrl = getCanonicalUrl(path);
 
     document.title = pageTitle;
@@ -119,7 +131,7 @@ export default function Seo({
         url: canonicalUrl,
         name: pageTitle,
         description: pageDescription,
-        inLanguage: "es-MX",
+        inLanguage: htmlLang,
         isPartOf: {
           "@id": `${SITE_URL}/#website`,
         },
@@ -127,7 +139,7 @@ export default function Seo({
           "@id": `${SITE_URL}/#localbusiness`,
         },
       },
-      buildBreadcrumbData(breadcrumbs),
+      buildBreadcrumbData(breadcrumbs, t("pageShell.home")),
       ...(Array.isArray(structuredData)
         ? structuredData
         : structuredData
@@ -151,10 +163,12 @@ export default function Seo({
   }, [
     breadcrumbs,
     description,
+    htmlLang,
     image,
     noindex,
     path,
     structuredData,
+    t,
     title,
   ]);
 

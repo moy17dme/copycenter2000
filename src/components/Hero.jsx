@@ -1,13 +1,12 @@
 import { ArrowRight, Clock, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import fondo from "../assets/fon.webp";
+import { useLocale } from "../i18n/LocaleContext";
 
 export default function Hero() {
-  const stats = [
-    { label: "Servicios", value: "9+" },
-    { label: "Lun-Vie", value: "8:00-19:30" },
-    { label: "Sabado", value: "9:00-15:00" },
-  ];
+  const { t } = useLocale();
+  const stats = t("hero.stats");
+  const chips = t("hero.chips");
 
   return (
     <div
@@ -34,22 +33,23 @@ export default function Hero() {
       <div className="relative z-10 flex min-h-[420px] max-w-3xl flex-col justify-center p-5 sm:p-7 md:min-h-[500px] md:p-10">
         <span className="hero-badge mb-5 inline-flex w-fit items-center gap-2 rounded-lg border border-border bg-secondary/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           <MapPin className="h-3.5 w-3.5" />
-          Copy Center 2000 - Pachuca
+          {t("hero.badge")}
         </span>
 
         <h1 className="hero-title max-w-2xl text-3xl font-extrabold leading-tight text-white md:text-5xl">
-          Sube tus archivos y haz tu pedido de impresion en minutos
+          {t("hero.title")}
         </h1>
 
         <p className="hero-desc mt-4 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
-          Copias, ploteo de planos, stickers, tarjetas PVC y artes graficas.
-          Elige el servicio, adjunta tu archivo y confirma el pedido sin vueltas.
+          {t("hero.description")}
         </p>
 
         <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-slate-300">
-          <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1">PDF e imagenes</span>
-          <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1">Precios de referencia</span>
-          <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1">Atencion por WhatsApp</span>
+          {chips.map((chip) => (
+            <span key={chip} className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1">
+              {chip}
+            </span>
+          ))}
         </div>
 
         <div className="mt-7 flex flex-wrap gap-3">
@@ -57,14 +57,14 @@ export default function Hero() {
             to="/#servicios"
             className="hero-btn inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-600 active:scale-[.99]"
           >
-            Realizar pedido
+            {t("hero.order")}
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
             to="/precios"
             className="hero-btn inline-flex items-center gap-2 rounded-lg border border-border bg-secondary/70 px-5 py-3 text-sm font-semibold text-secondary-foreground transition hover:bg-muted hover:text-white"
           >
-            Ver precios
+            {t("hero.prices")}
           </Link>
         </div>
 

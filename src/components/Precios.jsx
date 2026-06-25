@@ -14,6 +14,7 @@ import {
   Ruler,
   Scissors,
 } from "lucide-react";
+import { useLocale } from "../i18n/LocaleContext";
 
 const SERVICIOS_PRECIOS = [
   {
@@ -182,7 +183,7 @@ const ICON_MAP = {
   escaneo: Camera,
 };
 
-function ServicioCard({ s, expanded, onToggle }) {
+function ServicioCard({ s, expanded, onToggle, t }) {
   const c = COLOR_MAP[s.color] || COLOR_MAP.blue;
   const Icon = ICON_MAP[s.id] || Printer;
   const ExpandIcon = expanded ? ChevronUp : ChevronDown;
@@ -203,12 +204,12 @@ function ServicioCard({ s, expanded, onToggle }) {
           </span>
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-white">{s.titulo}</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">Precios de referencia · IVA incluido</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t("pricesList.includedTax")}</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${c.badge}`}>
-            desde {s.desde}
+            {t("pricesList.from")} {s.desde}
           </span>
           <ExpandIcon className="h-4 w-4 text-muted-foreground" />
         </div>
@@ -246,7 +247,7 @@ function ServicioCard({ s, expanded, onToggle }) {
             href="/#servicios"
             className={`mt-1 inline-flex items-center gap-1 text-xs font-semibold transition-colors ${c.badge.split(" ")[1]}`}
           >
-            Hacer pedido
+            {t("pricesList.order")}
             <ArrowRight className="h-3.5 w-3.5" />
           </a>
         </div>
@@ -256,6 +257,7 @@ function ServicioCard({ s, expanded, onToggle }) {
 }
 
 export default function Precios() {
+  const { t } = useLocale();
   const [expandedId, setExpandedId] = useState(null);
   const [showAll, setShowAll] = useState(false);
 
@@ -269,10 +271,10 @@ export default function Precios() {
     <div className="space-y-5">
       <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
         <h2 className="text-2xl font-semibold text-white">
-          Precios de referencia
+          {t("pricesList.title")}
         </h2>
         <p className="text-sm leading-6 text-muted-foreground md:max-w-md md:text-right">
-          Precios aproximados de referencia. El total estimado se confirma al configurar tu pedido.
+          {t("pricesList.intro")}
         </p>
       </div>
 
@@ -283,6 +285,7 @@ export default function Precios() {
             s={s}
             expanded={expandedId === s.id}
             onToggle={() => toggle(s.id)}
+            t={t}
           />
         ))}
       </div>
@@ -293,13 +296,15 @@ export default function Precios() {
           onClick={() => { setShowAll((v) => !v); if (showAll) setExpandedId(null); }}
           className="inline-flex items-center gap-2 rounded-lg border border-border bg-secondary/70 px-5 py-2 text-sm font-medium text-secondary-foreground transition hover:bg-muted hover:text-white"
         >
-          {showAll ? "Ver menos servicios" : `Ver los ${SERVICIOS_PRECIOS.length - 3} servicios restantes`}
+          {showAll
+            ? t("pricesList.showLess")
+            : t("pricesList.showMore", { count: SERVICIOS_PRECIOS.length - 3 })}
           {showAll ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
       </div>
 
       <p className="text-center text-xs text-muted-foreground">
-        ¿Tienes un proyecto especial? Escríbenos por WhatsApp para una cotización personalizada.
+        {t("pricesList.customQuote")}
       </p>
     </div>
   );
