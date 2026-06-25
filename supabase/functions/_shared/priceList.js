@@ -13,6 +13,38 @@
 // Helpers
 // ---------------------------------------------------------------------------
 
+export const ONLINE_PAYMENT_FEE_RATE = 0.035;
+export const ONLINE_PAYMENT_FIXED_FEE_MXN = 4;
+export const IVA_RATE = 0.16;
+
+function roundMoney(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+export function priceWithOnlineCost(value) {
+  const base = roundMoney(value);
+  if (base <= 0) return 0;
+  const feeWithIva = (base * ONLINE_PAYMENT_FEE_RATE + ONLINE_PAYMENT_FIXED_FEE_MXN) * (1 + IVA_RATE);
+  return roundMoney(base + feeWithIva);
+}
+
+export function fmtOnlinePrice(value) {
+  return priceWithOnlineCost(value).toLocaleString("es-MX", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+export function withOnlinePriceText(text) {
+  return String(text || "").replace(/\$([\d,]+(?:\.\d+)?)/g, (_, raw) => {
+    const value = Number(String(raw).replace(/,/g, ""));
+    if (!Number.isFinite(value)) return `$${raw}`;
+    return `$${fmtOnlinePrice(value)}`;
+  });
+}
+
 /**
  * Devuelve el precio correspondiente al rango de cantidad dado.
  * @param {Array<{min:number, max:number, [key:string]: number}>} table

@@ -1,3 +1,5 @@
+import { priceWithOnlineCost } from "../data/priceList";
+
 export const TRANSFER_DISCOUNT_RATE = 0.05;
 export const TRANSFER_DISCOUNT_MIN_MXN = 50;
 
@@ -9,7 +11,7 @@ function roundMoney(value) {
 
 export function getPaymentBaseAmount(subtotal, discount = 0) {
   const net = Math.max(0, roundMoney(subtotal) - roundMoney(discount));
-  return roundMoney(net);
+  return priceWithOnlineCost(net);
 }
 
 export function emptyPaymentAdjustment(paymentMethod = "") {

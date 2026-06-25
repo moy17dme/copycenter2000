@@ -272,7 +272,7 @@ export default function Precios() {
           Precios de referencia
         </h2>
         <p className="text-sm leading-6 text-muted-foreground md:max-w-md md:text-right">
-          Precios aproximados · Transferencia descuenta 4%; Mercado Pago agrega comision
+          Precios aproximados de referencia. El total estimado se confirma al configurar tu pedido.
         </p>
       </div>
 
