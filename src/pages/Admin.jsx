@@ -1,6 +1,31 @@
 // src/pages/Admin.jsx — Dashboard Admin rediseñado
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
+import {
+  AlertTriangle,
+  Archive,
+  Banknote,
+  BarChart3,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  CreditCard,
+  DollarSign,
+  FileWarning,
+  Home,
+  ListChecks,
+  Loader2,
+  LogOut,
+  MessageCircle,
+  PackageCheck,
+  Printer,
+  RefreshCw,
+  Search,
+  Settings,
+  Ticket as TicketIcon,
+  X,
+  XCircle,
+} from "lucide-react";
 import gsap from "gsap";
 import { supabase } from "../lib/supabaseClient";
 import { useIsAdmin } from "../lib/useIsAdmin";
@@ -104,12 +129,128 @@ const STATUS_COLORS = {
   cancelled:        "bg-red-500/20 text-red-300 border-red-400/30",
 };
 
-const STATUS_ICONS = {
-  pending_payment: "⏳", paid: "✅", payment_approved: "✅", in_progress: "🖨️",
-  printing: "⚙️", ready: "🎉", completed: "📦", cancelled: "❌",
+const ALL_STATUSES = [...STATUS_ORDER, "cancelled"];
+
+const STATUS_ICON_COMPONENTS = {
+  pending_payment: Clock3,
+  paid: Printer,
+  payment_approved: Printer,
+  in_progress: Printer,
+  printing: Settings,
+  ready: PackageCheck,
+  completed: Archive,
+  cancelled: XCircle,
 };
 
-const ALL_STATUSES = [...STATUS_ORDER, "cancelled"];
+const STATUS_QUEUE_META = {
+  pending_payment: {
+    title: "Validar pago",
+    tone: "yellow",
+    helper: "Confirma transferencia, tarjeta o comprobante antes de producir.",
+  },
+  paid: {
+    title: "Iniciar produccion",
+    tone: "blue",
+    helper: "Revisa archivos, especificaciones y manda a trabajo.",
+  },
+  payment_approved: {
+    title: "Iniciar produccion",
+    tone: "blue",
+    helper: "Pago aprobado, falta avanzar el pedido.",
+  },
+  in_progress: {
+    title: "En produccion",
+    tone: "orange",
+    helper: "Da seguimiento para evitar que se quede atorado.",
+  },
+  printing: {
+    title: "Terminando impresion",
+    tone: "purple",
+    helper: "Valida acabado, entrega y notificacion.",
+  },
+  ready: {
+    title: "Notificar recoleccion",
+    tone: "green",
+    helper: "Avise al cliente o marque como entregado.",
+  },
+};
+
+const QUEUE_TONE_CLASSES = {
+  yellow: "border-yellow-400/25 bg-yellow-500/10 text-yellow-200",
+  blue: "border-blue-400/25 bg-blue-500/10 text-blue-200",
+  orange: "border-orange-400/25 bg-orange-500/10 text-orange-200",
+  purple: "border-purple-400/25 bg-purple-500/10 text-purple-200",
+  green: "border-green-400/25 bg-green-500/10 text-green-200",
+  red: "border-red-400/25 bg-red-500/10 text-red-200",
+};
+
+function StatusIcon({ status, className = "h-3.5 w-3.5" }) {
+  const Icon = STATUS_ICON_COMPONENTS[status] || Clock3;
+  return <Icon className={className} aria-hidden="true" />;
+}
+
+function getStatusStartedAt(order) {
+  const currentStatus = order?.status;
+  const history = (order?.order_status_history || [])
+    .filter((entry) => entry.status === currentStatus && entry.created_at)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  return history[0]?.created_at || order?.created_at || null;
+}
+
+function relativeTimeLabel(dateValue) {
+  if (!dateValue) return "";
+  const diffMinutes = Math.max(0, Math.round((Date.now() - new Date(dateValue).getTime()) / 60000));
+  if (diffMinutes < 1) return "ahora";
+  if (diffMinutes < 60) return `hace ${diffMinutes} min`;
+  const hours = Math.floor(diffMinutes / 60);
+  if (hours < 24) return `hace ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `hace ${days} d`;
+}
+
+function statusAgeLabel(order) {
+  const relative = relativeTimeLabel(getStatusStartedAt(order));
+  return relative ? `En estado ${relative}` : "";
+}
+
+function orderHasMissingFiles(order) {
+  const items = Array.isArray(order?.items) ? order.items : [];
+  const filePaths = Array.isArray(order?.file_paths) ? order.file_paths : [];
+  if (items.length === 0) return false;
+  return items.some((item) => {
+    if (!item.fileName) return false;
+    return !filePaths.some((path) => path.split("/").pop().startsWith(`${item.id || ""}_`));
+  });
+}
+
+function orderPrimaryService(order) {
+  const first = order?.items?.[0];
+  return first?.serviceLabel || first?.serviceKey || "Sin servicio";
+}
+
+function normalizedServiceKey(order) {
+  return orderPrimaryService(order).toLowerCase();
+}
+
+function isOperationalOrder(order) {
+  return !["completed", "cancelled"].includes(order?.status);
+}
+
+function queuePriorityScore(order) {
+  const statusWeight = {
+    pending_payment: 100,
+    ready: 90,
+    paid: 80,
+    payment_approved: 80,
+    in_progress: 60,
+    printing: 55,
+  }[order?.status] || 10;
+  const ageMinutes = Math.max(
+    0,
+    Math.round((Date.now() - new Date(getStatusStartedAt(order) || order?.created_at || Date.now()).getTime()) / 60000)
+  );
+  return statusWeight + Math.min(ageMinutes / 10, 30) + (orderHasMissingFiles(order) ? 12 : 0);
+}
 
 function orderTotalLabel(order) {
   const money = getOrderFinancials(order);
@@ -122,10 +263,9 @@ function paymentMethodLabel(order) {
   return "Transferencia";
 }
 
-function paymentMethodIcon(order) {
-  if (order.payment_method === "mercadopago") return "💳";
-  if (order.payment_method === "card") return "💳";
-  return "🏦";
+function PaymentMethodIcon({ order, className = "h-3.5 w-3.5" }) {
+  const Icon = order?.payment_method === "transfer" ? Banknote : CreditCard;
+  return <Icon className={className} aria-hidden="true" />;
 }
 
 function canConfirmManualPayment(order) {
@@ -385,6 +525,9 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
   const nextStatus = STATUS_ORDER[STATUS_ORDER.indexOf(order.status) + 1];
   const usedStatuses = new Set((order.order_status_history || []).map(h => h.status));
   const financials = getOrderFinancials(order);
+  const queueMeta = STATUS_QUEUE_META[order.status] || null;
+  const currentAge = statusAgeLabel(order);
+  const missingFiles = orderHasMissingFiles(order);
 
   function buildLocalStatusOrder(newStatus, statusNote) {
     return {
@@ -443,12 +586,13 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
             <p className="text-slate-400 text-xs mt-0.5">{fecha}</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`text-[11px] px-2.5 py-1 rounded-full border font-medium ${STATUS_COLORS[order.status] || ""}`}>
-              {STATUS_ICONS[order.status]} {STATUS_LABELS[order.status] || order.status}
+            <span className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border font-medium ${STATUS_COLORS[order.status] || ""}`}>
+              <StatusIcon status={order.status} />
+              {STATUS_LABELS[order.status] || order.status}
             </span>
             <button onClick={onClose}
               className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/15 text-slate-400 hover:text-white flex items-center justify-center transition text-sm">
-              ✕
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -476,7 +620,10 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
                   </a>
                 )}
                 <span className="text-xs text-slate-400">
-                  {paymentMethodIcon(order)} {paymentMethodLabel(order)}
+                  <span className="inline-flex items-center gap-1">
+                    <PaymentMethodIcon order={order} />
+                    {paymentMethodLabel(order)}
+                  </span>
                   {" — "}
                   {isPaymentConfirmed(order)
                     ? <span className="text-green-400">Pago confirmado</span>
@@ -524,6 +671,21 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
           <section>
             <h3 className="text-[11px] uppercase tracking-widest text-slate-500 mb-3">Gestión del pedido</h3>
             <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+              {queueMeta && (
+                <div className={`rounded-xl border px-3 py-3 ${QUEUE_TONE_CLASSES[queueMeta.tone] || QUEUE_TONE_CLASSES.blue}`}>
+                  <div className="flex items-start gap-3">
+                    <StatusIcon status={order.status} className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">{queueMeta.title}</p>
+                      <p className="mt-0.5 text-xs opacity-75">{queueMeta.helper}</p>
+                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] opacity-80">
+                        {currentAge && <span>{currentAge}</span>}
+                        {missingFiles && <span>Archivo pendiente</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Botón de siguiente estado */}
               {nextStatus && !usedStatuses.has(nextStatus) && (
@@ -596,7 +758,10 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
                             : alreadyUsed
                             ? "border-white/10 text-slate-600 bg-white/5 cursor-not-allowed"
                             : "border-white/15 text-slate-400 bg-white/5 hover:bg-white/10"}`}>
-                        {STATUS_ICONS[s]} {STATUS_LABELS[s]}
+                        <span className="inline-flex items-center gap-1">
+                          <StatusIcon status={s} />
+                          {STATUS_LABELS[s]}
+                        </span>
                       </button>
                     );
                   })}
@@ -611,8 +776,9 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
               {/* Notificar por WhatsApp */}
               {order.customer_phone && (
                 <button onClick={notifyWA}
-                  className="w-full py-2 rounded-xl bg-green-600/15 hover:bg-green-600/25 border border-green-400/30 text-green-300 text-sm font-medium transition">
-                  💬 Notificar estado al cliente por WhatsApp
+                  className="inline-flex w-full items-center justify-center gap-2 py-2 rounded-xl bg-green-600/15 hover:bg-green-600/25 border border-green-400/30 text-green-300 text-sm font-medium transition">
+                  <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                  Notificar estado al cliente por WhatsApp
                 </button>
               )}
             </div>
@@ -627,7 +793,10 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
 
             {(!order.items || order.items.length === 0) ? (
               <div className="rounded-2xl bg-red-500/10 border border-red-400/20 px-4 py-3 text-sm text-red-300">
-                ⚠️ No hay items registrados en este pedido.
+                <span className="inline-flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                  No hay items registrados en este pedido.
+                </span>
               </div>
             ) : (
               <div className="space-y-3">
@@ -639,7 +808,10 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
 
             {order.items?.length > 0 && storageFilePaths.length === 0 && (
               <p className="text-[11px] text-yellow-500/70 mt-2">
-                ⚠️ No hay archivos subidos para este pedido.
+                <span className="inline-flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                  No hay archivos subidos para este pedido.
+                </span>
               </p>
             )}
           </section>
@@ -657,7 +829,10 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
                     <div key={h.id || h.created_at} className="flex items-start gap-3 text-xs">
                       <span className="text-slate-600 shrink-0 tabular-nums">{hf}</span>
                       <span className="text-slate-300">
-                        {STATUS_ICONS[h.status] || "●"} {STATUS_LABELS[h.status] || h.status}
+                        <span className="inline-flex items-center gap-1">
+                          <StatusIcon status={h.status} />
+                          {STATUS_LABELS[h.status] || h.status}
+                        </span>
                         {h.message && h.message !== (STATUS_LABELS[h.status] || "") && (
                           <span className="text-slate-500"> — {h.message}</span>
                         )}
@@ -683,8 +858,9 @@ function OrderRow({ order, onSelect }) {
   const fecha = new Date(order.created_at).toLocaleString("es-MX", {
     day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
   });
-  const nextStatus = STATUS_ORDER[STATUS_ORDER.indexOf(order.status) + 1];
   const financials = getOrderFinancials(order);
+  const missingFiles = orderHasMissingFiles(order);
+  const age = statusAgeLabel(order);
 
   return (
     <div
@@ -708,7 +884,9 @@ function OrderRow({ order, onSelect }) {
         <p className="text-slate-300 text-xs truncate">
           {(order.items || []).map(it => it.serviceLabel || it.serviceKey).join(", ") || "—"}
         </p>
-        <p className="text-slate-600 text-[10px]">{(order.items || []).length} servicio(s)</p>
+        <p className={`text-[10px] ${missingFiles ? "text-yellow-300" : "text-slate-600"}`}>
+          {missingFiles ? "Archivo pendiente" : `${(order.items || []).length} servicio(s)`}
+        </p>
       </div>
 
       {/* Pago */}
@@ -717,7 +895,7 @@ function OrderRow({ order, onSelect }) {
           {orderTotalLabel(order)}
         </p>
         <p className="text-xs text-slate-400">
-          {paymentMethodIcon(order)}
+          <PaymentMethodIcon order={order} className="mx-auto h-3.5 w-3.5" />
         </p>
         <p className={`text-[10px] font-medium ${isPaymentConfirmed(order) ? "text-green-400" : "text-yellow-400"}`}>
           {isPaymentConfirmed(order) ? "Pagado" : "Pendiente"}
@@ -727,12 +905,14 @@ function OrderRow({ order, onSelect }) {
       {/* Estado */}
       <div className="shrink-0">
         <span className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border font-medium whitespace-nowrap ${STATUS_COLORS[order.status] || ""}`}>
-          {STATUS_ICONS[order.status]} {STATUS_LABELS[order.status] || order.status}
+          <StatusIcon status={order.status} />
+          {STATUS_LABELS[order.status] || order.status}
         </span>
+        {age && <p className="mt-1 text-right text-[10px] text-slate-600">{age}</p>}
       </div>
 
       {/* Flecha */}
-      <div className="shrink-0 text-slate-600 group-hover:text-slate-400 transition text-sm">›</div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-slate-600 transition group-hover:text-slate-400" aria-hidden="true" />
     </div>
   );
 }
@@ -743,6 +923,9 @@ function OrderRow({ order, onSelect }) {
 function PedidosTab({ orders, loading, onRefresh, accessToken, getAccessToken, onOrderPatch }) {
   const [filter, setFilter]       = useState("all");
   const [search, setSearch]       = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [serviceFilter, setServiceFilter] = useState("all");
+  const [needsFilesOnly, setNeedsFilesOnly] = useState(false);
   const [selected, setSelected]   = useState(null);
 
   // Actualiza el pedido seleccionado cuando llegan nuevos datos
@@ -766,13 +949,19 @@ function PedidosTab({ orders, loading, onRefresh, accessToken, getAccessToken, o
 
   const filtered = orders.filter((o) => {
     if (filter !== "all" && o.status !== filter) return false;
+    if (paymentFilter !== "all" && (o.payment_method || "transfer") !== paymentFilter) return false;
+    if (serviceFilter !== "all" && normalizedServiceKey(o) !== serviceFilter) return false;
+    if (needsFilesOnly && !orderHasMissingFiles(o)) return false;
     if (search.trim()) {
       const q = search.toLowerCase();
       return (
         String(o.id).toLowerCase().includes(q) ||
         (o.customer_name || "").toLowerCase().includes(q) ||
         (o.customer_phone || "").includes(q) ||
-        (o.customer_email || "").toLowerCase().includes(q)
+        (o.customer_email || "").toLowerCase().includes(q) ||
+        (o.items || []).some((item) =>
+          String(item.serviceLabel || item.serviceKey || "").toLowerCase().includes(q)
+        )
       );
     }
     return true;
@@ -790,13 +979,16 @@ function PedidosTab({ orders, loading, onRefresh, accessToken, getAccessToken, o
     { value: "ready",           label: "Listos",          count: counts["ready"] || 0 },
     { value: "cancelled",       label: "Cancelados",      count: counts["cancelled"] || 0 },
   ];
+  const serviceOptions = Array.from(
+    new Map(orders.map((order) => [normalizedServiceKey(order), orderPrimaryService(order)]))
+  ).sort((a, b) => a[1].localeCompare(b[1], "es"));
 
   return (
     <>
       {/* Buscador */}
       <div className="mb-4">
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm pointer-events-none">🔍</span>
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
           <input
             value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nombre, teléfono, email o ID…"
@@ -818,6 +1010,47 @@ function PedidosTab({ orders, loading, onRefresh, accessToken, getAccessToken, o
             {t.count > 0 && <span className="ml-1.5 opacity-70">({t.count})</span>}
           </button>
         ))}
+      </div>
+
+      <div className="mb-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <label className="sr-only" htmlFor="admin-payment-filter">Metodo de pago</label>
+        <select
+          id="admin-payment-filter"
+          value={paymentFilter}
+          onChange={(e) => setPaymentFilter(e.target.value)}
+          className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-orange-400"
+        >
+          <option value="all">Todos los pagos</option>
+          <option value="transfer">Transferencia</option>
+          <option value="card">Tarjeta</option>
+          <option value="mercadopago">Mercado Pago</option>
+        </select>
+
+        <label className="sr-only" htmlFor="admin-service-filter">Servicio</label>
+        <select
+          id="admin-service-filter"
+          value={serviceFilter}
+          onChange={(e) => setServiceFilter(e.target.value)}
+          className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-orange-400"
+        >
+          <option value="all">Todos los servicios</option>
+          {serviceOptions.map(([key, label]) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          onClick={() => setNeedsFilesOnly((value) => !value)}
+          className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition ${
+            needsFilesOnly
+              ? "border-yellow-400/50 bg-yellow-500/20 text-yellow-200"
+              : "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10"
+          }`}
+        >
+          <FileWarning className="h-4 w-4" aria-hidden="true" />
+          Archivos pendientes
+        </button>
       </div>
 
       {/* Tabla de pedidos */}
@@ -1246,6 +1479,51 @@ function CopyTicketList({ refreshKey = 0 }) {
   );
 }
 
+function WorkQueueItem({ order, onSelectOrder }) {
+  const shortId = String(order.id).slice(0, 8).toUpperCase();
+  const meta = STATUS_QUEUE_META[order.status] || {
+    title: "Revisar pedido",
+    tone: "blue",
+    helper: "Abre el detalle para decidir el siguiente paso.",
+  };
+  const toneClass = QUEUE_TONE_CLASSES[meta.tone] || QUEUE_TONE_CLASSES.blue;
+  const missingFiles = orderHasMissingFiles(order);
+  const financials = getOrderFinancials(order);
+  const age = statusAgeLabel(order);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelectOrder(order)}
+      className="group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/5 px-4 py-3 text-left transition last:border-0 hover:bg-white/5"
+    >
+      <span className={`grid h-9 w-9 place-items-center rounded-xl border ${toneClass}`}>
+        <StatusIcon status={order.status} className="h-4 w-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="flex items-center gap-2">
+          <span className="truncate text-sm font-semibold text-white">{meta.title}</span>
+          <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+            #{shortId}
+          </span>
+        </span>
+        <span className="mt-0.5 block truncate text-xs text-slate-400">
+          {order.customer_name || "Sin nombre"} · {orderPrimaryService(order)}
+        </span>
+        <span className="mt-1 flex flex-wrap gap-2 text-[11px] text-slate-500">
+          {age && <span>{age}</span>}
+          <span>{financials.hasKnownTotal ? `$${formatMoney(financials.total)}` : "Por cotizar"}</span>
+          {missingFiles && <span className="text-yellow-300">Archivo pendiente</span>}
+        </span>
+      </span>
+      <span className="flex items-center gap-2 text-xs text-slate-500">
+        <span className="hidden max-w-[180px] truncate md:inline">{meta.helper}</span>
+        <ChevronRight className="h-4 w-4 transition group-hover:text-slate-300" aria-hidden="true" />
+      </span>
+    </button>
+  );
+}
+
 function DashboardTab({ orders, loading, onSelectOrder }) {
   const ahora = Date.now();
   const hoy = orders.filter(o => {
@@ -1257,9 +1535,15 @@ function DashboardTab({ orders, loading, onSelectOrder }) {
   const active = orders.filter(o => o.status === "paid");
   const ready  = orders.filter(o => o.status === "ready");
   const pendingPay = orders.filter(o => o.status === "pending_payment");
+  const missingFiles = orders.filter(orderHasMissingFiles);
   const revenueToday = paidOrdersRevenue(hoy);
 
   const recientes = [...orders].slice(0, 8);
+  const workQueue = orders
+    .filter(isOperationalOrder)
+    .slice()
+    .sort((a, b) => queuePriorityScore(b) - queuePriorityScore(a))
+    .slice(0, 6);
 
   return (
     <div className="space-y-6">
@@ -1295,6 +1579,39 @@ function DashboardTab({ orders, loading, onSelectOrder }) {
           </p>
         </div>
       )}
+      {missingFiles.length > 0 && (
+        <div className="rounded-2xl bg-red-500/10 border border-red-400/25 px-4 py-3">
+          <p className="flex items-center gap-2 text-sm font-semibold text-red-200">
+            <FileWarning className="h-4 w-4" aria-hidden="true" />
+            {missingFiles.length} pedido{missingFiles.length !== 1 ? "s" : ""} con archivo pendiente
+          </p>
+        </div>
+      )}
+
+      <section>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-white">Cola de trabajo</h2>
+          <span className="text-xs text-slate-600">{workQueue.length} pendientes operativos</span>
+        </div>
+        {loading ? (
+          <div className="flex items-center gap-3 text-slate-400 py-4">
+            <Loader2 className="h-4 w-4 animate-spin text-orange-300" aria-hidden="true" />
+            <span className="text-sm">Cargando cola…</span>
+          </div>
+        ) : workQueue.length === 0 ? (
+          <div className="rounded-2xl border border-green-400/20 bg-green-500/10 px-4 py-6 text-center">
+            <CheckCircle2 className="mx-auto h-7 w-7 text-green-300" aria-hidden="true" />
+            <p className="mt-2 text-sm font-medium text-green-100">No hay pendientes operativos.</p>
+            <p className="mt-1 text-xs text-green-200/70">Los pedidos nuevos apareceran aqui con su siguiente accion.</p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+            {workQueue.map((order) => (
+              <WorkQueueItem key={order.id} order={order} onSelectOrder={onSelectOrder} />
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Pedidos recientes */}
       <div>
@@ -1701,12 +2018,12 @@ function AdminReportes({ orders }) {
 // PANEL PRINCIPAL ADMIN
 // ─────────────────────────────────────────────────────────────────────────────
 const TABS = [
-  { id: "inicio",    label: "Inicio",    icon: "🏠" },
-  { id: "pedidos",   label: "Pedidos",   icon: "📋" },
-  { id: "tickets",   label: "Tickets",   icon: "🎫" },
-  { id: "servicios", label: "Servicios", icon: "⚙️" },
-  { id: "precios",   label: "Precios",   icon: "💲" },
-  { id: "reportes",  label: "Reportes",  icon: "📊" },
+  { id: "inicio",    label: "Inicio",    icon: Home },
+  { id: "pedidos",   label: "Pedidos",   icon: ListChecks },
+  { id: "tickets",   label: "Tickets",   icon: TicketIcon },
+  { id: "servicios", label: "Servicios", icon: Settings },
+  { id: "precios",   label: "Precios",   icon: DollarSign },
+  { id: "reportes",  label: "Reportes",  icon: BarChart3 },
 ];
 
 export default function Admin({ user = null, accessToken: initialAccessToken = null, profile = null }) {
@@ -1899,27 +2216,31 @@ export default function Admin({ user = null, accessToken: initialAccessToken = n
             {(counts["pending_payment"] || 0) > 0 && (
               <button onClick={() => setTab("pedidos")}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-yellow-500/15 border border-yellow-400/20 text-yellow-300 text-xs hover:bg-yellow-500/25 transition">
-                ⏳ {counts["pending_payment"]} sin pago
+                <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
+                {counts["pending_payment"]} sin pago
               </button>
             )}
             {(counts["ready"] || 0) > 0 && (
               <button onClick={() => setTab("pedidos")}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-green-500/15 border border-green-400/20 text-green-300 text-xs hover:bg-green-500/25 transition">
-                🎉 {counts["ready"]} listos
+                <PackageCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                {counts["ready"]} listos
               </button>
             )}
           </div>
 
           <div className="flex gap-2">
             <button onClick={() => load({ forceRefresh: true })}
-              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs transition">
-              ↻ Actualizar
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs transition">
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+              Actualizar
             </button>
             <button onClick={() => {
               supabase.auth.signOut().catch(() => {});
               try { for (const k of Object.keys(localStorage)) if (k.startsWith("sb-") || k.toLowerCase().includes("supabase")) localStorage.removeItem(k); } catch {}
               window.location.href = "/";
-            }} className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs transition">
+            }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs transition">
+              <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
               Salir
             </button>
           </div>
@@ -1928,20 +2249,22 @@ export default function Admin({ user = null, accessToken: initialAccessToken = n
         {/* Tabs de navegación */}
         <div className="max-w-6xl mx-auto px-4 pb-0">
           <div className="flex gap-0 overflow-x-auto">
-            {TABS.map((t) => (
+            {TABS.map((t) => {
+              const Icon = t.icon;
+              return (
               <button key={t.id} onClick={() => setTab(t.id)}
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap ${
                   tab === t.id
                     ? "border-orange-400 text-orange-300"
                     : "border-transparent text-slate-400 hover:text-white hover:border-white/30"
                 }`}>
-                <span>{t.icon}</span>
+                <Icon className="h-4 w-4" aria-hidden="true" />
                 <span>{t.label}</span>
                 {t.id === "pedidos" && orders.length > 0 && (
                   <span className="ml-1 text-[10px] bg-white/10 px-1.5 py-0.5 rounded-full">{orders.length}</span>
                 )}
               </button>
-            ))}
+            );})}
           </div>
         </div>
       </header>
