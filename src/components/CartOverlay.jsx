@@ -5,6 +5,7 @@ import { cadBulkDiscountPct, cadNextTier, totalCadBondQty } from "../utils/cadDi
 import PdfPreview from "./PdfPreview";
 import PinCircularPreview from "./PinCircularPreview";
 import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
+import { useCatalogPricesVersion } from "../lib/catalogPrices";
 import ServiceOptionsEditor from "./service-editors/ServiceOptionsEditor";
 import CheckoutModal from "./CheckoutModal";
 
@@ -20,6 +21,7 @@ export default function CartOverlay({
   profile,
 }) {
   const cartApi = useCart();
+  const catalogPricesVersion = useCatalogPricesVersion();
 
   // ── useState primero (reglas de hooks) ────────────────────
   const [tab, setTab]                           = useState("pedido");
@@ -48,7 +50,7 @@ export default function CartOverlay({
       else hasUnknown = true;
     }
     return { sum, hasUnknown };
-  }, [items]);
+  }, [items, catalogPricesVersion]);
 
   // ── useEffect ─────────────────────────────────────────────
   // Auto-abrir checkout cuando se indica (ej. "Confirmar pedido" desde Servicios)

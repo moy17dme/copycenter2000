@@ -3,6 +3,7 @@ import { lazy, Suspense, useRef, useState, useEffect, useMemo, useCallback } fro
 import { CheckCircle2, Paperclip, PencilLine, Search, ShoppingCart, Upload, X } from "lucide-react";
 import { useCart } from "./CartContext";
 import { supabase } from "@/lib/supabaseClient";
+import { useCatalogPricesVersion } from "@/lib/catalogPrices";
 import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
 import { useLocale } from "../i18n/LocaleContext";
 import { getLocalizedQtyBadgeLabel, localizeCatalogService } from "../i18n/serviceContent";
@@ -103,13 +104,6 @@ const LEGACY_ACTA_SERVICE_KEYS = new Set([
   "acta-defuncion",
 ]);
 
-const CATALOG_CONTENT_KEYS = new Set([
-  "copias",
-  "engargolado",
-  "actas",
-  "constancia-situacion-fiscal",
-]);
-
 const SERVICE_DISPLAY_ORDER = new Map([
   "impresion",
   "copias",
@@ -139,20 +133,7 @@ function mergeServicesWithCatalog(remoteServices = []) {
     remoteByKey.delete(localService.id);
     if (!remoteService) return localService;
 
-    const merged = { ...localService, ...remoteService };
-    if (CATALOG_CONTENT_KEYS.has(localService.id)) {
-      return {
-        ...merged,
-        id: localService.id,
-        nombre: localService.nombre,
-        tag: localService.tag,
-        descripcion: localService.descripcion,
-        desde_precio: localService.desde_precio,
-        orden: localService.orden,
-        requiere_archivo: localService.requiere_archivo,
-      };
-    }
-    return merged;
+    return { ...localService, ...remoteService, id: localService.id };
   });
 
   return [...catalog, ...remoteByKey.values()].sort((a, b) => {
@@ -259,6 +240,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
   processingFilesRef.current = processingFiles.active;
 
   const { addItem } = useCart();
+  const catalogPricesVersion = useCatalogPricesVersion();
   const localizedServicios = useMemo(
     () => servicios.map((service) => localizeCatalogService(service, locale)),
     [servicios, locale]
@@ -324,15 +306,43 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
     }
   }, [searchQuery]);
 
-  // Cargar servicios desde la BD
+  // Cargar servicios desde la BD y refrescar cuando el admin cambia el catalogo.
   useEffect(() => {
-    supabase
-      .from("servicios")
-      .select("*")
-      .order("orden")
-      .then(({ data }) => {
-        if (data && data.length > 0) setServicios(mergeServicesWithCatalog(data));
-      });
+    let alive = true;
+
+    async function loadServices() {
+      const { data } = await supabase
+        .from("servicios")
+        .select("*")
+        .order("orden");
+      if (alive && data && data.length > 0) {
+        setServicios(mergeServicesWithCatalog(data));
+      }
+    }
+
+    loadServices();
+
+    const channel = supabase
+      .channel("public-services-catalog")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "servicios" },
+        loadServices
+      )
+      .subscribe();
+
+    const refreshVisible = () => {
+      if (document.visibilityState === "visible") loadServices();
+    };
+    window.addEventListener("focus", refreshVisible);
+    document.addEventListener("visibilitychange", refreshVisible);
+
+    return () => {
+      alive = false;
+      window.removeEventListener("focus", refreshVisible);
+      document.removeEventListener("visibilitychange", refreshVisible);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Opciones por defecto para servicios sin archivo
@@ -526,7 +536,7 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
   const precioTemp = useMemo(() => {
     if (!seleccion) return null;
     return getItemPrice({ serviceKey: seleccion.serviceKey, options: tempOptions });
-  }, [seleccion, tempOptions]);
+  }, [seleccion, tempOptions, catalogPricesVersion]);
 
   const handleIrASubirArchivos = () => {
     setPaso("subir");

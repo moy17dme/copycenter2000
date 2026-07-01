@@ -7,6 +7,7 @@ import Footer from "./components/Footer";
 import Seo from "./components/Seo";
 import { CartProvider } from "./components/CartContext";
 import { LocaleProvider } from "./i18n/LocaleContext";
+import { installCatalogPricesRealtime } from "./lib/catalogPrices";
 import { OAUTH_RESUME_CHECKOUT_KEY } from "./lib/googleAuth";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
@@ -248,6 +249,12 @@ export default function App() {
       // El checkout puede abrirse manualmente si el almacenamiento esta bloqueado.
     }
   }, [location.pathname, user]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    return installCatalogPricesRealtime();
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;

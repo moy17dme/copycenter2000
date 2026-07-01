@@ -27,6 +27,7 @@ import {
   XCircle,
 } from "lucide-react";
 import gsap from "gsap";
+import { loadCatalogPrices } from "../lib/catalogPrices";
 import { supabase } from "../lib/supabaseClient";
 import { useIsAdmin } from "../lib/useIsAdmin";
 import {
@@ -1805,6 +1806,7 @@ function AdminPrecios() {
     if (isNaN(val) || val < 0) return;
     setSaving(true);
     await supabase.from("catalogo_precios").update({ precio: val }).eq("id", id);
+    await loadCatalogPrices({ force: true });
     setSaving(false);
     setEditingId(null);
     setPrecios(prev => prev.map(p => p.id === id ? { ...p, precio: val } : p));

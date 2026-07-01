@@ -7,6 +7,11 @@ import {
   ENGARGOLADO,
   lookupPrice,
 } from "../../../data/priceList";
+import {
+  lookupCatalogBindingPrice,
+  lookupCatalogPrintPrice,
+  useCatalogPricesVersion,
+} from "../../../lib/catalogPrices";
 
 // ---------------------------------------------------------------------------
 // Constantes de cotización
@@ -138,6 +143,7 @@ function Label({ children, optional = false }) {
 // ---------------------------------------------------------------------------
 
 export default function PrintOptionsEditor({ opts, pageCount, onChangeOptions, item }) {
+  const catalogPricesVersion = useCatalogPricesVersion();
   const finishes   = opts.finishes || {};
   const lam        = finishes.laminado    || {};
   const enm        = finishes.enmicado    || {};
@@ -197,7 +203,9 @@ export default function PrintOptionsEditor({ opts, pageCount, onChangeOptions, i
 
     // ── Impresión base ─────────────────────────────────────
     if (pricingSize) {
-      const unitPrice = getPrintPrice(paper, totalSheets, pricingSize, colorKey);
+      const unitPrice =
+        lookupCatalogPrintPrice(paper, totalSheets, pricingSize, colorKey) ??
+        getPrintPrice(paper, totalSheets, pricingSize, colorKey);
       if (unitPrice !== null) {
         const modeLabel = colorMode === "bn" ? "B&N" : tech === "inkjet" ? "Inyección" : "Láser";
         let detail;
@@ -271,7 +279,9 @@ export default function PrintOptionsEditor({ opts, pageCount, onChangeOptions, i
     // ── Engargolado ────────────────────────────────────────
     if (eng.enabled) {
       const engTable = eng.tipo === "Arillo metálico" ? ENGARGOLADO.metalico : ENGARGOLADO.plastico;
-      const engUnit  = lookupPrice(engTable, pageCount || 1, "price");
+      const engUnit =
+        lookupCatalogBindingPrice(eng.tipo, pageCount || 1) ??
+        lookupPrice(engTable, pageCount || 1, "price");
       if (engUnit !== null) {
         lines.push({
           label:  `Engargolado ${eng.tipo || "Espiral plástico"} — ${eng.lado || "Lado largo"}`,
@@ -335,6 +345,7 @@ export default function PrintOptionsEditor({ opts, pageCount, onChangeOptions, i
     lam, enm, eng,
     extras.perforado, extras.perforadoHoyos,
     extras.entrega, extras.folderSize, extras.carpetaSize,
+    catalogPricesVersion,
   ]);
 
   // ---------------------------------------------------------------------------

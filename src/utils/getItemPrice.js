@@ -12,6 +12,10 @@ import {
   lookupPrice,
   getPrintPrice,
 } from "../data/priceList";
+import {
+  lookupCatalogBindingPrice,
+  lookupCatalogPrintPrice,
+} from "../lib/catalogPrices";
 import { calculatePlotPrice } from "./plotPrice";
 
 // ── Impresión Offset — tabla de precios por millar (+50%) ───────────────────
@@ -288,14 +292,16 @@ export function getItemPrice(item) {
     const qty      = Math.max(1, Number(opts.copyQtyApprox ?? 1));
     const colorKey = mode === "bn" ? "negro" : tech === "inkjet" ? "colorInkjet" : "colorLaser";
     const modeTable = COPIAS[colorKey] ?? COPIAS.negro;
-    const perUnit   = lookupPrice(modeTable, qty, size);
+    const perUnit = lookupPrice(modeTable, qty, size);
     if (perUnit === null) return null;
     let total = perUnit * qty;
     // Engargolado adicional (se aplica sobre el número de páginas del documento)
     const pages = Math.max(1, Number(item.pageCount ?? qty));
     if (opts.copyFinish === "engargolado-metalico" || opts.copyFinish === "engargolado-plastico") {
       const bindType  = opts.copyFinish === "engargolado-metalico" ? "metalico" : "plastico";
-      const bindPrice = lookupPrice(ENGARGOLADO[bindType], pages);
+      const bindPrice =
+        lookupCatalogBindingPrice(bindType, pages) ??
+        lookupPrice(ENGARGOLADO[bindType], pages);
       if (bindPrice !== null) total += bindPrice;
     }
     return { total, perUnit, qty, label: `${qty} copia${qty !== 1 ? "s" : ""}` };
@@ -307,7 +313,9 @@ export function getItemPrice(item) {
     const pages    = Math.max(1, Number(item.pageCount ?? opts.bindPages ?? 1));
     const qty      = Math.max(1, Number(opts.bindQty ?? 1));
     const table    = ENGARGOLADO[bindType] ?? ENGARGOLADO.metalico;
-    const price    = lookupPrice(table, pages);
+    const price =
+      lookupCatalogBindingPrice(bindType, pages) ??
+      lookupPrice(table, pages);
     if (price === null) return null;
     return {
       total: price * qty,
@@ -335,7 +343,9 @@ export function getItemPrice(item) {
 
     const colorKey  = getColorKey(colorMode, paper, tech);
     const pricingSize = SIZE_TO_FORMAT[size] || "Carta";
-    const perSheet  = getPrintPrice(paper, totalSheets, pricingSize, colorKey);
+    const perSheet =
+      lookupCatalogPrintPrice(paper, totalSheets, pricingSize, colorKey) ??
+      getPrintPrice(paper, totalSheets, pricingSize, colorKey);
     if (perSheet === null) return null;
 
     const label = sets > 1
