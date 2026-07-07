@@ -7,6 +7,9 @@ import pvc from "../assets/pvc.webp";
 import scan from "../assets/scan.webp";
 import stickers from "../assets/stickers.webp";
 import sublimacion from "../assets/sublimacion.webp";
+import actas from "../assets/actas.webp";
+import constanciaFiscal from "../assets/constancia-situacion-fiscal.webp";
+import engargolados from "../assets/engargolados.webp";
 
 export const PUBLIC_SERVICES = [
   {
@@ -39,7 +42,7 @@ export const PUBLIC_SERVICES = [
       "Presentacion y proteccion de tareas, manuales, informes y documentos con arillo y pastas.",
     details: ["Arillo metalico o plastico", "Pastas y respaldos", "Desde $22"],
     delivery: "Mismo día, según volumen",
-    image: engar,
+    image: engargolados,
     alt: "Documentos con engargolado y pastas",
   },
   {
@@ -127,7 +130,7 @@ export const PUBLIC_SERVICES = [
       "Solicita actas de nacimiento, matrimonio o defunción por $85. Elige el tipo al configurar el servicio.",
     details: ["Precio fijo de $85", "Nacimiento: una CURP", "Matrimonio: las dos CURP de la pareja"],
     delivery: "Sujeto a disponibilidad del sistema",
-    image: scan,
+    image: actas,
     alt: "Servicio de solicitud de actas",
   },
   {
@@ -138,7 +141,7 @@ export const PUBLIC_SERVICES = [
       "Obtén tu constancia de situación fiscal por $120 proporcionando RFC e ID de CIF.",
     details: ["Precio fijo de $120", "Requisitos: RFC e ID de CIF", "Solicitud desde el sistema de pedidos"],
     delivery: "Sujeto a disponibilidad del sistema",
-    image: scan,
+    image: constanciaFiscal,
     alt: "Servicio de obtención de constancia de situación fiscal",
   },
 ];

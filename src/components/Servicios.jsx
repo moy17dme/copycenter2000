@@ -24,12 +24,15 @@ import pvcImg from "@/assets/pvc.webp";
 import subliImg from "@/assets/sublimacion.webp";
 import scanImg from "@/assets/scan.webp";
 import pinsImg from "@/assets/pins.webp";
+import actasImg from "@/assets/actas.webp";
+import constanciaFiscalImg from "@/assets/constancia-situacion-fiscal.webp";
+import engargoladosImg from "@/assets/engargolados.webp";
 
 // Mapa de imágenes locales por serviceKey
 const IMG_MAP = {
   impresion:   digi,
   copias:      engar,
-  engargolado: engar,
+  engargolado: engargoladosImg,
   ploteo:      planos,
   artes:       artes,
   stickers:    stickers,
@@ -37,8 +40,8 @@ const IMG_MAP = {
   sublimacion: subliImg,
   fotobotones: pinsImg,
   escaneo:     scanImg,
-  actas: scanImg,
-  "constancia-situacion-fiscal": scanImg,
+  actas: actasImg,
+  "constancia-situacion-fiscal": constanciaFiscalImg,
 };
 
 function DeferredServiceImage({ src, alt }) {
