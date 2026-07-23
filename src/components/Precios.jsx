@@ -40,90 +40,33 @@ const SERVICIOS_PRECIOS = [
     referencia: "1-99 bond carta B/N: $1.00",
     tabla: [
       {
-        label: "Bond negro",
+        label: "Papel Bond · Carta",
         items: [
-          "1-99: carta $1.00 · oficio $1.50 · doble carta $6.00",
-          "100-499: carta $0.70 · oficio $1.00 · doble carta $6.00",
-          "500-999: carta $0.70 · oficio $0.90 · doble carta $5.50",
-          "1,000-4,999: carta $0.70 · oficio $0.90 · doble carta $5.00",
-          "10,000-49,999: carta $0.60 · oficio $0.90 · doble carta $4.50",
+          "1-99 B/N $1.00",
+          "1-49 color inyección $3.00",
+          "1-49 color láser $8.00",
         ],
       },
       {
-        label: "Bond color inyección",
+        label: "Papel Opalina · Carta",
         items: [
-          "1-49: carta $3.00 · oficio $4.00 · doble carta $12.00",
-          "50-99: carta $2.50 · oficio $3.50 · doble carta $11.50",
-          "100-499: carta $2.00 · oficio $3.00 · doble carta $11.00",
-          "500-999: carta $2.50 · oficio $3.00 · doble carta $10.50",
-          "1,000-4,999: carta $2.00 · oficio $2.50 · doble carta $10.00",
-          "5,000+: carta $1.80 · oficio $2.50 · doble carta $9.50",
+          "1-50 B/N $4.40",
+          "1-49 color inyección $6.00",
+          "1-50 color láser $12.00",
         ],
       },
       {
-        label: "Opalina B/N",
+        label: "Papel Autoadhesivo · Carta",
         items: [
-          "1-50: carta $4.40 · doble carta $7.20 · 13x19 $30.00",
-          "51-100: carta $3.92 · doble carta $6.40 · 13x19 $26.67",
-          "101+: carta $3.36 · doble carta $6.00 · 13x19 $25.00",
+          "1-50 B/N $12.00",
+          "1-50 color láser $14.00",
         ],
       },
       {
-        label: "Opalina color láser",
+        label: "Papeles especiales · Carta",
         items: [
-          "1-50: carta $12.00 · doble carta $25.00 · 13x19 $35.00",
-          "51-100: carta $10.00 · doble carta $20.00 · 13x19 $30.00",
-          "101+: carta $8.00 · doble carta $18.00 · 13x19 $25.00",
-        ],
-      },
-      {
-        label: "Opalina color inyección",
-        items: [
-          "1-49: carta $6.00 · oficio $8.00 · doble carta $15.00",
-          "50-99: carta $5.50 · oficio $7.50 · doble carta $14.50",
-          "100-499: carta $5.00 · oficio $7.00 · doble carta $14.00",
-          "500-999: carta $4.50 · oficio $6.50 · doble carta $10.50",
-          "1,000-4,999: carta $4.00 · oficio $6.00 · doble carta $10.00",
-          "5,000+: carta $3.50 · oficio $5.50 · doble carta $9.50",
-        ],
-      },
-      {
-        label: "Autoadhesivo B/N",
-        items: [
-          "1-50: carta $12.00 · doble carta $25.00 · 13x19 $35.00",
-          "51-100: carta $10.00 · doble carta $20.00 · 13x19 $30.00",
-          "101+: carta $8.00 · doble carta $18.00 · 13x19 $28.00",
-        ],
-      },
-      {
-        label: "Autoadhesivo color láser",
-        items: [
-          "1-50: carta $14.00 · doble carta $16.80 · 13x19 $30.00",
-          "51-100: carta $13.60 · doble carta $16.00 · 13x19 $28.57",
-          "101+: carta $13.20 · doble carta $15.20 · 13x19 $27.14",
-        ],
-      },
-      {
-        label: "Acetato",
-        items: [
-          "B/N: 1-99 $6.00 · 100-499 $5.50 · 500-999 $5.00 · 1,000+ $4.00",
-          "Color: 1-49 $12.00 · 50-99 $10.00 · 100+ $8.00",
-        ],
-      },
-      {
-        label: "Kromacote color",
-        items: [
-          "1-50: carta $12.00 · doble carta $25.00",
-          "51-100: carta $10.00 · doble carta $20.00",
-          "101+: carta $8.00 · doble carta $18.00",
-        ],
-      },
-      {
-        label: "Couché / Sulfatada color",
-        items: [
-          "1-50: carta $12.00 · doble carta $25.00 · 13x19 $35.00",
-          "51-100: carta $10.00 · doble carta $20.00 · 13x19 $30.00",
-          "101+: carta $8.00 · doble carta $18.00 · 13x19 $28.00",
+          "Acetato: 1-99 B/N $6.00 · 1-49 color $12.00",
+          "Kromacote, Couché y Sulfatada: 1-50 color $12.00",
         ],
       },
     ],
