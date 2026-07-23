@@ -76,7 +76,7 @@ export const BOND = {
     r(100,  499,  { Carta: 0.70, Oficio: 1.00, "Doble Carta": 6.00 }),
     r(500,  999,  { Carta: 0.70, Oficio: 0.90, "Doble Carta": 5.50 }),
     r(1000, 4999, { Carta: 0.70, Oficio: 0.90, "Doble Carta": 5.00 }),
-    r(10000, Infinity, { Carta: 0.60, Oficio: 0.90, "Doble Carta": 4.50 }),
+    r(10000, 49999, { Carta: 0.60, Oficio: 0.90, "Doble Carta": 4.50 }),
   ],
   /** Color láser */
   colorLaser: [
