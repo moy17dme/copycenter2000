@@ -217,11 +217,11 @@ export const COPIAS = {
   ],
   colorInkjet: [
     r(1,    49,   { Carta: 3.00, Oficio: 4.00, "Doble Carta": 12.00 }),
-    r(50,   99,   { Carta: 2.50, Oficio: 3.80, "Doble Carta": 10.00 }),
-    r(100,  499,  { Carta: 2.20, Oficio: 3.50, "Doble Carta": 8.80 }),
-    r(500,  999,  { Carta: 2.00, Oficio: 3.20, "Doble Carta": 8.40 }),
-    r(1000, 4999, { Carta: 1.80, Oficio: 3.00, "Doble Carta": 8.00 }),
-    r(5000, Infinity, { Carta: 1.50, Oficio: 2.80, "Doble Carta": 7.60 }),
+    r(50,   99,   { Carta: 2.50, Oficio: 3.50, "Doble Carta": 11.50 }),
+    r(100,  499,  { Carta: 2.00, Oficio: 3.00, "Doble Carta": 11.00 }),
+    r(500,  999,  { Carta: 2.50, Oficio: 3.00, "Doble Carta": 10.50 }),
+    r(1000, 4999, { Carta: 2.00, Oficio: 2.50, "Doble Carta": 10.00 }),
+    r(5000, Infinity, { Carta: 1.80, Oficio: 2.50, "Doble Carta": 9.50 }),
   ],
 };
 

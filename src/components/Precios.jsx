@@ -23,12 +23,12 @@ const SERVICIOS_PRECIOS = [
     titulo: "Copias",
     icon: "🖨️",
     color: "blue",
-    desde: "$0.70 carta B/N",
+    referencia: "1-99 carta B/N: $1.00",
     tabla: [
-      { label: "Copias B/N carta", items: ["1-99 $1.00", "100-499 $0.90", "500-999 $0.80", "1,000+ desde $0.70"] },
-      { label: "Copias B/N otros formatos", items: ["Oficio desde $0.80", "Doble carta desde $1.47", "1-99 oficio $1.50"] },
-      { label: "Copias color láser", items: ["Carta desde $5.50", "Oficio desde $8.20", "Doble carta desde $12.50"] },
-      { label: "Copias color inyección", items: ["Carta desde $1.50", "Oficio desde $2.80", "Doble carta desde $7.60"] },
+      { label: "Copias B/N carta", items: ["1-99 $1.00", "100-499 $0.90", "500-999 $0.80", "1,000-4,999 $0.70"] },
+      { label: "Copias B/N otros formatos", items: ["1-99 oficio $1.50", "1-99 doble carta $3.00", "100-499 oficio $1.00"] },
+      { label: "Copias color láser", items: ["1-49 carta $8.00", "1-49 oficio $10.00", "1-49 doble carta $15.00"] },
+      { label: "Copias color inyección", items: ["1-49 carta $3.00", "1-49 oficio $4.00", "1-49 doble carta $12.00"] },
     ],
     extras: ["Rangos por volumen según hojas", "Precios por hoja"],
   },
@@ -37,12 +37,12 @@ const SERVICIOS_PRECIOS = [
     titulo: "Impresión digital",
     icon: "🎨",
     color: "orange",
-    desde: "$0.60 bond carta B/N",
+    referencia: "1-99 bond carta B/N: $1.00",
     tabla: [
-      { label: "Papel Bond", items: ["B/N carta desde $0.60", "B/N doble carta desde $4.50", "Color láser carta desde $5.50", "Color inyección carta desde $1.80"] },
-      { label: "Papel Opalina", items: ["B/N carta desde $3.36", "Color carta desde $8.00", "Doble carta desde $6.00", "13x19 desde $25.00"] },
-      { label: "Papel Autoadhesivo", items: ["B/N carta desde $8.00", "Color carta desde $13.20", "Doble carta desde $15.20", "13x19 desde $27.14"] },
-      { label: "Papeles especiales", items: ["Acetato carta desde $4.00", "Kromacote carta desde $8.00", "Couché 13x19 desde $28.00", "Sulfatada carta desde $8.00"] },
+      { label: "Papel Bond", items: ["1-99 B/N carta $1.00", "1-99 B/N oficio $1.50", "1-99 B/N doble carta $6.00", "1-49 color inyección carta $3.00"] },
+      { label: "Papel Opalina", items: ["1-50 B/N carta $4.40", "1-50 color carta $12.00", "1-50 doble carta $7.20", "1-50 formato 13x19 $30.00"] },
+      { label: "Papel Autoadhesivo", items: ["1-50 B/N carta $12.00", "1-50 color carta $14.00", "1-50 doble carta color $16.80", "1-50 formato 13x19 color $30.00"] },
+      { label: "Papeles especiales", items: ["1-99 acetato carta B/N $6.00", "1-50 Kromacote carta $12.00", "1-50 Couché 13x19 $35.00", "1-50 sulfatada carta $12.00"] },
     ],
     extras: ["Bond, opalina, autoadhesivo, acetato, kromacote, couché y sulfatada", "Precios por página/hoja"],
   },
@@ -51,7 +51,7 @@ const SERVICIOS_PRECIOS = [
     titulo: "Engargolado / Enmicado",
     icon: "📌",
     color: "cyan",
-    desde: "$14.00 enmicado",
+    referencia: "1-10 enmicado carta: $20.00",
     tabla: [
       { label: "Engargolado metálico", items: ["1-45 págs $25", "46-85 págs $30", "181-280 págs $40"] },
       { label: "Engargolado plástico", items: ["0-30 págs $22", "111-140 págs $26", "451-500 págs $50"] },
@@ -65,7 +65,7 @@ const SERVICIOS_PRECIOS = [
     titulo: "Tarjetas PVC",
     icon: "💳",
     color: "cyan",
-    desde: "$18.00 c/u",
+    referencia: "1-10 un lado: $30.00 c/u",
     tabla: [
       { label: "Un solo lado normal", items: ["1-10 $30 c/u", "26-100 $20 c/u", "101+ $18 c/u"] },
       { label: "Un lado con extras", items: ["Perforación desde $20", "NFC desde $25", "Tira magnética desde $30"] },
@@ -79,7 +79,7 @@ const SERVICIOS_PRECIOS = [
     titulo: "Sublimación",
     icon: "☕",
     color: "yellow",
-    desde: "$30.00",
+    referencia: "1-5 tazas: $60.00 c/u",
     tabla: [
       { label: "Tazas", items: ["1-5 $60 c/u", "16-25 $50 c/u", "31+ $30 c/u"] },
       { label: "Tazas mágicas", items: ["1-5 $95 c/u", "16-25 $80 c/u", "31+ $60 c/u"] },
@@ -93,7 +93,7 @@ const SERVICIOS_PRECIOS = [
     titulo: "Fotobotones / Pines",
     icon: "📌",
     color: "red",
-    desde: "$9.00 c/u",
+    referencia: "1-10 normal: $17.00 c/u",
     tabla: [
       { label: "Normal 5.8 cm", items: ["1-10 $17 c/u", "51-100 $13.42 c/u", "200+ $9 c/u"] },
       { label: "Destapador 5.8 cm", items: ["1-10 $20 c/u", "51-100 $13.42 c/u", "200+ $9 c/u"] },
@@ -107,7 +107,7 @@ const SERVICIOS_PRECIOS = [
     titulo: "Escaneo / Digitalización",
     icon: "📷",
     color: "teal",
-    desde: "$0.40 / hoja",
+    referencia: "1-50 carta/oficio: $3.00 c/u",
     tabla: [
       { label: "Carta / Oficio", items: ["1-50 $3 c/u", "101-200 $1.47 c/u", "1000+ $0.40 c/u"] },
       { label: "Doble carta", items: ["1-50 $6 c/u", "201-500 $3 c/u", "1000+ $1 c/u"] },
@@ -168,7 +168,7 @@ function ServicioCard({ s, expanded, onToggle, t }) {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${c.badge}`}>
-            {t("pricesList.from")} {s.desde}
+            {s.referencia}
           </span>
           <ExpandIcon className="h-4 w-4 text-muted-foreground" />
         </div>
