@@ -8,5 +8,38 @@
   Cross-Origin-Resource-Policy: same-site
   Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://*.mercadopago.com; script-src 'self' 'sha256-x76nkmJ7IDP6xT9Rxq9Gin5G2daCCBta/G2UNs+JlbU=' https://sdk.mercadopago.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mercadopago.com https://*.mercadopago.com https://cloudflareinsights.com; frame-src https://*.mercadopago.com https://*.mercadopago.com.mx https://www.google.com https://maps.google.com; upgrade-insecure-requests
 
+/
+  Cache-Control: no-cache, must-revalidate
+
+/servicios*
+  Cache-Control: no-cache, must-revalidate
+
+/precios*
+  Cache-Control: no-cache, must-revalidate
+
+/acerca-de*
+  Cache-Control: no-cache, must-revalidate
+
+/preguntas-frecuentes*
+  Cache-Control: no-cache, must-revalidate
+
+/contacto*
+  Cache-Control: no-cache, must-revalidate
+
+/portafolio*
+  Cache-Control: no-cache, must-revalidate
+
+/recursos*
+  Cache-Control: no-cache, must-revalidate
+
+/aviso-privacidad*
+  Cache-Control: no-cache, must-revalidate
+
+/terminos*
+  Cache-Control: no-cache, must-revalidate
+
+/auth/callback*
+  Cache-Control: no-cache, must-revalidate
+
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

@@ -9,8 +9,8 @@ import { CartProvider } from "./components/CartContext";
 import { LocaleProvider } from "./i18n/LocaleContext";
 import { installCatalogPricesRealtime } from "./lib/catalogPrices";
 import { OAUTH_RESUME_CHECKOUT_KEY } from "./lib/googleAuth";
+import HomePage from "./pages/HomePage";
 
-const HomePage = lazy(() => import("./pages/HomePage"));
 const ProductosPage = lazy(() => import("./pages/ProductosPage"));
 const EquiposPage = lazy(() => import("./pages/EquiposPage"));
 const MisPedidos = lazy(() => import("./pages/MisPedidos"));
