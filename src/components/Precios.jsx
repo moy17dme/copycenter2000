@@ -25,8 +25,8 @@ const SERVICIOS_PRECIOS = [
     color: "blue",
     referencia: "1-99 carta B/N: $1.00",
     tabla: [
-      { label: "Copias B/N carta", items: ["1-99 $1.00", "100-499 $0.90", "500-999 $0.80", "1,000-4,999 $0.70"] },
-      { label: "Copias B/N otros formatos", items: ["1-99 oficio $1.50", "1-99 doble carta $3.00", "100-499 oficio $1.00"] },
+      { label: "Copias B/N carta", items: ["1-99 $1.00", "100-499 $0.70", "500-999 $0.70", "1,000-4,999 $0.70"] },
+      { label: "Copias B/N otros formatos", items: ["1-99 oficio $1.50", "1-99 doble carta $6.00", "100-499 oficio $1.00"] },
       { label: "Copias color láser", items: ["1-49 carta $8.00", "1-49 oficio $10.00", "1-49 doble carta $15.00"] },
       { label: "Copias color inyección", items: ["1-49 carta $3.00", "1-49 oficio $4.00", "1-49 doble carta $12.00"] },
     ],

@@ -76,7 +76,7 @@ export const BOND = {
     r(100,  499,  { Carta: 0.70, Oficio: 1.00, "Doble Carta": 6.00 }),
     r(500,  999,  { Carta: 0.70, Oficio: 0.90, "Doble Carta": 5.50 }),
     r(1000, 4999, { Carta: 0.70, Oficio: 0.90, "Doble Carta": 5.00 }),
-    r(10000, 49999, { Carta: 0.60, Oficio: 0.90, "Doble Carta": 4.50 }),
+    r(10000, Infinity, { Carta: 0.60, Oficio: 0.90, "Doble Carta": 4.50 }),
   ],
   /** Color láser */
   colorLaser: [
@@ -201,11 +201,11 @@ export const SULFATADA = {
 
 export const COPIAS = {
   negro: [
-    r(1,    99,   { Carta: 1.00, Oficio: 1.50, "Doble Carta": 3.00 }),
-    r(100,  499,  { Carta: 0.90, Oficio: 1.00, "Doble Carta": 2.50 }),
-    r(500,  999,  { Carta: 0.80, Oficio: 0.90, "Doble Carta": 2.00 }),
-    r(1000, 4999, { Carta: 0.70, Oficio: 0.80, "Doble Carta": 1.80 }),
-    r(10000, Infinity, { Carta: 0.70, Oficio: 0.80, "Doble Carta": 1.47 }),
+    r(1,    99,   { Carta: 1.00, Oficio: 1.50, "Doble Carta": 6.00 }),
+    r(100,  499,  { Carta: 0.70, Oficio: 1.00, "Doble Carta": 6.00 }),
+    r(500,  999,  { Carta: 0.70, Oficio: 0.90, "Doble Carta": 5.50 }),
+    r(1000, 4999, { Carta: 0.70, Oficio: 0.90, "Doble Carta": 5.00 }),
+    r(10000, 49999, { Carta: 0.60, Oficio: 0.90, "Doble Carta": 4.50 }),
   ],
   colorLaser: [
     r(1,    49,   { Carta: 8.00, Oficio: 10.00, "Doble Carta": 15.00 }),
