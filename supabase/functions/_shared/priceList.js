@@ -76,16 +76,16 @@ export const BOND = {
     r(100,  499,  { Carta: 0.70, Oficio: 1.00, "Doble Carta": 6.00 }),
     r(500,  999,  { Carta: 0.70, Oficio: 0.90, "Doble Carta": 5.50 }),
     r(1000, 4999, { Carta: 0.70, Oficio: 0.90, "Doble Carta": 5.00 }),
-    r(10000, Infinity, { Carta: 0.60, Oficio: 0.90, "Doble Carta": 4.50 }),
+    r(10000, 49999, { Carta: 0.60, Oficio: 0.90, "Doble Carta": 4.50 }),
   ],
   /** Color láser */
   colorLaser: [
-    r(1,    49,   { Carta:  8.00, Oficio: 10.00, "Doble Carta": 15.60 }),
-    r(50,   99,   { Carta:  7.50, Oficio:  9.50, "Doble Carta": 14.40 }),
-    r(100,  499,  { Carta:  7.00, Oficio:  9.00, "Doble Carta": 13.60 }),
-    r(500,  999,  { Carta:  6.50, Oficio:  8.50, "Doble Carta": 13.20 }),
-    r(1000, 4999, { Carta:  6.00, Oficio:  8.00, "Doble Carta": 12.80 }),
-    r(5000, Infinity, { Carta: 5.50, Oficio:  7.00, "Doble Carta": 12.40 }),
+    r(1,    49,   { Carta: 8.00, Oficio: 10.00, "Doble Carta": 15.00 }),
+    r(50,   99,   { Carta: 7.50, Oficio: 9.50, "Doble Carta": 14.50 }),
+    r(100,  499,  { Carta: 7.00, Oficio: 9.20, "Doble Carta": 14.00 }),
+    r(500,  999,  { Carta: 6.50, Oficio: 9.00, "Doble Carta": 13.50 }),
+    r(1000, 4999, { Carta: 6.00, Oficio: 8.60, "Doble Carta": 13.00 }),
+    r(5000, Infinity, { Carta: 5.50, Oficio: 8.20, "Doble Carta": 12.50 }),
   ],
   /** Color inyección de tinta */
   colorInkjet: [
