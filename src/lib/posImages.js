@@ -3,7 +3,8 @@ export function closingText(day, summary, closed = false) {
   const expected = Number(summary.opening) + Number(summary.cash) + Number(summary.movements);
   return ['COPY CENTER 2000', closed ? `CORTE DE CAJA · ${day}` : `RESUMEN PREVIO · ${day}`,
     `Ventas: ${summary.count}`, `Total vendido: ${money(summary.total)} MXN`,
-    `Efectivo: ${money(summary.cash)}`, `Tarjeta: ${money(summary.card)}`, `Transferencia: ${money(summary.transfer)}`,
+    `Total cobrado: ${money(summary.collected??(Number(summary.cash)+Number(summary.card)+Number(summary.transfer)))}`,
+    `Efectivo cobrado: ${money(summary.cash)}`, `Tarjeta: ${money(summary.card)}`, `Transferencia: ${money(summary.transfer)}`,
     `Fondo inicial: ${money(summary.opening)}`, `Entradas / retiros: ${money(summary.movements)}`, `Efectivo esperado: ${money(expected)}`,
     closed ? `Efectivo contado: ${money(summary.counted)}` : 'Pendiente de conteo físico y cierre',
     closed ? `Diferencia: ${money(summary.difference)}` : '', 'Mostrador · Horario de México'].filter(Boolean).join('\n');

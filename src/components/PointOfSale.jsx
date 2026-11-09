@@ -5,6 +5,9 @@ import './PointOfSale.css';
 import { resolveCatalogRule } from '../lib/catalogRule';
 import { closingText, sharePosImage, shareReceiptImage } from '../lib/posImages';
 import PosSearch from './PosSearch';
+import PosPaymentFields from './PosPaymentFields';
+import {blankPayment,validatePayment} from '../lib/posPayments';
+import PosPending from './PosPending';
 
 const blankItem = () => ({ name: '', qty: '1', price: '' });
 async function rpc(name, args) {
@@ -16,11 +19,11 @@ const ADMIN_ACCESS={admin:true,permissions:{sell:true,open:true,close:true,move:
 export default function PointOfSale({access=ADMIN_ACCESS}) {
   const permissions=access.permissions||{};
   const [view,setView]=useState('sale');
+  const [pendingLocked,setPendingLocked]=useState(false);
   const [day, setDay] = useState(businessDay);
   const [snapshot, setSnapshot] = useState(null);
   const [items, setItems] = useState([]);
-  const [payment, setPayment] = useState('cash');
-  const [received, setReceived] = useState('');
+  const [payment, setPayment] = useState(blankPayment);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [opening, setOpening] = useState('0');
@@ -82,9 +85,7 @@ export default function PointOfSale({access=ADMIN_ACCESS}) {
     return {...item, price: quote.row ? (quote.unit_cents/100).toFixed(2) : '', pricingError:quote.error, catalog_rule_id:quote.row?.id};
   });
   let total = 0;
-  try { total = pricedItems.reduce((sum, item) => sum + cents(item.price || '0') * Number(item.qty), 0); } catch { /* Invalid edits are validated on submit. */ }
-  let change = null;
-  try { change = cents(received) - total; } catch { /* Empty amount. */ }
+  try { total = pricedItems.reduce((sum, item) => sum + Math.round(cents(item.price || '0') * Number(item.qty)), 0); } catch { /* Invalid edits are validated on submit. */ }
   const updateItem = (index, key, value) => setItems(previous => previous.map((item, i) => i === index ? { ...item, [key]: value } : item));
   function sell(event) {
     event.preventDefault();
@@ -93,30 +94,30 @@ export default function PointOfSale({access=ADMIN_ACCESS}) {
         if (pricedItems.some(item=>item.pricingError)) throw new Error('Resuelve las partidas sin tarifa antes de cobrar.');
         const lines = pricedItems.map(item => ({ name: item.name.trim(), qty: Number(item.qty), unit_cents: cents(item.price),
           ...(item.catalog_rule_id ? {catalog_rule_id:item.catalog_rule_id,pricing_quantity:Number(item.catalogKey.servicio==='engargolado'?item.pages:item.qty)} : {}) }));
-        if (lines.some(i => !i.name || !Number.isInteger(i.qty) || i.qty < 1 || i.qty > 100000 || i.unit_cents < 1)) throw new Error('Revisa descripción, cantidad y precio de cada partida.');
-        const amount = lines.reduce((sum, i) => sum + i.qty * i.unit_cents, 0);
-        const tendered = payment === 'cash' ? cents(received) : amount;
-        if (tendered < amount) throw new Error('El efectivo recibido no cubre el total.');
-        saleRequest.current = { p_id: crypto.randomUUID(), p_items: lines, p_payment: payment, p_received: tendered, p_name: name.trim(), p_phone: phone.trim() ? normalizePhone(phone) : '' };
+        if (lines.some(i => !i.name || !Number.isFinite(i.qty) || i.qty < 0.01 || i.qty!==Math.round(i.qty*100)/100 || i.qty > 100000 || i.unit_cents < 1)) throw new Error('Revisa descripción, cantidad y precio de cada partida.');
+        const amount = lines.reduce((sum, i) => sum + Math.round(i.qty * i.unit_cents), 0);
+        const tendered = validatePayment(amount,payment);
+        if(payment.deposit&&!name.trim())throw new Error('Escribe el nombre del cliente para identificar su saldo.');
+        saleRequest.current = {p_id:crypto.randomUUID(),p_items:lines,p_payments:tendered.payments,p_cash_received:tendered.received,p_deposit:payment.deposit,p_name:name.trim(),p_phone:phone.trim()?normalizePhone(phone):''};
       }
       // Preserve both ID and payload on ambiguous network failures: retry cannot double-charge.
       let saved;
-      try { saved = await rpc('pos_sell', saleRequest.current); }
+      try { saved = await rpc('pos_checkout', saleRequest.current); }
       catch (e) {
         // PostgreSQL validation errors are definitive rollbacks; allow correction.
         if (/^(22|23|P0001)/.test(e.code || '')) saleRequest.current = null;
         throw e;
       }
-      saleRequest.current = null; setReceipt(saved); setItems([]); setReceived(''); setName(''); setPhone('');
+      saleRequest.current = null; setReceipt(saved); setItems([]); setPayment(blankPayment()); setName(''); setPhone('');
       setNotice(`Venta #${saved.folio} guardada. Ya puedes compartir la imagen por WhatsApp.`);
     });
   }
   const frozen = busy || Boolean(saleRequest.current);
   return <section className="pos" aria-label="Caja y ventas">
     <header className="pos-header"><div><h2>Punto de venta</h2><p>Mostrador · MXN</p></div>
-      <div className="pos-actions">{view!=='sale'&&permissions.history&&<label>Consultar día<input type="date" value={day} max={businessDay()} disabled={busy} onChange={e => { if (e.target.value) setDay(e.target.value); }} /></label>}
-        <button type="button" disabled={busy || loading} onClick={load}>Actualizar</button></div></header>
-    <nav className="pos-tabs" aria-label="Secciones del punto de venta">{[['sale','Vender'],['history','Tickets'],['cash','Caja y corte']].map(([key,label])=><button type="button" key={key} aria-pressed={view===key} disabled={busy} onClick={()=>{setView(key);if(key==='sale')setDay(businessDay());}}>{label}</button>)}</nav>
+      <div className="pos-actions">{(view==='history'||view==='cash')&&permissions.history&&<label>Consultar día<input type="date" value={day} max={businessDay()} disabled={busy||pendingLocked} onChange={e => { if (e.target.value) setDay(e.target.value); }} /></label>}
+        <button type="button" disabled={busy || loading||pendingLocked} onClick={load}>Actualizar</button></div></header>
+    <nav className="pos-tabs" aria-label="Secciones del punto de venta">{[['sale','Vender'],['pending','Saldos pendientes'],['history','Tickets'],['cash','Caja y corte']].map(([key,label])=><button type="button" key={key} aria-pressed={view===key} disabled={busy||pendingLocked||Boolean(saleRequest.current)} onClick={()=>{setView(key);if(key==='sale'||key==='pending')setDay(businessDay());}}>{label}</button>)}</nav>
     {error && <p role="alert" className="pos-error">{error}</p>}
     {notice && <p role="status" className="pos-success">{notice}</p>}
     {loading && <p role="status">Cargando caja…</p>}
@@ -127,8 +128,9 @@ export default function PointOfSale({access=ADMIN_ACCESS}) {
         <button className="pos-primary" disabled={busy}>Abrir caja</button></form>}
       {!box && day !== businessDay() && <p>No se abrió una caja en esta fecha.</p>}
       {!box && day===businessDay() && !permissions.open && <p>Pide a una persona autorizada que abra la caja de hoy.</p>}
+      {view==='pending'&&permissions.sell&&<PosPending onLockChange={setPendingLocked} canCollect={canSell} onReceipt={saved=>{setReceipt(saved);setNotice(`Abono guardado en el ticket #${saved.folio}. Saldo pendiente: ${money(saved.balance_cents)}.`);}} onUpdated={load}/>}
       {box && <>
-        {view==='cash'&&<div className="pos-summary" aria-label="Resumen del día">{[['Ventas', summary.count], ['Total vendido', money(summary.total)], ['Efectivo', money(summary.cash)], ['Tarjeta', money(summary.card)], ['Transferencia', money(summary.transfer)]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>}
+        {view==='cash'&&<div className="pos-summary" aria-label="Resumen del día">{[['Ventas', summary.count], ['Total vendido', money(summary.total)], ['Cobrado hoy', money(summary.collected??(Number(summary.cash)+Number(summary.card)+Number(summary.transfer)))], ['Efectivo cobrado', money(summary.cash)], ['Tarjeta', money(summary.card)], ['Transferencia', money(summary.transfer)]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>}
         {box.closed_at&&<p className="pos-help">Caja cerrada. El corte está guardado y no admite más ventas.</p>}
         {!permissions.sell&&view==='sale'&&<p>Tu cuenta no tiene permiso para cobrar ventas.</p>}
         <div className="pos-layout pos-simple-layout">
@@ -140,22 +142,20 @@ export default function PointOfSale({access=ADMIN_ACCESS}) {
               {pricedItems.map((item,i)=><div className="pos-cart-line" key={i}>
                 <div className="pos-cart-name">{item.catalogKey?<strong>{item.name}</strong>:<label>Servicio especial<input required maxLength={120} value={item.name} onChange={e=>updateItem(i,'name',e.target.value)}/></label>}
                   {item.catalogKey?.servicio==='engargolado'&&<label>Hojas por engargolado<input type="number" min="1" max="100000" value={item.pages} onChange={e=>updateItem(i,'pages',e.target.value)}/></label>}</div>
-                <label>Cantidad<input required type="number" min="1" max="100000" step="1" value={item.qty} onChange={e=>updateItem(i,'qty',e.target.value)}/></label>
-                {item.catalogKey?<div className="pos-line-amount"><span>Precio unitario</span><strong>{item.pricingError?'—':money(Math.round(Number(item.price)*100))}</strong></div>:<label>Precio unitario ($)<input required type="number" min="0.01" max="1000000" step="0.01" value={item.price} onChange={e=>updateItem(i,'price',e.target.value)}/></label>}
-                <div className="pos-line-amount"><span>Total</span><strong>{item.pricingError?'—':money(Math.round(Number(item.price)*100)*Number(item.qty))}</strong></div>
+                <label>{item.catalogKey?.servicio==='planos_lineas'?'Largo en metros':'Cantidad'}<input required type="number" min={item.catalogKey?.servicio==='planos_lineas'?"0.01":"1"} max="100000" step={item.catalogKey?.servicio==='planos_lineas'?"0.01":"1"} value={item.qty} onChange={e=>updateItem(i,'qty',e.target.value)}/></label>
+                {item.catalogKey?<div className="pos-line-amount"><span>{item.catalogKey?.servicio==='planos_lineas'?'Precio por metro':'Precio unitario'}</span><strong>{item.pricingError?'—':money(Math.round(Number(item.price)*100))}</strong></div>:<label>Precio unitario ($)<input required type="number" min="0.01" max="1000000" step="0.01" value={item.price} onChange={e=>updateItem(i,'price',e.target.value)}/></label>}
+                <div className="pos-line-amount"><span>Total</span><strong>{item.pricingError?'—':money(Math.round(Math.round(Number(item.price)*100)*Number(item.qty)))}</strong></div>
                 <button type="button" aria-label={`Quitar partida ${i+1}`} onClick={()=>setItems(items.filter((_,index)=>index!==i))}>Quitar</button>
                 {item.pricingError&&<p role="alert" className="pos-line-error">{item.pricingError}</p>}
               </div>)}
               {access.admin&&<details><summary>Servicio especial con precio autorizado</summary><button type="button" disabled={items.length>=50} onClick={()=>setItems([...items,blankItem()])}>Agregar servicio especial</button></details>}
-              <details><summary>Datos del cliente (opcional)</summary>
-              <div className="pos-pair"><label>Cliente (opcional)<input maxLength={120} value={name} onChange={e => setName(e.target.value)} /></label>
+              <details open={payment.deposit||undefined}><summary>Datos del cliente {payment.deposit?'(nombre obligatorio)':'(opcional)'}</summary>
+              <div className="pos-pair"><label>{payment.deposit?'Nombre del cliente':'Cliente (opcional)'}<input required={payment.deposit} maxLength={120} value={name} onChange={e => setName(e.target.value)} /></label>
                 <label>WhatsApp del cliente (opcional)<input type="tel" placeholder="771 123 4567" value={phone} onChange={e => setPhone(e.target.value)} /></label></div>
               </details>
-              <div className="pos-pair"><label>Forma de pago<select value={payment} onChange={e => setPayment(e.target.value)}>{Object.entries(PAYMENT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-                {payment === 'cash' && <label>Efectivo recibido ($)<input required type="number" min="0" max="1000000" step="0.01" value={received} onChange={e => setReceived(e.target.value)} /></label>}</div>
-              <p className="pos-help">Confirma el pago antes de guardar. Tarjeta y transferencia se cobran fuera del punto de venta.</p>
+              <PosPaymentFields total={total} value={payment} onChange={setPayment}/>
             </fieldset>
-            <div className="pos-total"><strong>Total {money(total)}</strong>{payment === 'cash' && change !== null && <span>{change >= 0 ? `Cambio ${money(change)}` : `Faltan ${money(-change)}`}</span>}</div>
+            <div className="pos-total"><strong>Total {money(total)}</strong></div>
             {saleRequest.current && <p role="status">La operación está pendiente de confirmar. Reintenta con los mismos datos para evitar duplicarla.</p>}
             <button className="pos-primary" disabled={busy || !items.length || pricedItems.some(item=>item.pricingError)}>{busy ? 'Guardando…' : saleRequest.current ? 'Reintentar confirmar venta' : 'Confirmar pago y guardar venta'}</button>
           </form>}
@@ -165,8 +165,8 @@ export default function PointOfSale({access=ADMIN_ACCESS}) {
             <button onClick={()=>run(async()=>setNotice(await shareReceiptImage(receipt)))}>Compartir imagen</button>
             <button onClick={() => setReceipt(null)}>Ocultar</button></div><p className="pos-help">WhatsApp abrirá el ticket preparado. Pulsa Enviar en la conversación para entregarlo.</p></div>}
           </div>
-          {view==='cash'&&<aside className="pos-close"><h3>Corte de caja</h3><dl><div><dt>Fondo inicial</dt><dd>{money(summary.opening)}</dd></div><div><dt>Ventas en efectivo</dt><dd>{money(summary.cash)}</dd></div><div><dt>Entradas / retiros</dt><dd>{money(summary.movements)}</dd></div><div><dt>Efectivo esperado</dt><dd>{money(expected)}</dd></div></dl>
-            {box.closed_at ? <><dl><div><dt>Efectivo contado</dt><dd>{money(summary.counted)}</dd></div><div><dt>Diferencia</dt><dd>{money(summary.difference)}</dd></div></dl><button onClick={() => downloadText(`corte-${day}.txt`, `COPY CENTER 2000\nCorte ${day}\nVentas: ${summary.count}\nTotal: ${money(summary.total)}\nTarjeta: ${money(summary.card)}\nTransferencia: ${money(summary.transfer)}\nFondo: ${money(summary.opening)}\nVentas efectivo: ${money(summary.cash)}\nMovimientos: ${money(summary.movements)}\nEsperado: ${money(expected)}\nContado: ${money(summary.counted)}\nDiferencia: ${money(summary.difference)}`)}>Descargar corte</button></> : permissions.close ? <form onSubmit={e => { e.preventDefault(); if (!confirmClose) { setConfirmClose(true); return; } run(async () => { await rpc('pos_close', { p_day: day, p_counted: cents(counted) }); setConfirmClose(false); setNotice('Corte guardado. Ya puedes compartir su imagen por WhatsApp.'); }); }}>
+          {view==='cash'&&<aside className="pos-close"><h3>Corte de caja</h3><dl><div><dt>Fondo inicial</dt><dd>{money(summary.opening)}</dd></div><div><dt>Cobros en efectivo</dt><dd>{money(summary.cash)}</dd></div><div><dt>Entradas / retiros</dt><dd>{money(summary.movements)}</dd></div><div><dt>Efectivo esperado</dt><dd>{money(expected)}</dd></div></dl>
+            {box.closed_at ? <><dl><div><dt>Efectivo contado</dt><dd>{money(summary.counted)}</dd></div><div><dt>Diferencia</dt><dd>{money(summary.difference)}</dd></div></dl><button onClick={() => downloadText(`corte-${day}.txt`, closingText(day,summary,true))}>Descargar corte</button></> : permissions.close ? <form onSubmit={e => { e.preventDefault(); if (!confirmClose) { setConfirmClose(true); return; } run(async () => { await rpc('pos_close', { p_day: day, p_counted: cents(counted) }); setConfirmClose(false); setNotice('Corte guardado. Ya puedes compartir su imagen por WhatsApp.'); }); }}>
               <label>Efectivo contado ($)<input required type="number" min="0" max="1000000" step="0.01" value={counted} disabled={busy} onChange={e => { setCounted(e.target.value); setConfirmClose(false); }} /></label>
               {counted !== '' && <p>Diferencia: {money(Math.round(Number(counted) * 100) - expected)}</p>}
               {confirmClose && <p role="alert">Al cerrar ya no podrás agregar ventas a esta fecha. Confirma que terminaste de cobrar y contar.</p>}
@@ -184,9 +184,9 @@ export default function PointOfSale({access=ADMIN_ACCESS}) {
         }); }}><fieldset disabled={busy || Boolean(moveRequest.current)} className="pos-pair"><label>Tipo<select value={direction} onChange={e => setDirection(e.target.value)}><option value="out">Retiro / gasto</option><option value="in">Entrada de efectivo</option></select></label><label>Importe ($)<input required type="number" min="0.01" max="1000000" step="0.01" value={movement} onChange={e => setMovement(e.target.value)} /></label><label>Motivo<input required minLength={3} maxLength={200} value={reason} onChange={e => setReason(e.target.value)} /></label></fieldset><button disabled={busy}>{moveRequest.current ? 'Reintentar movimiento' : 'Guardar movimiento'}</button></form></details>}
         {view==='cash' && current.movements.length > 0 && <details><summary>Movimientos del día ({current.movements.length})</summary><ul>{current.movements.map(m => <li key={m.id}>{m.reason}: {money(m.amount_cents)}</li>)}</ul></details>}
         {view==='history'&&<><h3 className="pos-history-title">{access.admin?'Ventas del día':'Mis ventas del día'}</h3>
-        {!current.sales.length ? <p>Aún no hay ventas registradas en esta caja.</p> : <div className="pos-table-wrap"><table><caption>Últimas 200 ventas. El corte incluye todas las ventas del día.</caption><thead><tr><th>Ticket</th><th>Hora</th><th>Detalle</th><th>Pago</th><th>Total</th><th>Comprobante</th></tr></thead><tbody>{current.sales.map(sale => <tr key={sale.id}><td>#{sale.folio}</td><td>{new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit' }).format(new Date(sale.created_at))}</td><td>{sale.items.map(i => `${i.qty} × ${i.name}`).join(', ')}</td><td>{PAYMENT_LABELS[sale.payment]}</td><td>{money(sale.total_cents)}</td><td><button onClick={() => setReceipt(sale)}>Ver ticket</button></td></tr>)}</tbody></table></div>}</>}
+        {!current.sales.length ? <p>Aún no hay ventas registradas en esta caja.</p> : <div className="pos-table-wrap"><table><caption>Últimas 200 ventas. El corte incluye todas las ventas del día.</caption><thead><tr><th>Ticket</th><th>Hora</th><th>Detalle</th><th>Pago</th><th>Total</th><th>Saldo</th><th>Comprobante</th></tr></thead><tbody>{current.sales.map(sale => <tr key={sale.id}><td>#{sale.folio}</td><td>{new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit' }).format(new Date(sale.created_at))}</td><td>{sale.items.map(i => `${i.qty} × ${i.name}`).join(', ')}</td><td>{PAYMENT_LABELS[sale.payment]}</td><td>{money(sale.total_cents)}</td><td>{money(sale.balance_cents)}</td><td><button disabled={busy} onClick={() => run(async()=>setReceipt(await rpc('pos_receipt',{p_id:sale.id})))}>Ver ticket</button></td></tr>)}</tbody></table></div>}</>}
       </>}
-      {access.admin&&view==='cash'&&<details className="pos-notifications"><summary>Últimos avisos preparados</summary><p className="pos-help">Comparte las imágenes desde cada ticket o desde el corte. La página no puede confirmar el envío manual en WhatsApp.</p><ul>{current.notifications.map(n => <li key={n.id}>{n.event_key.startsWith('sale:') ? 'Venta' : n.event_key.startsWith('close:') ? 'Corte' : 'Resumen'}: {{ pending: 'Preparado para compartir', processing: 'Procesando', accepted: 'Aceptado por WhatsApp', failed: 'Falló el envío' }[n.status]}{n.last_error ? ` · ${n.last_error}` : ''}</li>)}</ul>{!current.notifications.length && <p>Los avisos aparecerán al registrar una venta o un corte.</p>}</details>}
+      {access.admin&&view==='cash'&&<details className="pos-notifications"><summary>Últimos avisos preparados</summary><p className="pos-help">Comparte las imágenes desde cada ticket o desde el corte. La página no puede confirmar el envío manual en WhatsApp.</p><ul>{current.notifications.map(n => <li key={n.id}>{n.event_key.startsWith('sale:') ? 'Venta' : n.event_key.startsWith('close:') ? 'Corte' : n.event_key.startsWith('payment:')?'Abono':'Resumen'}: {{ pending: 'Preparado para compartir', processing: 'Procesando', accepted: 'Aceptado por WhatsApp', failed: 'Falló el envío' }[n.status]}{n.last_error ? ` · ${n.last_error}` : ''}</li>)}</ul>{!current.notifications.length && <p>Los avisos aparecerán al registrar una venta o un corte.</p>}</details>}
     </>}
   </section>;
 }

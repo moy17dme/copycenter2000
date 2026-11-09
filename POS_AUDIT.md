@@ -1,10 +1,18 @@
 # Auditoría y fases del POS · 9 noviembre 2026
 
+## Avance posterior: pagos mixtos, anticipos y metros lineales
+
+Libro de pagos por operación, medio, autor y día de caja. Migración de ventas previas a pagos completos; saldos generados y permisos de lectura/abono aplicados en PostgreSQL. `pos_checkout` crea venta y anticipo en una sola transacción; `pos_pay` bloquea caja y venta, verifica saldo y evita duplicados por UUID. El efectivo recibido y el cambio se guardan aparte del importe aplicado. El corte suma cobros del día, incluidas liquidaciones de ventas anteriores, sin reescribir snapshots cerrados. El RPC anterior sigue compatible.
+
+Interfaz con pago completo/anticipo, medios combinados, búsqueda de pendientes y abonos/liquidación. Empleados limitados a sus ventas; los saldos propios pendientes y los liquidados hoy se pueden consultar sin permiso general de historial. Tarifas de planos solo líneas autorizadas a $30/$60 por metro lineal, precisión 0.01 m, validación de catálogo y precio en servidor; otras partidas mantienen cantidad entera. Sin ventas ni cuentas de prueba en producción.
+
+Validación: 116 comprobaciones de base de datos aislada (incluye backfill, cortes anteriores, caja cerrada, permisos, reintentos y saldo excesivo), navegador con transporte simulado, revisión móvil, lint y build. Pendiente de fases posteriores: cotizaciones, producción y consolidación del motor público de checkout.
+
 ## Avance posterior: empleados y búsqueda rápida
 
 Implementados el panel de empleados, permisos por acción, acceso `/pos`, invitación opcional por correo y revocación. El registro original de Auth escribía `profiles.email`, columna inexistente en producción; la nueva migración corrige el trigger conservando los campos y aceptación legal existentes. No se crearon cuentas reales.
 
-La caja continúa compartida por día (aún no hay cajas independientes por turno). Cada cobro tiene autor y el empleado consulta sus propios tickets; cierre, movimientos y fechas anteriores requieren permiso. Las tarifas de copias existentes se importan al catálogo sin sobreescribir datos, y se añade su consulta al cálculo público con fallback heredado. Quedan pendientes pagos mixtos, anticipos, cotizaciones y la consolidación completa del motor de checkout.
+La caja continúa compartida por día (aún no hay cajas independientes por turno). Cada cobro tiene autor y el empleado consulta sus propios tickets; cierre, movimientos y fechas anteriores requieren permiso. Las tarifas de copias existentes se importan al catálogo sin sobreescribir datos, y se añade su consulta al cálculo público con fallback heredado. En esa fase quedaron pendientes pagos mixtos y anticipos (resueltos arriba), además de cotizaciones y la consolidación completa del motor de checkout.
 
 ## Arquitectura encontrada
 

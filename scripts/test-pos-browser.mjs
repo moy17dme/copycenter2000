@@ -14,9 +14,11 @@ await page.addInitScript(() => {
   let box = null; const sales = []; let firstSale = true;
   const members=[];window.__invites=0;
   const catalog=[{id:'30000000-0000-0000-0000-000000000001',servicio:'copias',categoria:'Copias',categoria_slug:'copias',variante:'B/N',variante_slug:'negro',formato:'Carta',formato_slug:'carta',min_cantidad:1,max_cantidad:99,precio:1,activo:true},
+    {id:'30000000-0000-0000-0000-000000000003',servicio:'planos_lineas',categoria:'Planos solo líneas',categoria_slug:'planos_solo_lineas',variante:'B/N',variante_slug:'negro',formato:'Metro lineal',formato_slug:'metro_lineal',min_cantidad:0,max_cantidad:null,precio:30,activo:true},
     {id:'30000000-0000-0000-0000-000000000002',servicio:'copias',categoria:'Copias',categoria_slug:'copias',variante:'B/N',variante_slug:'negro',formato:'Carta',formato_slug:'carta',min_cantidad:100,max_cantidad:499,precio:0.7,activo:true}];
     const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date());
-  const summary = () => ({ count: sales.length, total: sales.reduce((s,v)=>s+v.total_cents,0), cash: sales.reduce((s,v)=>s+(v.payment==='cash'?v.total_cents:0),0), card:0,transfer:0,opening:box?.opening_cents||0,movements:0 });
+  const collected=method=>sales.flatMap(s=>s.payments).flatMap(b=>b.methods).filter(p=>p.method===method).reduce((sum,p)=>sum+p.amount_cents,0);
+  const summary = () => ({count:sales.length,total:sales.reduce((s,v)=>s+v.total_cents,0),cash:collected('cash'),card:collected('card'),transfer:collected('transfer'),collected:collected('cash')+collected('card')+collected('transfer'),opening:box?.opening_cents||0,movements:0});
   window.__posSales = sales;
   window.__copycenter2000_supabase_client__ = {
     functions:{async invoke(){window.__invites++;return {data:{message:'Invitación ficticia enviada'}};}},
@@ -28,10 +30,22 @@ await page.addInitScript(() => {
       if(name==='pos_save_member'){const member={id:p.p_id||'fixture-member',email:p.p_email,display_name:p.p_name,role:p.p_role,enabled:p.p_enabled,permissions:p.p_permissions};const index=members.findIndex(m=>m.id===member.id);if(index<0)members.push(member);else members[index]=member;return {data:member};}
       if(name==='pos_summary') return {data:summary()};
       if(name==='pos_open') { box={day,opening_cents:p.p_opening}; return {data:box}; }
-      if(name==='pos_sell') {
+      if(name==='pos_checkout') {
         let sale=sales.find(s=>s.id===p.p_id);
-        if(!sale) { sale={id:p.p_id,folio:sales.length+1,day,items:p.p_items,payment:p.p_payment,received_cents:p.p_received,customer_phone:p.p_phone,customer_name:p.p_name,total_cents:p.p_items.reduce((s,i)=>s+i.qty*i.unit_cents,0),created_at:new Date().toISOString()}; sales.push(sale); }
+        if(!sale) { sale={id:p.p_id,folio:sales.length+1,day,items:p.p_items,payment:p.p_payments.length>1?'mixed':p.p_payments[0].method,received_cents:p.p_cash_received,customer_phone:p.p_phone,customer_name:p.p_name,total_cents:p.p_items.reduce((s,i)=>s+i.qty*i.unit_cents,0),created_at:new Date().toISOString()}; sale.paid_cents=p.p_payments.reduce((sum,p)=>sum+p.amount_cents,0);sale.balance_cents=sale.total_cents-sale.paid_cents;sale.payments=[{id:p.p_id,day,cash_received_cents:p.p_cash_received,change_cents:p.p_cash_received-(p.p_payments.find(v=>v.method==='cash')?.amount_cents||0),methods:p.p_payments}];sales.push(sale); }
         if(firstSale){firstSale=false;return {error:{message:'Conexión interrumpida'}};}
+        return {data:sale};
+      }
+      if(name==='pos_pending')return {data:sales.filter(s=>s.balance_cents>0&&(!p.p_query||`${s.folio} ${s.customer_name}`.includes(p.p_query)))};
+      if(name==='pos_receipt')return {data:sales.find(s=>s.id===p.p_id)};
+      if(name==='pos_pay'){
+        const sale=sales.find(s=>s.id===p.p_sale);
+        if(!sale.payments.some(b=>b.id===p.p_id)){
+          const amount=p.p_payments.reduce((sum,v)=>sum+v.amount_cents,0);
+          sale.paid_cents+=amount;sale.balance_cents-=amount;
+          sale.payments.push({id:p.p_id,day,cash_received_cents:p.p_cash_received,change_cents:p.p_cash_received-(p.p_payments.find(v=>v.method==='cash')?.amount_cents||0),methods:p.p_payments});
+        }
+        if(!window.__paymentFailed){window.__paymentFailed=true;return {error:{message:'Conexión interrumpida al abonar'}};}
         return {data:sale};
       }
       if(name==='pos_close') { const s=summary(); box={...box,closed_at:new Date().toISOString(),closing_summary:{...s,expected:s.opening+s.cash,counted:p.p_counted,difference:p.p_counted-s.opening-s.cash}}; return {data:box.closing_summary}; }
@@ -72,8 +86,47 @@ try {
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
   await page.screenshot({path:'outputs/pos-validation/mobile.png',fullPage:true});
+  await page.setViewportSize({width:1440,height:1050});
+  await page.getByLabel('¿Qué vas a vender?').fill('planos');
+  await page.getByRole('button',{name:/Copias de planos/}).click();
+  await page.getByLabel('Largo en metros').fill('1.2');
+  assert.match(await page.locator('.pos-selected').innerText(),/\$36\.00/);
+  await page.getByRole('button',{name:'Agregar',exact:true}).click();
+  await page.getByLabel('Tipo de cobro').selectOption('deposit');
+  await page.getByLabel('Nombre del cliente',{exact:true}).fill('Cliente planos prueba');
+  await page.getByLabel('Forma de pago').selectOption('mixed');
+  await page.getByLabel('Efectivo a aplicar ($)',{exact:true}).fill('10');
+  await page.getByLabel('Tarjeta a aplicar ($)',{exact:true}).fill('5');
+  await page.getByLabel('Efectivo recibido ($)',{exact:true}).fill('20');
+  assert.match(await page.locator('.pos-payment-preview').innerText(),/\$21\.00/);
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
+  await page.getByRole('button',{name:'Confirmar pago y guardar venta'}).scrollIntoViewIfNeeded();
+  assert.equal(await page.getByRole('button',{name:'Confirmar pago y guardar venta'}).isVisible(),true);
+  await page.screenshot({path:'outputs/pos-validation/mixed-form-mobile.png',fullPage:true});
+  await page.setViewportSize({width:1440,height:1050});
+  await page.getByRole('button',{name:'Confirmar pago y guardar venta'}).click();
+  await page.getByRole('heading',{name:'Ticket #2',exact:true}).waitFor();
+  assert.match(await page.locator('.pos-receipt pre').innerText(),/SALDO PENDIENTE: \$21\.00/);
+  await page.getByRole('button',{name:'Saldos pendientes',exact:true}).click();
+  await page.getByLabel('Buscar saldo').fill('Cliente planos');
+  await page.getByRole('button',{name:/#2 · Cliente planos prueba/}).click();
+  await page.getByLabel('Forma de pago').selectOption('mixed');
+  await page.getByLabel('Efectivo a aplicar ($)',{exact:true}).fill('1');
+  await page.getByLabel('Tarjeta a aplicar ($)',{exact:true}).fill('20');
+  await page.getByRole('button',{name:'Confirmar abono',exact:true}).click();
+  await page.getByRole('button',{name:'Reintentar confirmar abono',exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Vender',exact:true}).isDisabled(),true);
+  await page.getByRole('button',{name:'Reintentar confirmar abono',exact:true}).click();
+  await page.getByText('No hay saldos pendientes para esta búsqueda.',{exact:true}).waitFor();
+  assert.match(await page.locator('.pos-receipt pre').innerText(),/SALDO PENDIENTE: \$0\.00 · LIQUIDADO/);
+  assert.equal(await page.evaluate(()=>window.__posSales[1].payments.length),2);
+  await page.screenshot({path:'outputs/pos-validation/payments-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
+  await page.screenshot({path:'outputs/pos-validation/payments-mobile.png',fullPage:true});
   await page.getByRole('button',{name:'Caja y corte',exact:true}).click();
-  await page.getByLabel('Efectivo contado ($)').fill('102');
+  await page.getByLabel('Efectivo contado ($)').fill('113');
   await page.getByRole('button',{name:'Revisar y cerrar caja'}).click();
   await page.getByRole('button',{name:'Confirmar cierre definitivo'}).click();
   await page.getByRole('button',{name:'Descargar corte'}).waitFor();

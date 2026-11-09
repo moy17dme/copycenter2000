@@ -1,5 +1,14 @@
 # Caja y ventas
 
+## Pagos mixtos, anticipos y planos
+
+- En **Vender**, elige **Pago completo** o **Anticipo**; este último requiere nombre de cliente. En **Forma de pago → Mixto**, escribe la parte aplicada en efectivo, tarjeta y/o transferencia. El efectivo entregado se captura aparte para calcular el cambio; vacío significa importe exacto.
+- En **Saldos pendientes**, busca nombre, teléfono o folio y elige **Liquidar saldo** o **Abonar una parte**. Requiere caja abierta hoy. El administrador puede cobrar cualquier saldo; los empleados, únicamente sus propias ventas, incluso de días anteriores.
+- El ticket/PNG registra cada pago, fecha, medios, cambio, abonado total y saldo. **Total vendido** corresponde a ventas nuevas del día; **Total cobrado** incluye anticipos y abonos recibidos ese día. El efectivo esperado usa únicamente efectivo aplicado, nunca cambio ni saldos por cobrar. Los cortes cerrados conservan su snapshot.
+- Busca **planos** y elige **Copias de planos · Solo líneas · B/N / Color · Metro lineal**. Captura largo en metros, con hasta dos decimales. Tarifas autorizadas: $30/m B/N y $60/m color. 1.20 m = $36 / $72. Para varias copias suma sus largos. Estas tarifas se habilitan en el POS; no se sustituyen tarifas públicas de otros servicios de planos.
+
+Migraciones nuevas: `20261109160000_pos_payments.sql` y `20261109161000_pos_linear_plans.sql`. El historial anterior se incorpora como pagos completos sin cambiar los cortes cerrados. `pos_checkout` y `pos_pay` guardan pagos atómicos e idempotentes; el cliente conserva ID y datos en reintentos de red dentro de la pantalla. No recargues ni cierres la pestaña mientras una operación esté pendiente de confirmar.
+
 ## Empleados y venta rápida
 
 En **Admin → Empleados → Agregar empleado**, registra nombre, correo y puesto (diseñador/auxiliar). Por defecto puede vender y abrir la caja compartida; cerrar, registrar movimientos y consultar días anteriores requieren permisos adicionales. Guardar no envía correos. Usa **Enviar invitación** para que quien aún no tiene cuenta reciba un enlace para crear su contraseña. Si ya tiene cuenta, usa la misma. La entrada es **https://copycenter2000.com/pos**. No se crearon empleados reales durante la implementación.
