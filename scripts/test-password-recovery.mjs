@@ -11,7 +11,7 @@ assert.equal(recoveryLocation(new URL('https://example.invalid/#type=recovery&ac
 await assert.rejects(()=>verifyRecoverySession({auth:{getSession:async()=>({data:{session:null}})}}),/enlace/);
 const browser=await chromium.launch({channel:'msedge',headless:true});
 try {
-  for(const mode of ['implicit','pkce','expired','missing']) {
+  for(const mode of ['implicit','invite','pkce','expired','missing']) {
     const context=await browser.newContext();const page=await context.newPage();
     let exchanges=0,updates=0;
     await page.route('https://*.supabase.co/**',async route=>{
@@ -28,13 +28,13 @@ try {
         await supabase.auth.resetPasswordForEmail('recovery-test@example.invalid',{redirectTo:location.origin+'/reset-password'});
       });
       await page.goto('http://127.0.0.1:5173/reset-password?code=fake-one-time-code');
-    } else if(mode==='implicit') {
-      const hash=new URLSearchParams({access_token:token,refresh_token:session.refresh_token,expires_in:'3600',token_type:'bearer',type:'recovery'});
+    } else if(mode==='implicit'||mode==='invite') {
+      const hash=new URLSearchParams({access_token:token,refresh_token:session.refresh_token,expires_in:'3600',token_type:'bearer',type:mode==='invite'?'invite':'recovery'});
       await page.goto('http://127.0.0.1:5173/#'+hash);
     } else {
       await page.goto('http://127.0.0.1:5173/reset-password'+(mode==='expired'?'#error=access_denied&error_description=Enlace%20vencido':''));
     }
-    if(['implicit','pkce'].includes(mode)){
+    if(['implicit','invite','pkce'].includes(mode)){
       await page.getByRole('heading',{name:'Nueva contraseña'}).waitFor();
       assert.equal(new URL(page.url()).pathname,'/reset-password');
       await page.getByLabel('Nueva contraseña',{exact:true}).fill('Fictitious-test-only-123!');

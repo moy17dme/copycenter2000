@@ -41,3 +41,8 @@ entrypoint = "./functions/upload-order-file/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/notify-admin-order/index.ts"
+
+[functions.pos-invite]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/pos-invite/index.ts"

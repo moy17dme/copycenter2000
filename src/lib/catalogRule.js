@@ -16,6 +16,14 @@ export function resolveCatalogRule(rows, key, quantity, { legacyFirstMatch = fal
 export function catalogGroups(rows) {
   return [...new Map(rows.filter(row => row.activo !== false).map(row => {
     const key = JSON.stringify([row.servicio,row.categoria_slug,row.variante_slug,row.formato_slug]);
-    return [key, { ...row, key, label: [row.servicio,row.categoria,row.variante,row.formato].filter(Boolean).join(' · ') }];
+    const service={copias:'Copias',impresion:'Impresión',engargolado:'Engargolado'}[row.servicio]||row.servicio;
+    const variant={negro:'B/N',color_laser:'Color láser',color_inyeccion_de_tinta:'Color inyección',metalico:'Metálico',plastico:'Plástico'}[row.variante_slug]||row.variante;
+    return [key, { ...row, key, label: [service,variant,row.formato_slug==='servicio'?'':row.formato,row.servicio==='impresion'?row.categoria:''].filter(Boolean).join(' · ') }];
   })).values()];
+}
+const normalize=text=>String(text).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/copais/g,'copias');
+export function searchCatalog(groups,query){
+  const tokens=normalize(query).trim().split(/\s+/).filter(Boolean);
+  return groups.filter(group=>tokens.every(token=>normalize(`${group.label} ${group.servicio} ${group.variante} ${group.categoria}`).includes(token)))
+    .sort((a,b)=>(a.formato_slug==='carta'?-1:0)-(b.formato_slug==='carta'?-1:0)||a.label.localeCompare(b.label,'es'));
 }

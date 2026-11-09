@@ -2,7 +2,7 @@
 export function recoveryLocation(url) {
   const hash = new URLSearchParams(url.hash.replace(/^#/, ''));
   return {
-    implicit: hash.get('type') === 'recovery' && Boolean(hash.get('access_token')),
+    implicit: ['recovery','invite'].includes(hash.get('type')) && Boolean(hash.get('access_token')),
     error: hash.get('error_description') || hash.get('error') || url.searchParams.get('error_description') || url.searchParams.get('error'),
   };
 }

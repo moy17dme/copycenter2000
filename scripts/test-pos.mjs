@@ -1,23 +1,28 @@
-// npm install --prefix <temporary-directory> @electric-sql/pglite
-// node scripts/test-pos.mjs <temporary-directory>
+// pnpm test:pos. All fixtures are fictitious and isolated from production.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { cents, businessDay, normalizePhone, receiptText } from '../src/lib/pos.js';
-import { resolveCatalogRule } from '../src/lib/catalogRule.js';
+import { resolveCatalogRule, catalogGroups, searchCatalog } from '../src/lib/catalogRule.js';
 const require = createRequire(resolve(process.argv[2] || '.', 'package.json'));
 const { PGlite } = require('@electric-sql/pglite');
 const db = new PGlite();
 let checks = 0;
+let inTestTransaction=false;
 const equal = (a,b) => { assert.deepEqual(a,b); checks++; };
-const denied = async (sql, params = []) => { await assert.rejects(db.query(sql, params)); checks++; };
+const denied = async (sql, params = []) => {
+  if(inTestTransaction)await db.exec('savepoint expected_denial');
+  await assert.rejects(db.query(sql, params));checks++;
+  if(inTestTransaction)await db.exec('rollback to savepoint expected_denial; release savepoint expected_denial');
+};
 const one = async (sql, params = []) => (await db.query(sql, params)).rows[0];
 await db.exec(`
   create role anon; create role authenticated; create role service_role;
   create schema auth; grant usage on schema auth to authenticated, service_role;
-  create table auth.users(id uuid primary key);
-  insert into auth.users values ('00000000-0000-0000-0000-000000000001');
+  create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,raw_user_meta_data jsonb);
+  insert into auth.users(id) values ('00000000-0000-0000-0000-000000000001');
+  create table public.profiles(id uuid primary key,full_name text,phone text,whatsapp text,address text,role text,terms_accepted_at timestamptz,terms_version text,terms_acceptance_method text);
   create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('test.uid',true),'')::uuid $$;
   create function public.is_copycenter_admin() returns boolean language sql as $$ select coalesce(current_setting('test.admin',true),'')='yes' $$;
   select set_config('test.uid','00000000-0000-0000-0000-000000000001',false);
@@ -32,6 +37,19 @@ await db.exec(`create table catalogo_precios(id uuid primary key,servicio text,c
   ('30000000-0000-0000-0000-000000000003','engargolado','Engargolado','engargolado','Plástico','plastico','Servicio','servicio',1,100,22,true);
 `);
 await db.exec(await readFile(new URL('../supabase/migrations/20261109130000_pos_catalog.sql', import.meta.url), 'utf8'));
+await db.exec(await readFile(new URL('../supabase/migrations/20261109150000_pos_team.sql', import.meta.url), 'utf8'));
+await db.exec(`alter table catalogo_precios alter column id set default gen_random_uuid();
+  create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
+  insert into auth.users values('00000000-0000-0000-0000-000000000002','employee@example.invalid',now(),'{"role":"admin","full_name":"Fictitious employee"}');
+  insert into auth.users values('00000000-0000-0000-0000-000000000003','unverified@example.invalid',null,'{}');`);
+equal((await one("select role from profiles where id='00000000-0000-0000-0000-000000000002'")).role,'customer');
+await db.exec("alter table catalogo_precios add column rango_texto text; alter table catalogo_precios add constraint catalogo_precios_servicio_check check(servicio in ('impresion','engargolado'))");
+await db.exec(await readFile(new URL('../supabase/migrations/20261109151000_pos_copy_catalog.sql', import.meta.url), 'utf8'));
+const copies=(await db.query("select * from catalogo_precios where servicio='copias'")).rows;
+equal(copies.length,51);
+equal(searchCatalog(catalogGroups(copies),'copais carta').length,6);
+equal(searchCatalog(catalogGroups(copies),'copias carta')[0].formato_slug,'carta');
+equal(resolveCatalogRule(copies,copies.find(r=>r.formato_slug==='carta'&&r.variante_slug==='negro'),100).unit_cents,70);
 checks++;
 const today = (await one("select (now() at time zone 'America/Mexico_City')::date::text as day")).day;
 const saleId = '10000000-0000-0000-0000-000000000001';
@@ -41,9 +59,40 @@ await denied(sell, [saleId,items,'cash',500]);
 await db.query('select pos_open(10000)');
 await db.query('select pos_open(999)');
 equal(Number((await one('select opening_cents from pos_days')).opening_cents),10000);
+// Permissions and account activation, all changes rolled back after assertions.
+await db.exec('begin');
+inTestTransaction=true;
+const staff=(await one("select * from pos_save_member(null,'employee@example.invalid','Empleado ficticio','assistant',true,'{\"sell\":true,\"open\":true,\"close\":false,\"move\":false,\"history\":false}')"));
+await db.query("select pos_save_member(null,'unverified@example.invalid','Sin verificar','designer',true,'{\"sell\":true}')");
+const otherId='10000000-0000-0000-0000-000000000070';
+await db.query(sell,[otherId,items,'cash',500]);
+await db.exec("set role authenticated; select set_config('test.uid','00000000-0000-0000-0000-000000000002',false); select set_config('test.admin','no',false)");
+equal((await one('select pos_access() as a')).a.allowed,true);
+equal((await one('select count(*)::int as n from pos_sales')).n,0);
+await denied(sell,[otherId,items,'cash',500]);
+await denied(sell,['10000000-0000-0000-0000-000000000071',items,'cash',500]);
+const fixed=JSON.stringify([{name:'Impresión',qty:1,unit_cents:100,catalog_rule_id:'30000000-0000-0000-0000-000000000001'}]);
+await db.query(sell,['10000000-0000-0000-0000-000000000072',fixed,'cash',100]);
+equal((await one('select count(*)::int as n from pos_sales')).n,1);
+await denied('select pos_close($1,0)',[today]);
+await denied("select pos_move('20000000-0000-0000-0000-000000000070',100,'No autorizado')");
+await denied("select pos_summary(current_date-1)");
+equal((await db.query('update catalogo_precios set precio=1 returning id')).rows.length,0);
+await denied("update pos_team set permissions='{\"close\":true}'");
+await denied("select pos_save_member(null,'attack@example.invalid','Ataque','assistant',true,'{}')");
+await db.exec("select set_config('test.uid','00000000-0000-0000-0000-000000000003',false)");
+equal((await one('select pos_access() as a')).a.allowed,false);
+await denied(sell,['10000000-0000-0000-0000-000000000073',fixed,'cash',100]);
+await db.exec("reset role; select set_config('test.admin','yes',false); select set_config('test.uid','00000000-0000-0000-0000-000000000001',false)");
+await db.query("select pos_save_member($1,'employee@example.invalid','Empleado ficticio','assistant',false,'{\"sell\":true}')",[staff.id]);
+await db.exec("set role authenticated; select set_config('test.admin','no',false); select set_config('test.uid','00000000-0000-0000-0000-000000000002',false)");
+equal((await one('select pos_access() as a')).a.allowed,false);
+await denied(sell,['10000000-0000-0000-0000-000000000074',fixed,'cash',100]);
+await db.exec('rollback');
+inTestTransaction=false;
 // Fictitious catalog prices, isolated in a rolled-back transaction.
 await db.exec('begin');
-const ruleRows=(await db.query('select * from catalogo_precios')).rows;
+const ruleRows=(await db.query("select * from catalogo_precios where servicio<>'copias' order by id")).rows;
 equal(resolveCatalogRule(ruleRows,ruleRows[0],1).unit_cents,100);
 equal(resolveCatalogRule(ruleRows,ruleRows[0],100).unit_cents,70);
 const quoted=JSON.stringify([{name:'Impresión ficticia',qty:100,unit_cents:70,catalog_rule_id:ruleRows[1].id},
@@ -52,7 +101,7 @@ const catalogSale=await one(sell,['10000000-0000-0000-0000-000000000090',quoted,
 equal(Number(catalogSale.total_cents),9200);
 await db.query('update catalogo_precios set precio=0.8 where id=$1',[ruleRows[1].id]);
 equal((await one('select items from pos_sales where id=$1',[catalogSale.id])).items[0].catalog_snapshot.precio,0.7);
-equal((await one('select count(*)::int as n from catalogo_precios_history')).n,1);
+equal((await one("select count(*)::int as n from catalogo_precios_history where price_id='30000000-0000-0000-0000-000000000002'")).n,1);
 await db.exec('rollback');
 await denied(sell,['10000000-0000-0000-0000-000000000091',JSON.stringify([{name:'Manipulado',qty:100,unit_cents:1,catalog_rule_id:ruleRows[1].id}]),'cash',10000]);
 await db.exec('begin');

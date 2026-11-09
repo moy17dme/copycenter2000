@@ -153,3 +153,7 @@ export function lookupCatalogBindingPrice(bindType, pages) {
     qty: pages,
   });
 }
+
+export function lookupCatalogCopyPrice(format, colorKey, qty) {
+  return findPrice({ servicio:'copias', categoria:'copias', variante:COLOR_TO_VARIANT[colorKey], formato:FORMAT_TO_SLUG[format], qty });
+}

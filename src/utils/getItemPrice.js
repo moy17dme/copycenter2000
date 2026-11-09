@@ -15,6 +15,7 @@ import {
 import {
   lookupCatalogBindingPrice,
   lookupCatalogPrintPrice,
+  lookupCatalogCopyPrice,
 } from "../lib/catalogPrices";
 import { calculatePlotPrice } from "./plotPrice";
 
@@ -292,7 +293,7 @@ export function getItemPrice(item) {
     const qty      = Math.max(1, Number(opts.copyQtyApprox ?? 1));
     const colorKey = mode === "bn" ? "negro" : tech === "inkjet" ? "colorInkjet" : "colorLaser";
     const modeTable = COPIAS[colorKey] ?? COPIAS.negro;
-    const perUnit = lookupPrice(modeTable, qty, size);
+    const perUnit = lookupCatalogCopyPrice(size,colorKey,qty) ?? lookupPrice(modeTable, qty, size);
     if (perUnit === null) return null;
     let total = perUnit * qty;
     // Engargolado adicional (se aplica sobre el número de páginas del documento)

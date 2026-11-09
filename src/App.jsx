@@ -15,6 +15,7 @@ const ProductosPage = lazy(() => import("./pages/ProductosPage"));
 const EquiposPage = lazy(() => import("./pages/EquiposPage"));
 const MisPedidos = lazy(() => import("./pages/MisPedidos"));
 const Admin = lazy(() => import("./pages/Admin"));
+const PosPage = lazy(() => import("./pages/PosPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -330,6 +331,10 @@ export default function App() {
                   <MisPedidos user={user} session={session} />
                 </NoIndexRoute>
               }
+            />
+            <Route
+              path="/pos"
+              element={<NoIndexRoute path="/pos" title="Punto de venta"><PosPage user={user} onOpenAuth={openAuth} /></NoIndexRoute>}
             />
             <Route
               path="/admin"

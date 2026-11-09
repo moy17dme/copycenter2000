@@ -7,6 +7,7 @@ import { supabase } from "../lib/supabaseClient";
 import { hasAdminRole, useIsAdmin } from "../lib/useIsAdmin";
 import { useLocale } from "../i18n/LocaleContext";
 import LanguageSwitcher from "./locale/LanguageSwitcher";
+import { usePosAccess } from '../lib/usePosAccess';
 
 const primaryLinks = [
   { to: "/", labelKey: "nav.home" },
@@ -37,6 +38,7 @@ export default function Navbar({
   const { hash, pathname } = useLocation();
   const { isAdmin: verifiedIsAdmin } = useIsAdmin({ user, profile });
   const showAdminLink = Boolean(user && (hasAdminRole(user, profile) || verifiedIsAdmin));
+  const posAccess=usePosAccess(user?.id);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -186,6 +188,7 @@ export default function Navbar({
             </button>
           ) : (
             <div className="hidden shrink-0 items-center gap-2 lg:flex">
+              {posAccess.allowed&&<Link to="/pos" className="rounded-lg border border-orange-300/40 px-3 py-2 text-sm font-medium text-orange-200">Punto de venta</Link>}
               {showAdminLink && (
                 <Link
                   to="/admin"
@@ -288,6 +291,7 @@ export default function Navbar({
                 </button>
               ) : (
                 <>
+                  {posAccess.allowed&&<Link to="/pos" onClick={()=>setMobileOpen(false)} className="rounded-lg border border-orange-300/40 px-4 py-2.5 text-center text-sm text-orange-200">Punto de venta</Link>}
                   {showAdminLink && (
                     <Link
                       to="/admin"

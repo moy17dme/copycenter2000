@@ -47,6 +47,7 @@ import {
 import { fmtOptionsAdmin } from "../lib/orderOptions";
 import { createCopyTicket, listRecentCopyTickets } from "../lib/copyTickets";
 import PointOfSale from "../components/PointOfSale";
+import PosTeam from "../components/PosTeam";
 
 // ── Assets de servicios ────────────────────────────────────────────────────────
 import digi      from "@/assets/digi.webp";
@@ -2028,6 +2029,7 @@ const TABS = [
   { id: "inicio",    label: "Inicio",    icon: Home },
   { id: "pedidos",   label: "Pedidos",   icon: ListChecks },
   { id: "caja",      label: "Caja y ventas", icon: Banknote },
+  { id: "empleados", label: "Empleados", icon: Settings },
   { id: "tickets",   label: "Tickets",   icon: TicketIcon },
   { id: "servicios", label: "Servicios", icon: Settings },
   { id: "precios",   label: "Precios",   icon: DollarSign },
@@ -2304,6 +2306,7 @@ export default function Admin({ user = null, accessToken: initialAccessToken = n
 
         {tab === "tickets" && <TicketsTab />}
         {tab === "caja" && <PointOfSale />}
+        {tab === "empleados" && <PosTeam />}
 
         {tab === "servicios" && (
           <>

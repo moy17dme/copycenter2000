@@ -12,7 +12,7 @@
     "security:audit": "node scripts/security-audit.mjs",
     "test:pos": "node scripts/test-pos.mjs",
     "test:pos:browser": "node scripts/test-pos-browser.mjs",
-    "lint:pos": "eslint src/components/PointOfSale.jsx src/lib/pos.js src/lib/posImages.js src/lib/catalogRule.js src/lib/catalogPrices.js"
+    "lint:pos": "eslint src/components/PointOfSale.jsx src/components/PosSearch.jsx src/components/PosTeam.jsx src/pages/PosPage.jsx src/lib/usePosAccess.js src/lib/pos.js src/lib/posImages.js src/lib/catalogRule.js src/lib/catalogPrices.js"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

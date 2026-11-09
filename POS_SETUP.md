@@ -1,5 +1,15 @@
 # Caja y ventas
 
+## Empleados y venta rápida
+
+En **Admin → Empleados → Agregar empleado**, registra nombre, correo y puesto (diseñador/auxiliar). Por defecto puede vender y abrir la caja compartida; cerrar, registrar movimientos y consultar días anteriores requieren permisos adicionales. Guardar no envía correos. Usa **Enviar invitación** para que quien aún no tiene cuenta reciba un enlace para crear su contraseña. Si ya tiene cuenta, usa la misma. La entrada es **https://copycenter2000.com/pos**. No se crearon empleados reales durante la implementación.
+
+Los accesos se guardan en `pos_team` y se vinculan únicamente a un correo verificado de Supabase Auth. Ningún dato de registro enviado por el empleado concede permisos. El administrador puede desactivar el acceso; los cobros y cambios de permisos conservan la identidad de quien los realizó. Empleados ven sus propios tickets y los totales operativos de la caja compartida del día. No pueden cambiar tarifas ni capturar precios especiales, incluso llamando directamente al servidor. El historial de cambios de permisos se guarda en `pos_team_audit`.
+
+La venta comienza con **Buscar → elegir servicio → cantidad → Agregar**. El precio unitario y total salen del catálogo y cambian con el rango de volumen. Se importaron las 51 reglas de copias ya existentes en `priceList.js`; no se llenó el hueco heredado de B/N entre 5,000 y 9,999 copias. El corte y los tickets tienen sus propias pestañas.
+
+Despliegue adicional: `pnpm dlx supabase functions deploy pos-invite --project-ref zdebbsyuoqsttqfwvxlg`. Las invitaciones reutilizan el correo de Supabase Auth, respetan los límites del proveedor y requieren una sesión de administrador. La función no permite que el navegador elija la URL de regreso.
+
 **Modo elegido por el propietario (9 noviembre 2026): capturas para WhatsApp, sin Twilio.** En cada ticket usa «Compartir imagen» y en caja «Compartir imagen del corte/resumen». En móvil elige WhatsApp; en computadora se descarga el PNG para adjuntarlo. «Abrir WhatsApp del propietario» prepara el mensaje para +52 771 236 8040. El operador debe enviarlo. Los horarios 19:25 lunes a viernes y 14:50 sábados son referencias operativas; no hay envío automático activado.
 
 Para este modo aplica las migraciones y publica el frontend (pasos 1–2). **No ejecutes los pasos 3–5 de Twilio ni `pos-schedule.sql`.** El historial de avisos registra contenido preparado, no prueba de entrega. Si posteriormente se solicita automatización, la configuración opcional se conserva abajo.
@@ -24,7 +34,7 @@ El programador procesa la cola cada minuto, aunque el navegador esté cerrado. E
 ## Operación
 
 - Abrir la caja con el fondo inicial. Solo hay una caja por fecha para todo el mostrador.
-- Capturar partidas, precio unitario, cantidad, pago recibido y teléfono opcional del cliente. Todos los importes se calculan en centavos en el servidor; solo administradores pueden operar.
+- Buscar un servicio, indicar cantidad y agregarlo; el precio unitario y total son automáticos. Capturar pago recibido y teléfono opcional del cliente. Todos los importes se validan en centavos en el servidor. Los empleados autorizados pueden operar; solo administradores capturan precios especiales.
 - Confirmar la venta después de recibir el pago. Para tarjeta se utiliza la terminal externa y para transferencia se verifica el depósito.
 - Compartir el ticket abre WhatsApp con el texto listo: el operador debe pulsar Enviar. También se puede descargar el ticket. El texto no sustituye una factura fiscal.
 - Registrar entradas y retiros con motivo. Al final contar efectivo y cerrar; el servidor guarda un corte inmutable, bloquea nuevas ventas en ese día y calcula fondo + ventas en efectivo + movimientos − efectivo contado para la conciliación (la diferencia mostrada es contado menos esperado).

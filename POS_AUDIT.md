@@ -1,5 +1,11 @@
 # Auditoría y fases del POS · 9 noviembre 2026
 
+## Avance posterior: empleados y búsqueda rápida
+
+Implementados el panel de empleados, permisos por acción, acceso `/pos`, invitación opcional por correo y revocación. El registro original de Auth escribía `profiles.email`, columna inexistente en producción; la nueva migración corrige el trigger conservando los campos y aceptación legal existentes. No se crearon cuentas reales.
+
+La caja continúa compartida por día (aún no hay cajas independientes por turno). Cada cobro tiene autor y el empleado consulta sus propios tickets; cierre, movimientos y fechas anteriores requieren permiso. Las tarifas de copias existentes se importan al catálogo sin sobreescribir datos, y se añade su consulta al cálculo público con fallback heredado. Quedan pendientes pagos mixtos, anticipos, cotizaciones y la consolidación completa del motor de checkout.
+
 ## Arquitectura encontrada
 
 React 18, Vite 8, Tailwind 3, React Router 7; Supabase Auth/PostgreSQL/Storage y Edge Functions; Cloudflare Pages conectado a `moy17dme/copycenter2000`, rama de producción `main`. Gestor: pnpm 11.1.3. Rama de trabajo: `feat/pos-copycenter2000`.
@@ -19,7 +25,7 @@ La tabla tenía lectura pública pero ninguna política de edición para adminis
 - Capturas PNG de ticket y corte para compartir manualmente en WhatsApp. Cambio solicitado por el propietario: no activar Twilio ni envío automático.
 - Historial, consulta por fecha, recuperación idempotente ante respuesta de cobro perdida, auditoría de precios.
 
-## Fases siguientes y dependencias
+## Plan inicial y dependencias (ver avance posterior arriba)
 
 1. Completar catálogo: importador con vista previa, aprobación de rangos traslapados, SKU/unidades y todas las familias. Confirmar tratamiento de IVA, redondeo y precios de cliente. Consolidar motor de checkout con pruebas de paridad; los fallbacks heredados siguen presentes.
 2. MVP de empleados: permisos por acción para diseñador/auxiliar, cajas por empleado/turno, ruta privada independiente del panel admin. Este lanzamiento sigue reservado a administradores.
