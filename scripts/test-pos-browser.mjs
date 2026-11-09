@@ -80,7 +80,22 @@ try {
   const downloadEvent=page.waitForEvent('download');
   await page.getByRole('button',{name:'Compartir imagen',exact:true}).click();
   const download=await downloadEvent;
-  assert.match(download.suggestedFilename(),/ticket-1\.png$/);
+  assert.match(download.suggestedFilename(),/ticket-1\.jpg$/);
+  await mkdir('outputs/pos-validation',{recursive:true});
+  await download.saveAs('outputs/pos-validation/ticket-logo.jpg');
+  const pdfEvent=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Descargar PDF',exact:true}).click();
+  const pdf=await pdfEvent;assert.match(pdf.suggestedFilename(),/ticket-1\.pdf$/);
+  await pdf.saveAs('outputs/pos-validation/ticket-logo.pdf');
+  const longEvent=page.waitForEvent('download');
+  await page.evaluate(async()=>{
+    const {downloadReceiptPdf}=await import('/src/lib/posImages.js');
+    await downloadReceiptPdf({...window.__posSales[0],items:Array.from({length:50},(_,i)=>({name:`Servicio largo ${i+1} con descripción y tamaño`,qty:1,unit_cents:100})),total_cents:5000,paid_cents:5000,payments:[{day:window.__posSales[0].day,cash_received_cents:5000,change_cents:0,methods:[{method:"cash",amount_cents:5000}]}]});
+  });
+  await (await longEvent).saveAs('outputs/pos-validation/ticket-long.pdf');
+  const jpgEvent=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Descargar JPG',exact:true}).click();
+  assert.match((await jpgEvent).suggestedFilename(),/ticket-1\.jpg$/);
   await mkdir('outputs/pos-validation',{recursive:true});
   await page.screenshot({path:'outputs/pos-validation/desktop.png',fullPage:true});
   await page.setViewportSize({width:390,height:844});

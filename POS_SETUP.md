@@ -1,5 +1,7 @@
 # Caja y ventas
 
+Los tickets de mostrador incluyen el logo y permiten **Descargar JPG**, **Descargar PDF** y **Compartir imagen** (JPG). El PDF tiene ancho de 80 mm y pagina los tickets largos; conserva acentos mediante renderizado de imagen. Los cortes compartidos siguen en PNG, ahora también con logo.
+
 ## Pagos mixtos, anticipos y planos
 
 - En **Vender**, elige **Pago completo** o **Anticipo**; este último requiere nombre de cliente. En **Forma de pago → Mixto**, escribe la parte aplicada en efectivo, tarjeta y/o transferencia. El efectivo entregado se captura aparte para calcular el cambio; vacío significa importe exacto.

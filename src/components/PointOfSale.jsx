@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { PAYMENT_LABELS, money, cents, businessDay, normalizePhone, receiptText, whatsappUrl, downloadText } from '../lib/pos';
 import './PointOfSale.css';
 import { resolveCatalogRule } from '../lib/catalogRule';
-import { closingText, sharePosImage, shareReceiptImage } from '../lib/posImages';
+import { closingText, sharePosImage, shareReceiptImage, downloadReceiptJpg, downloadReceiptPdf } from '../lib/posImages';
 import PosSearch from './PosSearch';
 import PosPaymentFields from './PosPaymentFields';
 import {blankPayment,validatePayment} from '../lib/posPayments';
@@ -161,8 +161,9 @@ export default function PointOfSale({access=ADMIN_ACCESS}) {
           </form>}
           {receipt && view!=='cash' && <div className="pos-receipt"><h3>Ticket #{receipt.folio}</h3><pre>{receiptText(receipt)}</pre><div className="pos-actions">
             <a className="pos-button" href={receipt.customer_phone ? whatsappUrl(receipt.customer_phone, receiptText(receipt)) : `https://wa.me/?text=${encodeURIComponent(receiptText(receipt))}`} target="_blank" rel="noreferrer">Compartir por WhatsApp</a>
-            <button onClick={() => downloadText(`ticket-${receipt.folio}.txt`, receiptText(receipt))}>Descargar ticket</button>
-            <button onClick={()=>run(async()=>setNotice(await shareReceiptImage(receipt)))}>Compartir imagen</button>
+            <button disabled={busy} onClick={()=>run(async()=>setNotice(await downloadReceiptJpg(receipt)))}>Descargar JPG</button>
+            <button disabled={busy} onClick={()=>run(async()=>setNotice(await downloadReceiptPdf(receipt)))}>Descargar PDF</button>
+            <button disabled={busy} onClick={()=>run(async()=>setNotice(await shareReceiptImage(receipt)))}>Compartir imagen</button>
             <button onClick={() => setReceipt(null)}>Ocultar</button></div><p className="pos-help">WhatsApp abrirá el ticket preparado. Pulsa Enviar en la conversación para entregarlo.</p></div>}
           </div>
           {view==='cash'&&<aside className="pos-close"><h3>Corte de caja</h3><dl><div><dt>Fondo inicial</dt><dd>{money(summary.opening)}</dd></div><div><dt>Cobros en efectivo</dt><dd>{money(summary.cash)}</dd></div><div><dt>Entradas / retiros</dt><dd>{money(summary.movements)}</dd></div><div><dt>Efectivo esperado</dt><dd>{money(expected)}</dd></div></dl>
