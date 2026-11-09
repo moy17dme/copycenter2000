@@ -9,7 +9,10 @@
     "build": "vite build && vite build --ssr src/entry-server.jsx --outDir dist-ssr && node scripts/generate-seo-pages.mjs",
     "preview": "vite preview",
     "auth:enable-google": "node scripts/enable-google-auth.mjs",
-    "security:audit": "node scripts/security-audit.mjs"
+    "security:audit": "node scripts/security-audit.mjs",
+    "test:pos": "node scripts/test-pos.mjs",
+    "test:pos:browser": "node scripts/test-pos-browser.mjs",
+    "lint:pos": "eslint src/components/PointOfSale.jsx src/lib/pos.js src/lib/posImages.js src/lib/catalogRule.js src/lib/catalogPrices.js"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -28,10 +31,17 @@
     "ui-ux-pro-max-skill.git": "github:nextlevelbuilder/ui-ux-pro-max-skill"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.15",
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.1.15",
     "@vitejs/plugin-react": "^6.0.2",
     "autoprefixer": "^10.4.21",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.14.0",
     "pg": "^8.21.0",
+    "playwright": "^1.65.0",
     "postcss": "^8.5.15",
     "tailwindcss": "3",
     "vite": "^8.0.16"

@@ -46,6 +46,7 @@ import {
 } from "../lib/orders";
 import { fmtOptionsAdmin } from "../lib/orderOptions";
 import { createCopyTicket, listRecentCopyTickets } from "../lib/copyTickets";
+import PointOfSale from "../components/PointOfSale";
 
 // ── Assets de servicios ────────────────────────────────────────────────────────
 import digi      from "@/assets/digi.webp";
@@ -1792,6 +1793,7 @@ function AdminPrecios() {
   const [editingId, setEditingId]   = useState(null);
   const [editPrecio, setEditPrecio] = useState("");
   const [saving, setSaving]         = useState(false);
+  const [priceError, setPriceError] = useState("");
 
   async function load() {
     setLoading(true);
@@ -1803,9 +1805,11 @@ function AdminPrecios() {
 
   async function savePrecio(id) {
     const val = parseFloat(editPrecio);
-    if (isNaN(val) || val < 0) return;
+    if (!Number.isFinite(val) || val <= 0) { setPriceError("Escribe un precio mayor que cero."); return; }
+    setPriceError("");
     setSaving(true);
-    await supabase.from("catalogo_precios").update({ precio: val }).eq("id", id);
+    const { data, error } = await supabase.from("catalogo_precios").update({ precio: val }).eq("id", id).select("id").single();
+    if (error || !data) { setSaving(false); setPriceError(error?.message || "No se pudo guardar el precio."); return; }
     await loadCatalogPrices({ force: true });
     setSaving(false);
     setEditingId(null);
@@ -1832,6 +1836,7 @@ function AdminPrecios() {
           className="flex-1 min-w-[220px] rounded-xl bg-white/10 border border-white/20 text-white px-3 py-2 text-sm outline-none focus:border-orange-400" />
         <span className="text-xs text-slate-500">{filtrados.length} entradas</span>
       </div>
+      {priceError && <p role="alert" className="mb-4 text-red-300">{priceError}</p>}
 
       {cats.length === 0 && (
         <div className="text-center py-12 text-slate-500 text-sm">
@@ -2022,6 +2027,7 @@ function AdminReportes({ orders }) {
 const TABS = [
   { id: "inicio",    label: "Inicio",    icon: Home },
   { id: "pedidos",   label: "Pedidos",   icon: ListChecks },
+  { id: "caja",      label: "Caja y ventas", icon: Banknote },
   { id: "tickets",   label: "Tickets",   icon: TicketIcon },
   { id: "servicios", label: "Servicios", icon: Settings },
   { id: "precios",   label: "Precios",   icon: DollarSign },
@@ -2297,6 +2303,7 @@ export default function Admin({ user = null, accessToken: initialAccessToken = n
         )}
 
         {tab === "tickets" && <TicketsTab />}
+        {tab === "caja" && <PointOfSale />}
 
         {tab === "servicios" && (
           <>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
+import { resolveCatalogRule } from "./catalogRule";
 
 let rows = [];
 let loaded = false;
@@ -118,14 +119,10 @@ export function useCatalogPricesVersion() {
 
 function findPrice({ servicio, categoria, variante, formato, qty }) {
   const quantity = Math.max(1, Number(qty) || 1);
-  const row = rows.find((item) =>
-    item.servicio === servicio &&
-    item.categoria_slug === categoria &&
-    item.variante_slug === variante &&
-    item.formato_slug === formato &&
-    quantity >= Number(item.min_cantidad || 0) &&
-    quantity <= Number(item.max_cantidad || 9_999_999)
-  );
+  // Preserve the storefront's historical first-match behavior while the admin
+  // resolves legacy overlaps. POS uses strict matching and blocks ambiguity.
+  const { row } = resolveCatalogRule(rows, { servicio, categoria_slug: categoria,
+    variante_slug: variante, formato_slug: formato }, quantity, { legacyFirstMatch: true });
   return row ? Number(row.precio) : null;
 }
 
