@@ -1,5 +1,7 @@
 # Caja y ventas
 
+Mimaki UV: 18 tarifas del PDF del propietario, compartidas con `/precios#mimaki`, material e IVA incluidos. Busca **Mimaki** en el POS y captura metros lineales; el nombre incluye ancho y acabado. Vinil blanco/CMYK transparente de 1.50 m tiene mínimo 0.50 m. El catálogo guarda `min_largo_m` y valida en servidor; no se importaron precios ni extras de competidores.
+
 Los tickets de mostrador incluyen el logo y permiten **Descargar JPG**, **Descargar PDF** y **Compartir imagen** (JPG). El PDF tiene ancho de 80 mm y pagina los tickets largos; conserva acentos mediante renderizado de imagen. Los cortes compartidos siguen en PNG, ahora también con logo.
 
 ## Pagos mixtos, anticipos y planos

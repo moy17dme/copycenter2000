@@ -13,7 +13,7 @@ await page.addInitScript(() => {
   Object.defineProperty(navigator,'canShare',{value:()=>false,configurable:true});
   let box = null; const sales = []; let firstSale = true;
   const members=[];window.__invites=0;
-  const catalog=[{id:'30000000-0000-0000-0000-000000000001',servicio:'copias',categoria:'Copias',categoria_slug:'copias',variante:'B/N',variante_slug:'negro',formato:'Carta',formato_slug:'carta',min_cantidad:1,max_cantidad:99,precio:1,activo:true},
+  const catalog=[{id:'30000000-0000-0000-0000-000000000004',servicio:'mimaki_uv',categoria:'Vinil blanco brillante',categoria_slug:'vinil_brillante',variante:'CMYK',variante_slug:'vinil_brillante',formato:'Ancho 1.50 m',formato_slug:'metro_lineal',min_cantidad:0,max_cantidad:null,min_largo_m:0.5,precio:250,activo:true},{id:'30000000-0000-0000-0000-000000000001',servicio:'copias',categoria:'Copias',categoria_slug:'copias',variante:'B/N',variante_slug:'negro',formato:'Carta',formato_slug:'carta',min_cantidad:1,max_cantidad:99,precio:1,activo:true},
     {id:'30000000-0000-0000-0000-000000000003',servicio:'planos_lineas',categoria:'Planos solo líneas',categoria_slug:'planos_solo_lineas',variante:'B/N',variante_slug:'negro',formato:'Metro lineal',formato_slug:'metro_lineal',min_cantidad:0,max_cantidad:null,precio:30,activo:true},
     {id:'30000000-0000-0000-0000-000000000002',servicio:'copias',categoria:'Copias',categoria_slug:'copias',variante:'B/N',variante_slug:'negro',formato:'Carta',formato_slug:'carta',min_cantidad:100,max_cantidad:499,precio:0.7,activo:true}];
     const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date());
@@ -61,6 +61,15 @@ try {
   await page.goto('http://127.0.0.1:5173/pos-validation');
   await page.getByLabel('Fondo inicial ($)', {exact:true}).fill('100');
   await page.getByRole('button',{name:'Abrir caja',exact:true}).click();
+  await page.getByLabel('¿Qué vas a vender?').fill('mimaki');
+  await page.getByRole('button',{name:/Mimaki UV/}).click();
+  await page.getByLabel('Largo en metros').fill('0.25');
+  assert.equal(await page.getByRole('button',{name:'Agregar',exact:true}).isDisabled(),true);
+  await page.getByLabel('Largo en metros').fill('0.5');
+  assert.match(await page.locator('.pos-selected').innerText(),/\$125\.00/);
+  await page.getByRole('button',{name:'Agregar',exact:true}).click();
+  assert.match(await page.locator('.pos-cart-line').innerText(),/\$125\.00/);
+  await page.getByRole('button',{name:'Quitar partida 1',exact:true}).click();
   await page.getByLabel('¿Qué vas a vender?').fill('copais');
   await page.getByRole('button',{name:/Copias · B\/N · Carta/}).click();
   await page.getByLabel('Cantidad a agregar').fill('3');

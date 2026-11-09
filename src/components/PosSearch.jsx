@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { catalogGroups, resolveCatalogRule, searchCatalog } from '../lib/catalogRule';
+import { catalogGroups, resolveCatalogRule, searchCatalog, isLinearService } from '../lib/catalogRule';
 import { money } from '../lib/pos';
 export default function PosSearch({catalog,disabled,onAdd}){
   const [query,setQuery]=useState(''),[selected,setSelected]=useState(null),[qty,setQty]=useState('1'),[pages,setPages]=useState('1');
@@ -7,7 +7,7 @@ export default function PosSearch({catalog,disabled,onAdd}){
   const groups=useMemo(()=>catalogGroups(catalog),[catalog]);
   const results=query.trim()?searchCatalog(groups,query):[];
   const quote=selected?resolveCatalogRule(catalog,selected,selected.servicio==='engargolado'?pages:qty):{};
-  const linear=selected?.servicio==='planos_lineas';
+  const linear=isLinearService(selected);
   const valid=quote.row&&(linear||Number.isInteger(Number(qty)))&&Number(qty)>0&&Number(qty)<=100000;
   function add(){
     if(!valid||disabled)return;

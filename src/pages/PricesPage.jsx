@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import PageShell from "../components/PageShell";
 import Precios from "../components/Precios";
+import MimakiPrices from "../components/MimakiPrices";
 import { useLocale } from "../i18n/LocaleContext";
 
 export default function PricesPage() {
@@ -16,6 +17,7 @@ export default function PricesPage() {
     >
       <section className="py-10">
         <Precios />
+        <MimakiPrices />
       </section>
 
       <aside className="rounded-xl border border-border bg-secondary/35 p-6">

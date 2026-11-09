@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { PAYMENT_LABELS, money, cents, businessDay, normalizePhone, receiptText, whatsappUrl, downloadText } from '../lib/pos';
 import './PointOfSale.css';
-import { resolveCatalogRule } from '../lib/catalogRule';
+import { resolveCatalogRule, isLinearService } from '../lib/catalogRule';
 import { closingText, sharePosImage, shareReceiptImage, downloadReceiptJpg, downloadReceiptPdf } from '../lib/posImages';
 import PosSearch from './PosSearch';
 import PosPaymentFields from './PosPaymentFields';
@@ -142,8 +142,8 @@ export default function PointOfSale({access=ADMIN_ACCESS}) {
               {pricedItems.map((item,i)=><div className="pos-cart-line" key={i}>
                 <div className="pos-cart-name">{item.catalogKey?<strong>{item.name}</strong>:<label>Servicio especial<input required maxLength={120} value={item.name} onChange={e=>updateItem(i,'name',e.target.value)}/></label>}
                   {item.catalogKey?.servicio==='engargolado'&&<label>Hojas por engargolado<input type="number" min="1" max="100000" value={item.pages} onChange={e=>updateItem(i,'pages',e.target.value)}/></label>}</div>
-                <label>{item.catalogKey?.servicio==='planos_lineas'?'Largo en metros':'Cantidad'}<input required type="number" min={item.catalogKey?.servicio==='planos_lineas'?"0.01":"1"} max="100000" step={item.catalogKey?.servicio==='planos_lineas'?"0.01":"1"} value={item.qty} onChange={e=>updateItem(i,'qty',e.target.value)}/></label>
-                {item.catalogKey?<div className="pos-line-amount"><span>{item.catalogKey?.servicio==='planos_lineas'?'Precio por metro':'Precio unitario'}</span><strong>{item.pricingError?'—':money(Math.round(Number(item.price)*100))}</strong></div>:<label>Precio unitario ($)<input required type="number" min="0.01" max="1000000" step="0.01" value={item.price} onChange={e=>updateItem(i,'price',e.target.value)}/></label>}
+                <label>{isLinearService(item.catalogKey)?'Largo en metros':'Cantidad'}<input required type="number" min={isLinearService(item.catalogKey)?"0.01":"1"} max="100000" step={isLinearService(item.catalogKey)?"0.01":"1"} value={item.qty} onChange={e=>updateItem(i,'qty',e.target.value)}/></label>
+                {item.catalogKey?<div className="pos-line-amount"><span>{isLinearService(item.catalogKey)?'Precio por metro':'Precio unitario'}</span><strong>{item.pricingError?'—':money(Math.round(Number(item.price)*100))}</strong></div>:<label>Precio unitario ($)<input required type="number" min="0.01" max="1000000" step="0.01" value={item.price} onChange={e=>updateItem(i,'price',e.target.value)}/></label>}
                 <div className="pos-line-amount"><span>Total</span><strong>{item.pricingError?'—':money(Math.round(Math.round(Number(item.price)*100)*Number(item.qty)))}</strong></div>
                 <button type="button" aria-label={`Quitar partida ${i+1}`} onClick={()=>setItems(items.filter((_,index)=>index!==i))}>Quitar</button>
                 {item.pricingError&&<p role="alert" className="pos-line-error">{item.pricingError}</p>}
