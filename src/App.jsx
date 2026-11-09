@@ -239,7 +239,7 @@ export default function App() {
 
   useEffect(() => {
     const normalizedPath = location.pathname.replace(/\/+$/, "") || "/";
-    if (!user || normalizedPath === "/auth/callback") return;
+    if (!user || ["/auth/callback", "/reset-password"].includes(normalizedPath)) return;
 
     try {
       if (sessionStorage.getItem(OAUTH_RESUME_CHECKOUT_KEY) !== "1") return;

@@ -1,4 +1,8 @@
 
+[auth]
+site_url = "https://copycenter2000.com"
+additional_redirect_urls = ["https://copycenter2000.com/reset-password", "https://copycenter2000.com/reset-password/", "https://copycenter2000.com/auth/callback", "https://copycenter2000.com/auth/callback/", "http://localhost:5173/reset-password", "http://localhost:5173/auth/callback", "http://localhost:5173/auth/callback/"]
+
 [functions.create-payment]
 enabled = true
 verify_jwt = true

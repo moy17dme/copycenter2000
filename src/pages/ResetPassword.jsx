@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabaseClient";
+import { supabase, passwordRecoveryError } from "../lib/supabaseClient";
+import { verifyRecoverySession } from "../lib/passwordRecovery";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -21,16 +22,7 @@ export default function ResetPassword() {
 
     (async () => {
       try {
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get("code");
-        const errorDesc = params.get("error_description") || params.get("error");
-
-        if (errorDesc) throw new Error(decodeURIComponent(errorDesc));
-
-        if (code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          if (exchangeError) throw exchangeError;
-        }
+        await verifyRecoverySession(supabase, passwordRecoveryError);
 
         if (!cancelled) setReady(true);
       } catch (err) {
@@ -55,16 +47,14 @@ export default function ResetPassword() {
 
     setError(null);
     setLoading(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    setLoading(false);
-
-    if (updateError) {
-      setError(updateError.message);
-    } else {
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) throw updateError;
       setDone(true);
-      // Redirige al inicio después de 2 segundos
-      setTimeout(() => navigate("/", { replace: true }), 2000);
-    }
+      // Reload restores the default PKCE client after an implicit email recovery.
+      setTimeout(() => window.location.replace('/'), 2000);
+    } catch (err) { setError(err.message || 'No se pudo guardar la contraseña. Intenta de nuevo.'); }
+    finally { setLoading(false); }
   }
 
   // ── Error irrecuperable (enlace caducado, etc.) ──
@@ -113,8 +103,10 @@ export default function ResetPassword() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
-            <label className="text-sm text-slate-400">Nueva contraseña</label>
+            <label htmlFor="recovery-password" className="text-sm text-slate-400">Nueva contraseña</label>
             <input
+              id="recovery-password"
+              autoComplete="new-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -125,8 +117,10 @@ export default function ResetPassword() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm text-slate-400">Confirmar contraseña</label>
+            <label htmlFor="recovery-confirm" className="text-sm text-slate-400">Confirmar contraseña</label>
             <input
+              id="recovery-confirm"
+              autoComplete="new-password"
               type="password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
