@@ -82,17 +82,17 @@ export default function PointOfSale({access=ADMIN_ACCESS}) {
   const pricedItems = items.map(item => {
     if (!item.catalogKey) return item;
     const quote = resolveCatalogRule(catalog,item.catalogKey,item.catalogKey.servicio === 'engargolado' ? item.pages : item.qty);
-    return {...item, price: quote.row ? (quote.unit_cents/100).toFixed(2) : '', pricingError:quote.error, catalog_rule_id:quote.row?.id};
+    return {...item, price: quote.row ? (quote.unit_cents/100).toFixed(2) : '', billedQty:quote.billedQty, wasteCm:quote.wasteCm, pricingError:quote.error, catalog_rule_id:quote.row?.id};
   });
   let total = 0;
-  try { total = pricedItems.reduce((sum, item) => sum + Math.round(cents(item.price || '0') * Number(item.qty)), 0); } catch { /* Invalid edits are validated on submit. */ }
+  try { total = pricedItems.reduce((sum, item) => sum + Math.round(cents(item.price || '0') * Number(item.billedQty ?? item.qty)), 0); } catch { /* Invalid edits are validated on submit. */ }
   const updateItem = (index, key, value) => setItems(previous => previous.map((item, i) => i === index ? { ...item, [key]: value } : item));
   function sell(event) {
     event.preventDefault();
     run(async () => {
       if (!saleRequest.current) {
         if (pricedItems.some(item=>item.pricingError)) throw new Error('Resuelve las partidas sin tarifa antes de cobrar.');
-        const lines = pricedItems.map(item => ({ name: item.name.trim(), qty: Number(item.qty), unit_cents: cents(item.price),
+        const lines = pricedItems.map(item => ({ name: item.name.trim(), qty: Number(item.billedQty ?? item.qty), ...(item.billedQty !== undefined ? {actual_m:Number(item.qty)} : {}), unit_cents: cents(item.price),
           ...(item.catalog_rule_id ? {catalog_rule_id:item.catalog_rule_id,pricing_quantity:Number(item.catalogKey.servicio==='engargolado'?item.pages:item.qty)} : {}) }));
         if (lines.some(i => !i.name || !Number.isFinite(i.qty) || i.qty < 0.01 || i.qty!==Math.round(i.qty*100)/100 || i.qty > 100000 || i.unit_cents < 1)) throw new Error('Revisa descripción, cantidad y precio de cada partida.');
         const amount = lines.reduce((sum, i) => sum + Math.round(i.qty * i.unit_cents), 0);
@@ -116,7 +116,7 @@ export default function PointOfSale({access=ADMIN_ACCESS}) {
   return <section className="pos" aria-label="Caja y ventas">
     <header className="pos-header"><div><h2>Punto de venta</h2><p>Mostrador · MXN</p></div>
       <div className="pos-actions">{(view==='history'||view==='cash')&&permissions.history&&<label>Consultar día<input type="date" value={day} max={businessDay()} disabled={busy||pendingLocked} onChange={e => { if (e.target.value) setDay(e.target.value); }} /></label>}
-        <button type="button" disabled={busy || loading||pendingLocked} onClick={load}>Actualizar</button></div></header>
+        <button type="button" disabled={busy || loading||pendingLocked} onClick={()=>Promise.all([load(),reloadCatalog()])}>Actualizar</button></div></header>
     <nav className="pos-tabs" aria-label="Secciones del punto de venta">{[['sale','Vender'],['pending','Saldos pendientes'],['history','Tickets'],['cash','Caja y corte']].map(([key,label])=><button type="button" key={key} aria-pressed={view===key} disabled={busy||pendingLocked||Boolean(saleRequest.current)} onClick={()=>{setView(key);if(key==='sale'||key==='pending')setDay(businessDay());}}>{label}</button>)}</nav>
     {error && <p role="alert" className="pos-error">{error}</p>}
     {notice && <p role="status" className="pos-success">{notice}</p>}
@@ -144,7 +144,8 @@ export default function PointOfSale({access=ADMIN_ACCESS}) {
                   {item.catalogKey?.servicio==='engargolado'&&<label>Hojas por engargolado<input type="number" min="1" max="100000" value={item.pages} onChange={e=>updateItem(i,'pages',e.target.value)}/></label>}</div>
                 <label>{isLinearService(item.catalogKey)?'Largo en metros':'Cantidad'}<input required type="number" min={isLinearService(item.catalogKey)?"0.01":"1"} max="100000" step={isLinearService(item.catalogKey)?"0.01":"1"} value={item.qty} onChange={e=>updateItem(i,'qty',e.target.value)}/></label>
                 {item.catalogKey?<div className="pos-line-amount"><span>{isLinearService(item.catalogKey)?'Precio por metro':'Precio unitario'}</span><strong>{item.pricingError?'—':money(Math.round(Number(item.price)*100))}</strong></div>:<label>Precio unitario ($)<input required type="number" min="0.01" max="1000000" step="0.01" value={item.price} onChange={e=>updateItem(i,'price',e.target.value)}/></label>}
-                <div className="pos-line-amount"><span>Total</span><strong>{item.pricingError?'—':money(Math.round(Math.round(Number(item.price)*100)*Number(item.qty)))}</strong></div>
+                {item.billedQty !== undefined && <small>{item.wasteCm} cm de desperdicio · {item.billedQty.toFixed(2)} m facturados · IVA incluido en el total</small>}
+                <div className="pos-line-amount"><span>Total</span><strong>{item.pricingError?'—':money(Math.round(Math.round(Number(item.price)*100)*Number(item.billedQty ?? item.qty)))}</strong></div>
                 <button type="button" aria-label={`Quitar partida ${i+1}`} onClick={()=>setItems(items.filter((_,index)=>index!==i))}>Quitar</button>
                 {item.pricingError&&<p role="alert" className="pos-line-error">{item.pricingError}</p>}
               </div>)}

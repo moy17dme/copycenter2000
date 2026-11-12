@@ -13,6 +13,13 @@ import engargolados from "../assets/engargolados.webp";
 
 export const PUBLIC_SERVICES = [
   {
+    id: "impresion-uv", title: "Impresión UV", tag: "Mimaki UV",
+    description: "Impresión por metro lineal en vinil, tela y papel.",
+    details: ["Anchos imprimibles por material", "Acabados con blanco, barniz o corte según tarifa"],
+    delivery: "A confirmar según la tirada", image: planos, alt: "Impresión en gran formato",
+    path: "/servicios/impresion-uv",
+  },
+  {
     id: "impresion-digital",
     title: "Impresion digital",
     tag: "Color y blanco y negro",
@@ -148,6 +155,7 @@ export const PUBLIC_SERVICES = [
 
 const PUBLIC_SERVICE_ORDER = [
   "impresion-digital",
+  "impresion-uv",
   "copias",
   "engargolados",
   "actas",

@@ -79,10 +79,10 @@ export default function ServicesPage() {
                   ))}
                 </ul>
                 <Link
-                  to={`/#servicios`}
+                  to={service.path || "/#servicios"}
                   className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-300 transition hover:text-blue-200"
                 >
-                  {t("servicesPage.configure")}
+                  {service.path ? (locale === "en" ? "View UV catalog and prices" : "Ver catálogo y precios UV") : t("servicesPage.configure")}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>

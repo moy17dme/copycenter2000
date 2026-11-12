@@ -16,6 +16,7 @@ import {
   lookupCatalogBindingPrice,
   lookupCatalogPrintPrice,
   lookupCatalogCopyPrice,
+  getStickerQuote,
 } from "../lib/catalogPrices";
 import { calculatePlotPrice } from "./plotPrice";
 
@@ -421,85 +422,7 @@ export function getItemPrice(item) {
   }
 
   // ── Stickers ─────────────────────────────────────────────────────────────
-  if (key === "stickers") {
-    const w = parseFloat(opts.stkWidthCm  ?? 0);
-    const h = parseFloat(opts.stkHeightCm ?? 0);
-    if (!w || !h || w <= 0 || h <= 0) return null;
-
-    // Cantidad efectiva
-    let qty = 0;
-    if (opts.stkQtyPreset && opts.stkQtyPreset !== "custom") {
-      qty = Number(opts.stkQtyPreset);
-    } else {
-      qty = Number(opts.stkQtyCustom ?? 0);
-    }
-    if (!qty || qty <= 0) return null;
-
-    const material    = opts.stkMaterial   || "vinil-mate";
-    const cutType     = opts.stkCutType    || "hoja";
-    const laminado    = !!opts.stkLaminado;
-    const laminadoTipo = laminado ? (opts.stkLaminadoTipo || "brillante") : null;
-
-    // Constantes (mismas que StickersOptionsEditor)
-    const PRECIO_MAT  = { "vinil-mate": 200, "vinil-brillante": 250, "vinil-transparente": 400 };
-    const PLOTTER_W   = 50;
-    const ROLLO_W     = 150;
-    const USABLE_H    = 140;
-    const GRIP        = 10;
-    const TIRA_TOTAL  = USABLE_H + GRIP;       // 150 cm
-    const TIRAS_ROLLO = Math.floor(ROLLO_W / PLOTTER_W); // 3
-    const MIN_CM      = 60;
-    const MARGEN      = 0.2;
-    const HOJA_UW     = 18; const HOJA_UH = 33; const HOJA_PRECIO = 28;
-    const LAM_M       = { brillante: 60, mate: 107 };
-
-    const wE = w + MARGEN * 2;
-    const hE = h + MARGEN * 2;
-
-    // ── Precio en hoja ──────────────────────────────────────────────────────
-    const xH = Math.floor(HOJA_UW / wE);
-    const yH = Math.floor(HOJA_UH / hE);
-    let totalHoja = null;
-    if (xH > 0 && yH > 0) {
-      const hojas = Math.ceil(qty / (xH * yH));
-      const corte = qty * (cutType === "individual" ? 0.50 : 0.40);
-      totalHoja = hojas * HOJA_PRECIO + corte;
-    }
-
-    // ── Precio en tira ──────────────────────────────────────────────────────
-    const xT = Math.floor(PLOTTER_W / wE);
-    const yT = Math.floor(USABLE_H  / hE);
-    let totalTira = null;
-    if (xT > 0 && yT > 0) {
-      const porTira   = xT * yT;
-      const tirasCorte = Math.ceil(qty / porTira);
-      const filas     = Math.ceil(qty / (xT * TIRAS_ROLLO));
-      const largo     = Math.max(filas * hE + GRIP, MIN_CM);
-      const pVinil    = (largo / 100) * (PRECIO_MAT[material] ?? 200);
-      const pCorte    = qty * (cutType === "individual" ? 0.50 : 0.40);
-      const pLam      = laminadoTipo
-        ? tirasCorte * (TIRA_TOTAL / 100) * (LAM_M[laminadoTipo] ?? 0)
-        : 0;
-      totalTira = pVinil + pCorte + pLam;
-    }
-
-    // Auto-selecciona el más barato (hoja solo si no hay laminado)
-    let total;
-    if (!laminado && totalHoja !== null && (totalTira === null || totalHoja <= totalTira)) {
-      total = totalHoja;
-    } else if (totalTira !== null) {
-      total = totalTira;
-    } else {
-      return null;
-    }
-
-    return {
-      total:   parseFloat(total.toFixed(2)),
-      perUnit: parseFloat((total / qty).toFixed(2)),
-      qty,
-      label: `${qty} sticker${qty !== 1 ? "s" : ""}`,
-    };
-  }
+  if (key === "stickers") return getStickerQuote(opts);
 
   // ── Impresión Offset (artes) ─────────────────────────────────────────────
   if (key === "artes") {

@@ -156,6 +156,7 @@ await db.exec('reset role');
 await db.exec(await readFile(new URL('../supabase/migrations/20261109160000_pos_payments.sql',import.meta.url),'utf8'));
 await db.exec(await readFile(new URL('../supabase/migrations/20261109161000_pos_linear_plans.sql',import.meta.url),'utf8'));
 await db.exec(await readFile(new URL('../supabase/migrations/20261109180000_mimaki_prices.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../supabase/migrations/20261112180000_mimaki_runs.sql',import.meta.url),'utf8'));
 equal((await one('select count(*)::int as n from pos_payments')).n,3);
 equal((await one('select count(*)::int as n from pos_sales where balance_cents=0')).n,3);
 equal((await one('select closing_summary as s from pos_days where day=$1',[today])).s,result);
@@ -196,13 +197,30 @@ await denied(pay,[id(5),id(2),payments({card:1}),0]);
 await denied(pay,[id(4),id(1),payments({card:1}),0]);
 const uv=(await db.query("select * from catalogo_precios where servicio='mimaki_uv'")).rows;
 equal(uv.length,18);
-equal(uv.every(r=>r.visible_publico&&r.iva_modo==='incluido'),true);
+equal(uv.every(r=>r.visible_publico&&r.iva_modo==='adicional'),true);
+for (const rule of uv) {
+  for (const [actual,billed] of [['0.01',0.31],['0.49',0.79],['0.50',0.50],['0.51',0.51]]) {
+    const quote=resolveCatalogRule(uv,rule,actual);
+    equal(quote.billedQty,billed);
+    equal(quote.unit_cents,Math.round(Number(rule.precio)*116));
+  }
+}
 const white=uv.find(r=>r.categoria_slug==='vinil_brillante');
-equal(resolveCatalogRule(uv,white,'0.5').unit_cents,25000);
-equal(Boolean(resolveCatalogRule(uv,white,'0.25').error),true);
-const uvLine=qty=>JSON.stringify([{name:'Mimaki UV blanco ancho 1.50 m',qty,unit_cents:25000,catalog_rule_id:white.id}]);
-equal((await one(checkout,[id(30),uvLine(.5),payments({card:12500}),0,false,''])).s.total_cents,12500);
-await denied(checkout,[id(31),uvLine(.25),payments({card:6250}),0,false,'']);
+const uvLine=(actual,qty)=>JSON.stringify([{name:'Mimaki UV',actual_m:actual,qty,unit_cents:29000,catalog_rule_id:white.id}]);
+const shortRun=(await one(checkout,[id(30),uvLine(.49,.79),payments({card:22910}),0,false,''])).s;
+equal(shortRun.total_cents,22910);
+equal(shortRun.items[0].waste_m,.30);
+const fullRun=(await one(checkout,[id(32),uvLine(.50,.50),payments({card:14500}),0,false,''])).s;
+for(const [sale,actual,billed,base,tax] of [[shortRun,.49,.79,19750,3160],[fullRun,.50,.50,12500,2000]]){
+  const item=sale.items[0];
+  equal(item.actual_m,actual);
+  equal(item.qty,billed);
+  equal(item.waste_m,Math.round((billed-actual)*100)/100);
+  equal(item.iva_porcentaje,16);
+  equal(Math.round(Number(item.catalog_snapshot.precio)*100*billed),base);
+  equal(sale.total_cents-base,tax);
+}
+await denied(checkout,[id(31),uvLine(.49,.49),payments({card:14210}),0,false,'']);
 equal(searchCatalog(catalogGroups(uv),'mimaki transparente barniz').length,2);
 const plans=(await db.query("select * from catalogo_precios where servicio='planos_lineas' order by precio")).rows;
 equal(resolveCatalogRule(plans,plans[0],'1.2').unit_cents,3000);

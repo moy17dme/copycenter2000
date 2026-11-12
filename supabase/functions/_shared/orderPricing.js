@@ -1,4 +1,4 @@
-import { getItemPrice } from "./getItemPrice.js";
+import { getItemPrice, normalizeKey } from "./getItemPrice.js";
 import { calculatePaymentTotal } from "./paymentAdjustments.js";
 
 export function roundMoney(value) {
@@ -47,8 +47,16 @@ async function resolveCoupon(client, couponCode, subtotal) {
 
 export async function calculateOrderPricing(client, order) {
   const items = Array.isArray(order?.items) ? order.items : [];
+  let stickerRows = [];
+  if (items.some(item => normalizeKey(item) === 'stickers')) {
+    const {data,error} = await client.from('catalogo_precios')
+      .select('servicio,categoria_slug,activo,visible_publico,iva_modo,ancho_rollo_cm,precio')
+      .eq('servicio','mimaki_uv').eq('activo',true).eq('visible_publico',true);
+    if (error) throw error;
+    stickerRows = data || [];
+  }
   const pricedItems = items.map((item, index) => {
-    const pricing = getItemPrice(item);
+    const pricing = getItemPrice(item, stickerRows);
     return pricing
       ? {
           index,

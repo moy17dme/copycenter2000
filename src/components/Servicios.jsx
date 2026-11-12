@@ -1,5 +1,6 @@
 // src/components/Servicios.jsx
 import { lazy, Suspense, useRef, useState, useEffect, useMemo, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { CheckCircle2, Paperclip, PencilLine, Search, ShoppingCart, Upload, X } from "lucide-react";
 import { useCart } from "./CartContext";
 import { supabase } from "@/lib/supabaseClient";
@@ -245,7 +246,8 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
   const { addItem } = useCart();
   const catalogPricesVersion = useCatalogPricesVersion();
   const localizedServicios = useMemo(
-    () => servicios.map((service) => localizeCatalogService(service, locale)),
+    () => [...servicios.map((service) => localizeCatalogService(service, locale)),
+      {id:"impresion-uv", nombre:locale==="en"?"UV printing":"Impresión UV", descripcion:locale==="en"?"Materials, finishes and prices per linear meter":"Materiales, acabados y precios por metro lineal", tag:"Mimaki UV"}],
     [servicios, locale]
   );
 
@@ -781,6 +783,13 @@ export default function Servicios({ onAddedToCart, onDirectCheckout, onEditItem 
           const activo = s.activo !== false;
 
           const isHighlighted = highlightKey === key;
+          if (key === "impresion-uv") return (
+            <Link key={key} ref={el=>{cardRefs.current[key]=el;}} to="/servicios/impresion-uv"
+              className={`servicio-card overflow-hidden rounded-lg border bg-card ${isHighlighted?"border-primary":"border-border"}`}>
+              <DeferredServiceImage src={planos} alt="" />
+              <div className="p-4"><h3 className="font-semibold">{nombre}</h3><p className="mt-1 text-sm text-muted-foreground">{desc}</p></div>
+            </Link>
+          );
           return (
             <button
               key={key}

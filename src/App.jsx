@@ -24,6 +24,7 @@ const AboutPage = lazy(() => import("./pages/AboutPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const FaqPage = lazy(() => import("./pages/FaqPage"));
 const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
+const UvServicePage = lazy(() => import("./pages/UvServicePage"));
 const PricesPage = lazy(() => import("./pages/PricesPage"));
 const ServicesPage = lazy(() => import("./pages/ServicesPage"));
 const ResourcesPage = lazy(() => import("./pages/ResourcesPage"));
@@ -289,6 +290,7 @@ export default function App() {
           <Suspense fallback={<div className="min-h-[55vh]" aria-hidden="true" />}>
           <Routes>
             <Route path="/" element={<HomePage openCart={openCart} />} />
+            <Route path="/servicios/impresion-uv" element={<UvServicePage />} />
             <Route path="/servicios" element={<ServicesPage />} />
             <Route path="/precios" element={<PricesPage />} />
             <Route

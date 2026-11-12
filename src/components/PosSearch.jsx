@@ -20,9 +20,10 @@ export default function PosSearch({catalog,disabled,onAdd}){
     {selected&&<div className="pos-selected"><strong>{selected.label}</strong><div className="pos-add-line">
       <label>{linear?'Largo en metros':'Cantidad a agregar'}<input autoFocus type="number" min={linear?"0.01":"1"} max="100000" step={linear?"0.01":"1"} value={qty} disabled={disabled} onChange={e=>setQty(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();add();}}}/></label>
       {selected.servicio==='engargolado'&&<label>Hojas por engargolado<input type="number" min="1" max="100000" value={pages} disabled={disabled} onChange={e=>setPages(e.target.value)}/></label>}
-      <div><span>{linear?'Precio por metro':'Precio unitario'}</span><strong>{quote.row?money(quote.unit_cents):'Sin tarifa'}</strong></div><div><span>Total</span><strong>{valid?money(Math.round(quote.unit_cents*Number(qty))):'—'}</strong></div>
+      <div><span>{linear?'Precio por metro':'Precio unitario'}</span><strong>{quote.row?money(quote.unit_cents):'Sin tarifa'}</strong></div><div><span>Total</span><strong>{valid?money(Math.round(quote.unit_cents*Number(quote.billedQty ?? qty))):'—'}</strong></div>
       <button type="button" className="pos-primary" disabled={disabled||!valid} onClick={add}>Agregar</button></div>
-      {linear&&<p className="pos-help">Escribe metros: 1.20 m equivale a 120 cm. Para varias copias, suma sus largos.</p>}
+      {selected.servicio==='mimaki_uv'&&<p className="pos-help">Captura el largo total que ocupan las piezas en una tirada del mismo material y acabado. Agrega cada tirada por separado. Menos de 50 cm lleva 30 cm adicionales. {valid && `${quote.billedQty.toFixed(2)} m facturados. Precio por metro y total con IVA.`}</p>}
+      {linear&&selected.servicio!=='mimaki_uv'&&<p className="pos-help">Escribe metros: 1.20 m equivale a 120 cm. Para varias copias, suma sus largos.</p>}
       {quote.error&&<p role="alert" className="pos-line-error">{quote.error}</p>}
     </div>}
   </div>;

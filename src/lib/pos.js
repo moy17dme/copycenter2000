@@ -22,7 +22,7 @@ export function normalizePhone(value) {
 export function receiptText(sale) {
   return ['COPY CENTER 2000', `Ticket de venta #${sale.folio}`, sale.day,
     sale.customer_name ? `Cliente: ${sale.customer_name}` : '',
-    ...sale.items.map(i => `${i.name} · ${i.qty} × ${money(i.unit_cents)} = ${money(Math.round(i.qty * i.unit_cents))}`),
+    ...sale.items.map(i => `${i.name}${i.actual_m != null ? ` · ${i.actual_m} m impresos + ${Math.round((i.qty-i.actual_m)*100)} cm desperdicio · IVA incluido` : ''} · ${i.qty} × ${money(i.unit_cents)} = ${money(Math.round(i.qty * i.unit_cents))}`),
     `TOTAL: ${money(sale.total_cents)} MXN`, `Pago: ${PAYMENT_LABELS[sale.payment]}`,
     !sale.payments && sale.payment === 'cash' ? `Recibido: ${money(sale.received_cents)} · Cambio: ${money(sale.received_cents - sale.total_cents)}` : '',
     ...(sale.payments||[]).flatMap((batch,index)=>[`Pago ${index+1} · ${batch.day}`, ...batch.methods.map(p=>`${PAYMENT_LABELS[p.method]}: ${money(p.amount_cents)}`),Number(batch.cash_received_cents)>0?`Recibido: ${money(batch.cash_received_cents)} · Cambio: ${money(batch.change_cents)}`:'']),

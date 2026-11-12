@@ -1,3 +1,4 @@
+import { quoteStickers } from "../../supabase/functions/_shared/stickerPricing.js";
 import { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { resolveCatalogRule } from "./catalogRule";
@@ -156,4 +157,8 @@ export function lookupCatalogBindingPrice(bindType, pages) {
 
 export function lookupCatalogCopyPrice(format, colorKey, qty) {
   return findPrice({ servicio:'copias', categoria:'copias', variante:COLOR_TO_VARIANT[colorKey], formato:FORMAT_TO_SLUG[format], qty });
+}
+
+export function getStickerQuote(options) {
+  return quoteStickers(options, rows);
 }

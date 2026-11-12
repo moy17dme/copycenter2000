@@ -17,6 +17,10 @@ export const PUBLIC_ROUTE_SEO = {
     description:
       "Conoce los servicios de impresión, copias, engargolados, actas, constancias fiscales, ploteo, stickers y digitalización en Pachuca.",
   },
+  "/servicios/impresion-uv": {
+    title: "Impresión UV en Pachuca | Copy Center 2000",
+    description: "Catálogo Mimaki UV por material, acabado y ancho imprimible. Consulta precios por metro lineal más IVA.",
+  },
   "/precios": {
     title: "Precios de impresión en Pachuca | Copy Center 2000",
     description:

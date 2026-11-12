@@ -1,109 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 
-// ── Precios de materiales (por metro lineal, rollo de 50 cm de ancho) ──
-const PRECIO_MATERIAL = {
-  "vinil-mate":         200,
-  "vinil-brillante":    250,
-  "vinil-transparente": 400,
-};
-const LABEL_MATERIAL = {
-  "vinil-mate":         "Vinil mate",
-  "vinil-brillante":    "Vinil brillante",
-  "vinil-transparente": "Vinil transparente",
-};
-
-// ── Hoja de vinil mate ────────────────────────────────────────────────────────
-const HOJA_ANCHO_CM   = 28;   // ancho físico de la hoja (cm)
-const HOJA_LARGO_CM   = 43;   // largo físico de la hoja (cm)
-const HOJA_MARGEN_CM  = 5;    // margen por cada lado
-const HOJA_USABLE_W   = HOJA_ANCHO_CM - HOJA_MARGEN_CM * 2; // 18 cm
-const HOJA_USABLE_H   = HOJA_LARGO_CM - HOJA_MARGEN_CM * 2; // 33 cm
-const HOJA_PRECIO     = 28;   // $ por hoja
-
-function calcPrecioHoja({ widthCm, heightCm, qty, cutType }) {
-  if (!widthCm || !heightCm || !qty || widthCm <= 0 || heightCm <= 0 || qty <= 0) return null;
-
-  const wEfectivo = widthCm  + 0.2 * 2;
-  const hEfectivo = heightCm + 0.2 * 2;
-
-  const xPorHoja = Math.floor(HOJA_USABLE_W / wEfectivo);
-  const yPorHoja = Math.floor(HOJA_USABLE_H / hEfectivo);
-
-  if (xPorHoja === 0 || yPorHoja === 0) return null; // no cabe → no ofrecer hoja
-
-  const porHoja        = xPorHoja * yPorHoja;
-  const hojas          = Math.ceil(qty / porHoja);
-  const precioVinil    = hojas * HOJA_PRECIO;
-  const precioPorCorte = cutType === "individual" ? 0.50 : 0.40;
-  const precioCorte    = qty * precioPorCorte;
-  const total          = precioVinil + precioCorte;
-
-  return { xPorHoja, yPorHoja, porHoja, hojas, precioVinil, precioPorCorte, precioCorte, total };
-}
-
-// ── Dimensiones del equipo ────────────────────────────────────────────────────
-const PLOTTER_ANCHO_CM  = 50;   // ancho usable para stickers (cm)
-const ROLLO_ANCHO_CM    = 150;  // ancho del rollo de vinil → 3 tiras de 50 cm
-const USABLE_LARGO_CM   = 140;  // alto usable para stickers por tira (cm)
-const GRIP_CM           = 10;   // cm de agarre que necesita el plotter al inicio
-const MARGEN_STK_CM     = 0.2;  // 2 mm de margen por cada lado entre stickers
-const MIN_LARGO_CM      = 60;   // mínimo de largo que siempre se cobra (cm)
-const TIRA_TOTAL_CM     = USABLE_LARGO_CM + GRIP_CM; // 150 cm — largo cobrado por tira de laminado
-
-// Tiras de 50 cm que salen del rollo de 150 cm (se imprimen juntas)
-const TIRAS_POR_ROLLO = Math.floor(ROLLO_ANCHO_CM / PLOTTER_ANCHO_CM); // 3
-
-// ── Precios de laminado ($/metro lineal de tira) ──────────────────────────────
-const LAMINADO_M = {
-  brillante: 60,   // → $90 por tira de 150 cm
-  mate:      107,  // → $160 por tira de 150 cm
-};
-
-function calcPrecioStickers({ widthCm, heightCm, qty, material, cutType, laminadoTipo }) {
-  if (!widthCm || !heightCm || !qty || widthCm <= 0 || heightCm <= 0 || qty <= 0) return null;
-  if (widthCm > PLOTTER_ANCHO_CM)
-    return { error: `El ancho (${widthCm} cm) supera los ${PLOTTER_ANCHO_CM} cm del plotter.` };
-
-  const wEfectivo = widthCm  + MARGEN_STK_CM * 2;
-  const hEfectivo = heightCm + MARGEN_STK_CM * 2;
-
-  // ── Capacidad por tira (50 × 140 cm usables) ──────────────────────────────
-  const xPorTira = Math.floor(PLOTTER_ANCHO_CM / wEfectivo);
-  const yPorTira = Math.floor(USABLE_LARGO_CM  / hEfectivo);
-
-  if (xPorTira === 0 || yPorTira === 0)
-    return { error: `El sticker (${widthCm}×${heightCm} cm) no cabe en el área usable de ${PLOTTER_ANCHO_CM}×${USABLE_LARGO_CM} cm.` };
-
-  const porTira    = xPorTira * yPorTira;
-  const tirasCorte = Math.ceil(qty / porTira);
-
-  // ── Consumo de vinil (3 tiras simultáneas del rollo de 150 cm) ────────────
-  const porFilaRollo    = xPorTira * TIRAS_POR_ROLLO;
-  const filasNecesarias = Math.ceil(qty / porFilaRollo);
-  const largoCmReal     = filasNecesarias * hEfectivo + GRIP_CM;
-  const largoCmFactura  = Math.max(largoCmReal, MIN_LARGO_CM);
-  const metrosLineales  = largoCmFactura / 100;
-  const minimoAplicado  = largoCmReal < MIN_LARGO_CM;
-
-  const precioVinil    = metrosLineales * (PRECIO_MATERIAL[material] ?? 200);
-  const precioPorCorte = cutType === "individual" ? 0.50 : 0.40;
-  const precioCorte    = qty * precioPorCorte;
-
-  // ── Laminado (por tira que pasa por la laminadora, largo fijo 150 cm) ─────
-  const precioLaminado = laminadoTipo
-    ? tirasCorte * (TIRA_TOTAL_CM / 100) * (LAMINADO_M[laminadoTipo] ?? 0)
-    : 0;
-
-  const total = precioVinil + precioCorte + precioLaminado;
-
-  return {
-    xPorTira, yPorTira, porTira, tirasCorte,
-    porFilaRollo, filasNecesarias,
-    largoCmReal, largoCmFactura, minimoAplicado,
-    metrosLineales, precioVinil, precioPorCorte, precioCorte,
-    precioLaminado, total,
-  };
-}
+import { getStickerQuote, useCatalogPricesVersion } from "../../../lib/catalogPrices";
 
 // ── Tooltip de imagen ─────────────────────────────────────────────────────────
 function CutTooltip() {
@@ -165,9 +62,7 @@ export default function StickersOptionsEditor({ opts, onChangeOptions }) {
   const update = (patch) => onChangeOptions({ ...patch });
 
   // ====== Básicos ======
-  const shape = opts.stkShape || "cuadrado";
   const material = opts.stkMaterial || "vinil-mate";
-  const usage = opts.stkUsage || "interior";
   const cutType = opts.stkCutType || "hoja";
   const laminado = !!opts.stkLaminado;
 
@@ -204,7 +99,7 @@ export default function StickersOptionsEditor({ opts, onChangeOptions }) {
   const handleWidth = (v) => {
     const n = Number(v);
     if (!Number.isFinite(n)) return update({ stkWidthCm: "" });
-    update({ stkWidthCm: clamp(n, 1, 150) }); // ✅ máximo 150
+    update({ stkWidthCm: clamp(n, 1, 49.6) });
   };
 
   const handleHeight = (v) => {
@@ -221,31 +116,8 @@ export default function StickersOptionsEditor({ opts, onChangeOptions }) {
   const isCustomSize = sizePreset === "custom";
 
   // ====== Precios estimados ======
-  const precioTira = useMemo(() => calcPrecioStickers({
-    widthCm:  Number(width)  || 0,
-    heightCm: Number(height) || 0,
-    qty:      qtyEffective   || 0,
-    material,
-    cutType,
-    laminadoTipo,
-  }), [width, height, qtyEffective, material, cutType, laminadoTipo]);
-
-  const precioHoja = useMemo(() => calcPrecioHoja({
-    widthCm:  Number(width)  || 0,
-    heightCm: Number(height) || 0,
-    qty:      qtyEffective   || 0,
-    cutType,
-  }), [width, height, qtyEffective, cutType]);
-
-  // Auto-seleccionar hoja cuando sea más barato (y no haya laminado — la hoja no se lamina)
-  const modoAuto = useMemo(() => {
-    if (laminado) return "tira"; // laminado solo en tira
-    if (!precioHoja || !precioTira || precioTira.error) return "hoja";
-    if (precioHoja.error) return "tira";
-    return precioHoja.total <= precioTira.total ? "hoja" : "tira";
-  }, [precioHoja, precioTira, laminado]);
-
-  const precio = modoAuto === "hoja" ? precioHoja : precioTira;
+  useCatalogPricesVersion();
+  const precio = getStickerQuote(opts);
 
   return (
     <div className="space-y-4 text-[13px] leading-snug">
@@ -273,11 +145,11 @@ export default function StickersOptionsEditor({ opts, onChangeOptions }) {
           {isCustomSize && (
             <div className="mt-2 grid grid-cols-2 gap-2">
               <div>
-                <p className="text-[11px] text-slate-400 mb-1">Ancho (cm) (máx 150)</p>
+                <p className="text-[11px] text-slate-400 mb-1">Ancho (cm) (máx. 49.6)</p>
                 <input
                   type="number"
                   min={1}
-                  max={150}
+                  max={49.6}
                   step="0.1"
                   className="input h-9 py-1.5 text-[13px]"
                   value={width}
@@ -297,7 +169,7 @@ export default function StickersOptionsEditor({ opts, onChangeOptions }) {
               </div>
 
               <p className="col-span-2 text-[11px] text-slate-400">
-                *Si el ancho supera 150 cm, se ajustará automáticamente a 150.
+                El corte admite 49.6 cm de ancho más el margen de la pieza.
               </p>
             </div>
           )}
@@ -463,12 +335,12 @@ export default function StickersOptionsEditor({ opts, onChangeOptions }) {
           </div>
 
           <p className="text-[10px] text-slate-500 mt-3">
-            * Incluye impresión{laminado ? `, laminado ${laminadoTipo}` : ""} y corte. Precio de referencia, confirmamos antes de producir.
+            Tirada de {precio.realCm} cm · {precio.billedCm} cm facturados. Incluye impresión UV con IVA{laminado ? `, laminado ${laminadoTipo}` : ""} y corte. Precio de referencia, confirmamos antes de producir.
           </p>
         </section>
       ) : (
         <section className="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-[12px] text-slate-500 text-center">
-          Completa tamaño, cantidad y material para ver el precio estimado.
+          Completa tamaño, cantidad y material. Si no aparece un precio, consulta disponibilidad y medidas de corte.
         </section>
       )}
 

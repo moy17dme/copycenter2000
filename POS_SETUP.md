@@ -1,6 +1,6 @@
 # Caja y ventas
 
-Mimaki UV: 18 tarifas del PDF del propietario, compartidas con `/precios#mimaki`, material e IVA incluidos. Busca **Mimaki** en el POS y captura metros lineales; el nombre incluye ancho y acabado. Vinil blanco/CMYK transparente de 1.50 m tiene mínimo 0.50 m. El catálogo guarda `min_largo_m` y valida en servidor; no se importaron precios ni extras de competidores.
+Mimaki UV usa el catálogo compartido con la página pública. Captura una partida por tirada continua del mismo material, ancho y acabado, con el largo ocupado por todas sus piezas. Por debajo de 50 cm se facturan 30 cm extra una vez. Desde 50 cm se cobra el largo real. El ancho imprimible descuenta 2 cm por lado. El precio de catálogo es por metro antes de IVA y caja muestra el importe con IVA.
 
 Los tickets de mostrador incluyen el logo y permiten **Descargar JPG**, **Descargar PDF** y **Compartir imagen** (JPG). El PDF tiene ancho de 80 mm y pagina los tickets largos; conserva acentos mediante renderizado de imagen. Los cortes compartidos siguen en PNG, ahora también con logo.
 

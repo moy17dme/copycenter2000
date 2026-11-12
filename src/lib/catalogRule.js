@@ -13,14 +13,21 @@ export function resolveCatalogRule(rows, key, quantity, { legacyFirstMatch = fal
   if(qty<Number(row.min_largo_m||0))return {error:`El mínimo es ${row.min_largo_m} m para este material.`};
   const price = Number(row.precio);
   if (!Number.isFinite(price) || price <= 0) return { error: 'Precio pendiente de aprobación' };
-  return { row, unit_cents: Math.round(price * 100) };
+  const baseCents = Math.round(price * 100);
+  if (row.servicio === 'mimaki_uv') {
+    if (row.iva_modo !== 'adicional' || !(row.ancho_rollo_cm > 4)) return { error: 'Actualiza el catálogo de impresión UV antes de cobrar.' };
+    const realCm = Math.round(qty * 100);
+    const wasteCm = realCm < 50 ? 30 : 0;
+    return { row, unit_cents: Math.round(baseCents * 116 / 100), billedQty: (realCm + wasteCm) / 100, wasteCm };
+  }
+  return { row, unit_cents: baseCents };
 }
 export function catalogGroups(rows) {
   return [...new Map(rows.filter(row => row.activo !== false).map(row => {
     const key = JSON.stringify([row.servicio,row.categoria_slug,row.variante_slug,row.formato_slug]);
     const service={copias:'Copias',impresion:'Impresión',engargolado:'Engargolado',planos_lineas:'Copias de planos · Solo líneas',mimaki_uv:'Mimaki UV'}[row.servicio]||row.servicio;
     const variant={negro:'B/N',color_laser:'Color láser',color_inyeccion_de_tinta:'Color inyección',metalico:'Metálico',plastico:'Plástico'}[row.variante_slug]||row.variante;
-    return [key, { ...row, key, label: [service,row.servicio==='mimaki_uv'?row.categoria:'',variant,row.formato_slug==='servicio'?'':row.formato,row.servicio==='impresion'?row.categoria:''].filter(Boolean).join(' · ') }];
+    return [key, { ...row, key, label: [service,row.servicio==='mimaki_uv'?row.categoria:'',variant,row.servicio==='mimaki_uv' && row.ancho_rollo_cm>4 ? (row.ancho_rollo_cm-4)+' cm imprimibles' : row.formato_slug==='servicio'?'':row.formato,row.servicio==='impresion'?row.categoria:''].filter(Boolean).join(' · ') }];
   })).values()];
 }
 const normalize=text=>String(text).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/copais/g,'copias');
