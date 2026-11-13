@@ -32,12 +32,13 @@ import { supabase } from "../lib/supabaseClient";
 import { useIsAdmin } from "../lib/useIsAdmin";
 import {
   fetchAllOrders,
+  paymentDetail,
+  pickupDetail,
   updateOrderStatus,
   buildStatusNotificationMessage,
   buildOrderWhatsAppMessage,
   openWhatsApp,
   STATUS_LABELS,
-  STATUS_ORDER,
   createSupabaseRequestClient,
   isPaymentConfirmed,
   getOrderFinancials,
@@ -132,7 +133,7 @@ const STATUS_COLORS = {
   cancelled:        "bg-red-500/20 text-red-300 border-red-400/30",
 };
 
-const ALL_STATUSES = [...STATUS_ORDER, "cancelled"];
+const ALL_STATUSES = ["cancelled"];
 
 const STATUS_ICON_COMPONENTS = {
   pending_payment: Clock3,
@@ -272,7 +273,7 @@ function PaymentMethodIcon({ order, className = "h-3.5 w-3.5" }) {
 }
 
 function canConfirmManualPayment(order) {
-  return ["transfer", "card"].includes(order.payment_method) && !isPaymentConfirmed(order);
+  return order.status === "pending_payment" && !getOrderFinancials(order).hasUnknownItems && ["transfer", "card"].includes(order.payment_method) && !isPaymentConfirmed(order);
 }
 
 function paidOrdersRevenue(orders) {
@@ -525,7 +526,7 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
   });
   const history = (order.order_status_history || []).slice()
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  const nextStatus = STATUS_ORDER[STATUS_ORDER.indexOf(order.status) + 1];
+  const nextStatus = ({ paid: "in_progress", payment_approved: "in_progress", in_progress: "ready", printing: "ready", ready: "completed" })[order.status];
   const usedStatuses = new Set((order.order_status_history || []).map(h => h.status));
   const financials = getOrderFinancials(order);
   const queueMeta = STATUS_QUEUE_META[order.status] || null;
@@ -536,6 +537,7 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
     return {
       ...order,
       status: newStatus,
+      payment_status: newStatus === "paid" ? "approved" : order.payment_status,
       order_status_history: [
         ...(order.order_status_history || []),
         {
@@ -563,6 +565,22 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
       onStatusChange(buildLocalStatusOrder(newStatus, statusNote));
     } catch (err) {
       alert("Error: " + (err.message || "No se pudo actualizar el pedido."));
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function saveDetail(fields) {
+    setUpdating(true);
+    try {
+      const token = await getAccessToken?.() || accessToken;
+      if (!token) throw new Error("Inicia sesión de nuevo.");
+      const { data, error } = await createSupabaseRequestClient(token).from("orders")
+        .update(fields).eq("id", order.id).eq("status", order.status).select().single();
+      if (error) throw error;
+      onStatusChange({ ...order, ...data });
+    } catch (err) {
+      alert("No se guardó el cambio. " + err.message);
     } finally {
       setUpdating(false);
     }
@@ -628,16 +646,23 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
                     {paymentMethodLabel(order)}
                   </span>
                   {" — "}
-                  {isPaymentConfirmed(order)
-                    ? <span className="text-green-400">Pago confirmado</span>
-                    : <span className="text-yellow-400">Pago pendiente</span>
-                  }
+                  {paymentDetail(order)}
                 </span>
               </div>
+              <p className="text-sm">{pickupDetail(order)}</p>
+              {!["ready", "completed", "cancelled"].includes(order.status) && <form key={order.id} className="space-y-2" onSubmit={e => {
+                e.preventDefault();
+                saveDetail({ pickup_confirmed_local: e.currentTarget.elements.pickup.value });
+              }}>
+                <label className="block text-sm">Programar recolección (hora de Pachuca)
+                  <input name="pickup" type="datetime-local" required defaultValue={order.pickup_confirmed_local?.slice(0,16)} className="input block" />
+                </label>
+                <button disabled={updating} className="text-blue-300">Confirmar horario al cliente</button>
+              </form>}
               {order.notes && (
                 <div className="mt-2 bg-white/5 rounded-xl px-3 py-2">
                   <p className="text-[10px] text-slate-500 mb-0.5">Instrucciones</p>
-                  <p className="text-sm text-slate-200">{order.notes}</p>
+                  <p className="whitespace-pre-line text-sm text-slate-200">{order.notes}</p>
                 </div>
               )}
             </div>
@@ -714,13 +739,23 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
                 </div>
               )}
 
+              {financials.hasUnknownItems && order.status === "pending_payment" && <form key={order.id} className="space-y-2" onSubmit={e => {
+                e.preventDefault();
+                saveDetail({ agreed_total: Number(e.currentTarget.elements.amount.value) });
+              }}>
+                <p>Importe conocido: ${formatMoney(financials.total)} MXN. Envía la cotización completa por WhatsApp y registra el total cuando el cliente lo apruebe.</p>
+                <label className="block">Total aprobado por el cliente (MXN)<input required className="input" type="number" name="amount" min="0.01" step="0.01" /></label>
+                <button disabled={updating} className="text-blue-300">Registrar precio acordado</button>
+              </form>}
+              {canConfirmManualPayment(order) && order.payment_method === "transfer" && !order.receipt_received_at && <button disabled={updating}
+                className="text-blue-300" onClick={() => saveDetail({ receipt_received_at: new Date().toISOString() })}>Marcar comprobante recibido</button>}
               {/* Confirmar pago de transferencia */}
               {canConfirmManualPayment(order) && (
                 <div className="rounded-xl bg-yellow-900/30 border border-yellow-400/20 p-3">
                   <p className="text-yellow-200 text-sm font-medium mb-2">⚠️ Pago sin confirmar</p>
                   <button disabled={updating}
                     onClick={async () => {
-                      const statusNote = "Pago confirmado, empezando trabajo";
+                      const statusNote = "Pago verificado";
                       try {
                         setUpdating(true);
                         const token = await getAccessToken?.() || accessToken;
@@ -739,7 +774,7 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
                       }
                     }}
                     className="w-full py-2 rounded-xl bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black text-sm font-semibold transition">
-                    ✅ Confirmar pago y empezar trabajo
+                    ✅ Verificar pago
                   </button>
                 </div>
               )}
@@ -752,7 +787,7 @@ function OrderDetailPanel({ order, onClose, onStatusChange, accessToken, getAcce
                     const isCurrent = s === order.status;
                     const alreadyUsed = !isCurrent && usedStatuses.has(s);
                     return (
-                      <button key={s} disabled={isCurrent || alreadyUsed || updating}
+                      <button key={s} disabled={isCurrent || order.status === "completed" || alreadyUsed || updating}
                         onClick={() => handleSetStatus(s)}
                         title={alreadyUsed ? "Este estado ya fue registrado" : undefined}
                         className={`px-3 py-1 rounded-xl text-xs font-medium border transition disabled:opacity-40 ${
@@ -978,7 +1013,8 @@ function PedidosTab({ orders, loading, onRefresh, accessToken, getAccessToken, o
   const filterTabs = [
     { value: "all",             label: "Todos",           count: orders.length },
     { value: "pending_payment", label: "Sin pago",        count: counts["pending_payment"] || 0 },
-    { value: "paid",            label: "Empezando trabajo", count: counts["paid"] || 0 },
+    { value: "paid",            label: "Pago verificado", count: counts["paid"] || 0 },
+    { value: "in_progress", label: "En producción", count: counts.in_progress || 0 },
     { value: "ready",           label: "Listos",          count: counts["ready"] || 0 },
     { value: "cancelled",       label: "Cancelados",      count: counts["cancelled"] || 0 },
   ];
@@ -1556,7 +1592,7 @@ function DashboardTab({ orders, loading, onSelectOrder }) {
           { label: "Pedidos hoy",        value: hoy.length,                         color: "text-white",      bg: "bg-white/5",        border: "border-white/10" },
           { label: "Ganancias hoy",      value: `$${formatMoney(revenueToday)}`,    color: "text-green-300",  bg: "bg-green-500/10",   border: "border-green-400/20" },
           { label: "Pendientes de pago", value: pendingPay.length,                  color: "text-yellow-300", bg: "bg-yellow-500/10",  border: "border-yellow-400/20" },
-          { label: "Empezando trabajo",  value: active.length,                      color: "text-orange-300", bg: "bg-orange-500/10",  border: "border-orange-400/20" },
+          { label: "Pago verificado",  value: active.length,                      color: "text-orange-300", bg: "bg-orange-500/10",  border: "border-orange-400/20" },
           { label: "Listos para recoger",value: ready.length,                       color: "text-green-300",  bg: "bg-green-500/10",   border: "border-green-400/20" },
         ].map((k) => (
           <div key={k.label} className={`rounded-2xl ${k.bg} border ${k.border} p-4 text-center`}>

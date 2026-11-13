@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "./CartContext";
 import {
   createOrder,
+  getOrderFinancials,
+  paymentDetail,
   createMercadoPagoCheckout,
   prepareMercadoPagoCard,
   uploadOrderFiles,
@@ -13,6 +15,7 @@ import {
   openWhatsApp,
   isTrustedMercadoPagoUrl,
   SHOP_PHONE,
+  BANK_INFO,
 } from "../lib/orders";
 import { getItemPrice, fmtMXN } from "../utils/getItemPrice";
 import { calculatePaymentTotal, TRANSFER_DISCOUNT_MIN_MXN } from "../lib/paymentAdjustments";
@@ -24,13 +27,6 @@ import { buildFileUploadAcceptance } from "../lib/legalConsents";
 import MercadoPagoCardPayment, { MercadoPagoChallenge } from "./MercadoPagoCardPayment";
 import { validatePrintableFile } from "../utils/fileGuards";
 import GoogleSignInButton from "./GoogleSignInButton";
-
-// Datos bancarios del negocio (edita estos valores)
-const BANK_INFO = {
-  bank:    "BANORTE",
-  clabe:   "072290013257279710",
-  account: "5264246819447292",
-};
 
 const STEPS = {
   FORM:      "form",
@@ -232,6 +228,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
   // Datos del cliente
   const [name,      setName]      = useState("");
   const [phone,     setPhone]     = useState("");
+  const [requestedPickup, setRequestedPickup] = useState("");
   const [notes,     setNotes]     = useState("");
   const [payment,   setPayment]   = useState("mercadopago");
   const [nameError, setNameError] = useState("");
@@ -274,6 +271,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       setFileResponsibilityAcceptedAt("");
       setName(profile?.full_name || user?.user_metadata?.full_name || "");
       setPhone(profile?.phone || user?.user_metadata?.phone || user?.user_metadata?.whatsapp || "");
+      setRequestedPickup("");
       setNotes("");
       setPayment("mercadopago");
       // Facturación — resetear y pre-llenar si el perfil ya tiene RFC
@@ -351,6 +349,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
   const hasResponsibilityFiles = responsibilityFiles.length > 0;
 
   useEffect(() => {
+    if (orderSummary.hasUnknown && payment === "mercadopago") setPayment("transfer");
     if (orderSummary.paymentBase >= MIN_CHECKOUT_OPTION_MXN) return;
 
     if (payment === "mercadopago") setPayment("transfer");
@@ -358,7 +357,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
       setRequiresInvoice(false);
       setBillingError("");
     }
-  }, [orderSummary.paymentBase, payment, requiresInvoice]);
+  }, [orderSummary.paymentBase, orderSummary.hasUnknown, payment, requiresInvoice]);
 
   const hasItems = items.length > 0;
 
@@ -562,7 +561,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
         const n = Number(value);
         return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
       };
-      const pricedItems = orderSummary.lines.map(({ it, p }) => ({
+      const pricedItems = orderSummary.lines.map(({ it, p, ticketCovered }) => ({
         ...it,
         pricing: p
           ? {
@@ -572,7 +571,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
               qty: p.qty,
               label: p.label,
             }
-          : null,
+          : ticketCovered ? { total: 0, label: "Incluido en ticket" } : null,
       }));
       // Preparar billing_info si se requirió factura
       const billingInfo = requiresInvoice
@@ -591,7 +590,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
         customerName:  name.trim(),
         customerPhone: phone.trim(),
         paymentMethod: payment,
-        notes:         [notes.trim(), buildTicketNote(redeemedTicket || checkoutTicketData)].filter(Boolean).join("\n"),
+        notes:         [requestedPickup && `Recolección solicitada (hora de Pachuca, por confirmar): ${requestedPickup.replace("T", " ")}`, notes.trim(), buildTicketNote(redeemedTicket || checkoutTicketData)].filter(Boolean).join("\n"),
         couponCode:    couponApplied ? couponState.code : null,
         discount:      couponApplied ? couponState.discount : 0,
         subtotal:      orderSummary.sum,
@@ -883,25 +882,18 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                     <div className="px-3 py-2 flex items-center justify-between"
                       style={{ backgroundColor: 'rgba(16,185,129,0.06)', borderTop: '1px solid rgba(16,185,129,0.2)' }}>
                       <span className="text-[12px]" style={{ color: '#9AA6B2' }}>
-                        {orderSummary.hasUnknown ? "Total parcial estimado" : "Total estimado"}
+                        {orderSummary.hasUnknown ? "Importe conocido" : "Total estimado"}
                       </span>
                       <span className="text-[16px] font-bold tabular-nums" style={{ color: '#34D399' }}>
-                        ${fmtMXN(orderSummary.onlineTotal)}
+                        ${fmtMXN(orderSummary.total)}
                       </span>
                     </div>
-                    {orderSummary.paymentAdjustment.amount < 0 && (
-                      <div className="px-3 py-2 flex items-center justify-between"
-                        style={{ backgroundColor: 'rgba(16,185,129,0.08)' }}>
-                        <span className="text-[12px]" style={{ color: '#34D399' }}>Total por transferencia</span>
-                        <span className="text-[15px] font-semibold tabular-nums" style={{ color: '#34D399' }}>
-                          ${fmtMXN(orderSummary.total)}
-                        </span>
-                      </div>
-                    )}
+
                   </>
                 )}
               </div>
 
+              {orderSummary.hasUnknown && <p className="text-sm text-amber-200">Cobro ahora: $0 MXN. Te enviaremos el precio completo por WhatsApp para que lo apruebes antes de transferir o imprimir.</p>}
               {/* Cupón de descuento */}
               <div>
                 <p className="text-xs mb-2 uppercase tracking-wider" style={{ color: '#9AA6B2' }}>
@@ -1003,13 +995,17 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                   )}
                 </div>
                 <div>
+                  <label className="block text-sm mb-3">¿Para cuándo necesitas tu pedido? (opcional)
+                    <input type="datetime-local" className="input block" value={requestedPickup} onChange={e => setRequestedPickup(e.target.value)} />
+                    <small>Hora de Pachuca. El personal confirmará el horario en Mis pedidos.</small>
+                  </label>
                   <label className="block text-xs mb-1" style={{ color: '#9AA6B2' }}>Instrucciones especiales</label>
                   <textarea
                     rows={3}
                     className="input resize-none"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Indicaciones adicionales, urgencia, fecha límite, etc."
+                    placeholder="Indicaciones sobre impresión o acabado"
                   />
                 </div>
               </div>
@@ -1031,14 +1027,14 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                       key: "mercadopago",
                       icon: "💳",
                       label: "Pago en linea",
-                      sub: orderSummary.paymentBase >= MIN_CHECKOUT_OPTION_MXN
+                      sub: orderSummary.hasUnknown ? "Disponible al conocer el precio completo" : orderSummary.paymentBase >= MIN_CHECKOUT_OPTION_MXN
                         ? "Pago seguro con Mercado Pago"
                         : `Disponible desde $${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN`,
                     },
                   ].map((opt) => {
                     const isUnavailable =
                       opt.key === "mercadopago" &&
-                      orderSummary.paymentBase < MIN_CHECKOUT_OPTION_MXN;
+                      (orderSummary.hasUnknown || orderSummary.paymentBase < MIN_CHECKOUT_OPTION_MXN);
 
                     return (
                       <button
@@ -1062,7 +1058,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
               </div>
 
               {/* Info de transferencia */}
-              {payment === "transfer" && (
+              {payment === "transfer" && !orderSummary.hasUnknown && (
                 <div className="rounded-2xl p-4 text-sm space-y-1"
                   style={{ backgroundColor: 'rgba(31,74,168,0.08)', border: '1px solid rgba(31,74,168,0.25)' }}>
                   <p className="font-medium mb-2" style={{ color: '#4E7BDA' }}>Datos para transferencia:</p>
@@ -1073,7 +1069,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                     <p>🔢 CLABE: <span className="font-mono" style={{ color: '#F5F7FA' }}>{BANK_INFO.clabe}</span></p>
                   </div>
                   <p className="text-[11px] mt-2" style={{ color: '#4E7BDA' }}>
-                    Al confirmar, se abrirá WhatsApp. Envía tu comprobante en esa conversación.
+                    Después de transferir, envía el comprobante desde Mis pedidos. El mensaje incluirá tu folio.
                   </p>
                   {orderSummary.paymentAdjustment.amount < 0 && (
                     <p className="text-[11px]" style={{ color: '#34D399' }}>
@@ -1093,11 +1089,6 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                   <p className="mt-1 text-xs" style={{ color: '#9AA6B2' }}>
                     Al confirmar, te enviamos al checkout seguro para pagar en linea.
                   </p>
-                  {orderSummary.hasUnknown && (
-                    <p className="mt-2 text-[11px]" style={{ color: '#FCD34D' }}>
-                      Este pedido incluye servicios por cotizar. Si no hay precio calculable, quedara registrado y te contactaremos antes de cobrar.
-                    </p>
-                  )}
                   {!orderSummary.hasUnknown && orderSummary.paymentBase < MIN_CHECKOUT_OPTION_MXN && (
                     <p className="mt-2 text-[11px]" style={{ color: '#FCA5A5' }}>
                       El pago en linea esta disponible desde ${fmtMXN(MIN_CHECKOUT_OPTION_MXN)} MXN.
@@ -1324,7 +1315,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                 className="w-full py-3 rounded-2xl font-semibold text-sm transition-all hover:scale-[1.01] active:scale-[.99] disabled:opacity-40"
                 style={{ backgroundColor: '#C61C1C', color: '#FFFFFF' }}
               >
-                {payment === "mercadopago" ? "Pagar en linea con Mercado Pago" : "📤 Confirmar y enviar por WhatsApp"}
+                {payment === "mercadopago" ? "Pagar en linea con Mercado Pago" : orderSummary.hasUnknown ? "Solicitar cotización sin pagar" : `Registrar pedido · transferir $${fmtMXN(orderSummary.total)} MXN`}
               </button>
             </form>
           )}
@@ -1395,7 +1386,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
             <div className="p-6 space-y-5 text-center">
               <div className="text-5xl">🎉</div>
               <div>
-                <h3 className="text-xl font-bold" style={{ color: '#F5F7FA' }}>¡Pedido confirmado!</h3>
+                <h3 className="text-xl font-bold" style={{ color: '#F5F7FA' }}>Pedido recibido</h3>
                 <p className="text-sm mt-1" style={{ color: '#9AA6B2' }}>
                   #{String(confirmedOrder.id).slice(0, 8).toUpperCase()}
                 </p>
@@ -1408,15 +1399,15 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                 </div>
               )}
 
-              {confirmedOrder.payment_method === "transfer" ? (
+              {getOrderFinancials(confirmedOrder).hasUnknownItems ? <p>Solicitamos tu cotización. Espera el precio completo por WhatsApp antes de pagar.</p> : confirmedOrder.payment_method === "transfer" ? (
                 <div className="rounded-2xl p-4 text-sm text-left space-y-2"
                   style={{ backgroundColor: 'rgba(31,74,168,0.08)', border: '1px solid rgba(31,74,168,0.25)' }}>
                   <p className="font-medium" style={{ color: '#4E7BDA' }}>¿Qué sigue?</p>
                   <ol className="space-y-1 list-decimal list-inside" style={{ color: '#9AA6B2' }}>
-                    <li>Se abrió WhatsApp con los detalles de tu pedido.</li>
+                    <li>Usa el folio de este pedido como referencia.</li>
                     <li>Realiza la transferencia bancaria.</li>
-                    <li>Envía tu <strong style={{ color: '#F5F7FA' }}>comprobante de pago</strong> en esa misma conversación de WhatsApp.</li>
-                    <li>En cuanto lo confirmemos, tu pedido iniciará de inmediato.</li>
+                    <li>Envía tu <strong style={{ color: '#F5F7FA' }}>comprobante de pago</strong> desde el botón de WhatsApp en Mis pedidos.</li>
+                    <li>Verifica el pago y el avance en Mis pedidos. Acude cuando diga «Listo para recoger».</li>
                   </ol>
                 </div>
               ) : confirmedOrder.payment_status === "approved" ? (
@@ -1431,7 +1422,7 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                 <div className="rounded-2xl p-4 text-sm text-left"
                   style={{ backgroundColor: 'rgba(27,36,51,0.8)', border: '1px solid rgba(47,95,193,0.3)' }}>
                   <p className="font-medium" style={{ color: '#4E7BDA' }}>Pago pendiente de confirmacion</p>
-                  <p className="mt-1" style={{ color: '#9AA6B2' }}>Tu pedido ya fue recibido. Iniciara cuando el negocio confirme el pago.</p>
+                  <p className="mt-1" style={{ color: '#9AA6B2' }}>Consulta la confirmación de pago y el inicio de producción en Mis pedidos.</p>
                 </div>
               )}
 
@@ -1453,10 +1444,10 @@ export default function CheckoutModal({ open, onClose, user, session, profile, t
                   const msg = encodeURIComponent(
                     `📋 *Resumen de mi pedido #${orderId}*\n` +
                     `Nombre: ${confirmedOrder.customer_name || ""}\n` +
-                    `Servicios: ${items.length > 0 ? items.map(it => it.serviceLabel || it.serviceKey).join(", ") : confirmedOrder.items_count + " servicio(s)"}\n` +
+                    `Servicios: ${(confirmedOrder.items || []).map(it => it.serviceLabel || it.serviceKey).join(", ") || "Ver detalle en Mis pedidos"}\n` +
                     `Pago: ${confirmedOrder.payment_method === "transfer" ? "Transferencia" : "Mercado Pago"}\n` +
-                    `Estado: Pendiente de confirmación\n\n` +
-                    `Guarda este mensaje como comprobante.`
+                    `Estado: ${paymentDetail(confirmedOrder)}\n\n` +
+                    `Guarda este resumen para consultar tu folio.`
                   );
                   window.open(`https://wa.me/?text=${msg}`, "_blank");
                 }}

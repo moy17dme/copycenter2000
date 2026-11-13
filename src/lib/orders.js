@@ -102,9 +102,9 @@ export const SHOP_PHONE = "527713531668";
 // ── Etiquetas de estado en español ──────────────────────────────
 export const STATUS_LABELS = {
   pending_payment:   "Pendiente de pago",
-  paid:              "Empezando trabajo",
-  payment_approved:  "Empezando trabajo",
-  in_progress:       "Trabajando en tu pedido",
+  paid:              "Pago verificado",
+  payment_approved:  "Pago verificado",
+  in_progress:       "En producción",
   printing:          "Terminando de imprimir",
   ready:             "Listo para recoger ✅",
   completed:         "Entregado",
@@ -114,7 +114,9 @@ export const STATUS_LABELS = {
 export const STATUS_ORDER = [
   "pending_payment",
   "paid",
+  "in_progress",
   "ready",
+  "completed",
 ];
 
 export function isPaymentConfirmed(order) {
@@ -126,6 +128,7 @@ export function isPaymentConfirmed(order) {
 }
 
 function roundMoney(value) {
+  if (value == null || value === "") return null;
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
   return Math.round(n * 100) / 100;
@@ -137,6 +140,32 @@ function firstMoney(...values) {
     if (n !== null) return n;
   }
   return null;
+}
+
+// Datos bancarios del negocio (edita estos valores)
+export const BANK_INFO = {
+  bank:    "BANORTE",
+  clabe:   "072290013257279710",
+  account: "5264246819447292",
+};
+
+export function paymentDetail(order) {
+  if (isPaymentConfirmed(order)) return "Pago verificado";
+  if (order.status === "cancelled") return "Pedido cancelado";
+  if (getOrderFinancials(order).hasUnknownItems) return "En espera de cotización";
+  if (order.payment_method === "transfer") return order.receipt_received_at
+    ? "Comprobante recibido · pendiente de verificar"
+    : "Falta recibir el comprobante";
+  return "Pago pendiente de confirmación";
+}
+
+export function pickupDetail(order) {
+  if (order.status === "cancelled") return "Pedido cancelado";
+  if (order.status === "completed") return "Pedido entregado";
+  if (order.status === "ready") return "Ya puedes recoger tu pedido";
+  return order.pickup_confirmed_local
+    ? "Recolección programada: " + order.pickup_confirmed_local.slice(0, 16).replace("T", " ") + " (hora de Pachuca)"
+    : "Horario de recolección por confirmar";
 }
 
 export function formatMoney(value) {
@@ -252,7 +281,8 @@ export function getOrderFinancials(order) {
     order?.total,
     pricing.total,
   );
-  const total = savedTotal ?? Math.max(0, roundMoney(subtotal - discount) ?? 0);
+  const agreed = order?.agreed_total != null ? roundMoney(order.agreed_total) : null;
+  const total = agreed ?? savedTotal ?? Math.max(0, roundMoney(subtotal - discount) ?? 0);
   const paymentBase = firstMoney(pricing.paymentBase, pricing.payment_base, subtotal - discount) ?? 0;
   const displaySubtotal = roundMoney(paymentBase + discount) ?? paymentBase;
 
@@ -264,8 +294,8 @@ export function getOrderFinancials(order) {
     paymentBase,
     paymentAdjustment,
     currency: pricing.currency || "MXN",
-    hasKnownTotal: !pricing.hasUnknownTotal && (savedTotal !== null || !hasUnknownItems),
-    hasUnknownItems: Boolean(pricing.hasUnknownTotal || hasUnknownItems),
+    hasKnownTotal: agreed !== null || !(pricing.hasUnknownTotal || hasUnknownItems),
+    hasUnknownItems: agreed === null && Boolean(pricing.hasUnknownTotal || hasUnknownItems),
   };
 }
 
@@ -389,7 +419,7 @@ export function buildOrderWhatsAppMessage({ order, isNew = true }) {
     hour: "2-digit", minute: "2-digit",
   });
 
-  const payLabel =
+  const payLabel = isPaymentConfirmed(order) ? "Pago verificado" : order.receipt_received_at ? "Comprobante recibido, pendiente de verificar" : financials.hasUnknownItems ? "Cotización pendiente" :
     order.payment_method === "mercadopago"
       ? "Pago en linea - pendiente de confirmacion"
       : order.payment_method === "card"
@@ -414,7 +444,9 @@ export function buildOrderWhatsAppMessage({ order, isNew = true }) {
   if (order.customer_phone) msg += `📱 Teléfono: ${order.customer_phone}\n`;
   if (order.customer_email) msg += `📧 Correo: ${order.customer_email}\n`;
   msg += `\n*SERVICIOS SOLICITADOS:*\n${itemsText}\n`;
-  if (financials.hasKnownTotal && financials.total > 0) {
+  if (financials.hasUnknownItems) {
+    msg += `\nImporte conocido: $${formatMoney(financials.total)} MXN. Total pendiente de cotización.\n`;
+  } else if (financials.hasKnownTotal && financials.total > 0) {
     msg += `\n💰 *Total a pagar:* $${formatMoney(financials.total)} MXN\n`;
     if (financials.discount > 0 || financials.paymentAdjustment?.amount) {
       msg += `   Subtotal estimado: $${formatMoney(financials.displaySubtotal)} MXN\n`;
@@ -429,9 +461,10 @@ export function buildOrderWhatsAppMessage({ order, isNew = true }) {
     msg += `\n💰 *Total:* por cotizar\n`;
   }
   msg += `\n💳 *Pago:* ${payLabel}\n`;
+  msg += `\nRecolección: ${pickupDetail(order)}\n`;
   if (order.notes) msg += `\n📝 *Instrucciones:*\n${order.notes}\n`;
 
-  if (order.payment_method === "transfer") {
+  if (order.payment_method === "transfer" && !financials.hasUnknownItems && !isPaymentConfirmed(order) && !order.receipt_received_at) {
     msg += `\n⚠️ *El pedido inicia cuando se confirme la transferencia.*`;
     msg += `\nPor favor envía tu comprobante de pago a este número.`;
   }
@@ -457,7 +490,7 @@ function appendOrderDetailsNote(notes, pricingSummary, couponCode, billingInfo) 
   if (paymentAdjustment?.amount) {
     lines.push(`${paymentAdjustment.label}: ${formatAdjustmentAmount(paymentAdjustment.amount)}`);
   }
-  lines.push(`Total: $${formatMoney(pricingSummary.total)}`);
+  lines.push(`${pricingSummary.hasUnknownTotal ? "Importe conocido (total pendiente de cotización)" : "Total"}: $${formatMoney(pricingSummary.total)}`);
 
   const blocks = [notes, `[Resumen de pago]\n${lines.join("\n")}`];
 
@@ -929,7 +962,7 @@ export async function updateOrderStatus(orderId, status, message, { accessToken 
   const orderRes = await withTimeout(
     client
       .from("orders")
-      .update({ status })
+      .update(status === "paid" ? { status, payment_status: "approved" } : { status })
       .eq("id", orderId),
     12000,
     "Supabase no respondio al actualizar el estado. Recarga el panel e intenta de nuevo."
@@ -1029,7 +1062,7 @@ export function buildStatusNotificationMessage(order, newStatus) {
   msg += `📊 Estado: *${label}*\n`;
 
   if (newStatus === "paid") {
-    msg += `\nTu pago fue confirmado y ya estamos empezando tu trabajo. Te avisaremos cuando esté listo.`;
+    msg += `\nTu pago fue verificado. El inicio de producción se indicará en Mis pedidos. Te avisaremos cuando esté listo.`;
   } else if (newStatus === "ready") {
     msg += `\n🗺️ Pasa a recoger tu pedido en nuestro local.\n`;
     msg += `Horario: Lun–Vie 9am–7pm | Sáb 9am–3pm`;

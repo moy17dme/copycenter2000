@@ -4,6 +4,8 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import {
   fetchMyOrders,
+  paymentDetail,
+  pickupDetail,
   subscribeToMyOrders,
   cancelOrder,
   STATUS_LABELS,
@@ -14,6 +16,7 @@ import {
   buildOrderWhatsAppMessage,
   openWhatsApp,
   SHOP_PHONE,
+  BANK_INFO,
 } from "../lib/orders";
 import { generateReceiptPdf } from "../lib/generateReceiptPdf";
 
@@ -40,11 +43,12 @@ const STATUS_ICONS = {
 };
 
 function ProgressBar({ status }) {
-  const idx = STATUS_ORDER.indexOf(status);
+  const idx = STATUS_ORDER.indexOf(({ payment_approved: "paid", printing: "in_progress" })[status] || status);
   const pct = idx < 0 ? 0 : Math.round((idx / (STATUS_ORDER.length - 1)) * 100);
   const steps = [
     { status: "pending_payment", label: "Pendiente" },
-    { status: "paid", label: "Empezando trabajo" },
+    { status: "paid", label: "Pago verificado" },
+    { status: "in_progress", label: "Producción" },
     { status: "ready", label: "Listo" },
   ];
 
@@ -56,7 +60,7 @@ function ProgressBar({ status }) {
         {steps.map((step) => (
           <span
             key={step.status}
-            className={STATUS_ORDER.indexOf(status) >= STATUS_ORDER.indexOf(step.status) ? "text-slate-300" : ""}
+            className={idx >= STATUS_ORDER.indexOf(step.status) ? "text-slate-300" : ""}
           >
             {step.label}
           </span>
@@ -145,10 +149,10 @@ function OrderCard({ order, onCancelled }) {
           <p className="text-xs text-slate-400 mt-0.5">{fecha}</p>
           <p className="text-xs text-slate-400 mt-0.5">
             {paymentMethodLabel(order)} —{" "}
-            {isPaymentConfirmed(order) ? "✅ Pago confirmado" : "⏳ Pendiente de pago"}
+            {paymentDetail(order)}
           </p>
           <p className="text-xs text-green-300 font-semibold tabular-nums mt-0.5">
-            Total: {financials.hasKnownTotal ? `$${formatMoney(financials.total)}` : "por cotizar"}
+            {financials.hasUnknownItems ? `Importe conocido: $${formatMoney(financials.total)} MXN · Total por cotizar` : `Total: $${formatMoney(financials.total)} MXN`}
           </p>
         </div>
 
@@ -163,6 +167,7 @@ function OrderCard({ order, onCancelled }) {
 
       {/* Barra de progreso */}
       <div className="px-4 pb-3">
+        <p className="text-sm text-slate-200">{pickupDetail(order)}</p>
         <ProgressBar status={order.status} />
       </div>
 
@@ -185,16 +190,17 @@ function OrderCard({ order, onCancelled }) {
           {order.notes && (
             <div>
               <p className="text-[11px] uppercase tracking-wider text-slate-500 mb-1">Instrucciones</p>
-              <p className="text-sm text-slate-200 bg-white/5 rounded-xl px-3 py-2">{order.notes}</p>
+              <p className="whitespace-pre-line text-sm text-slate-200 bg-white/5 rounded-xl px-3 py-2">{order.notes}</p>
             </div>
           )}
 
           {/* Transferencia pendiente */}
-          {order.payment_method === "transfer" && !isPaymentConfirmed(order) && (
+          {order.status !== "cancelled" && !financials.hasUnknownItems && !order.receipt_received_at && order.payment_method === "transfer" && !isPaymentConfirmed(order) && (
             <div className="rounded-xl bg-yellow-900/30 border border-yellow-400/20 p-3 text-sm">
-              <p className="text-yellow-200 font-medium">⚠️ Envía tu comprobante</p>
+              <p className="text-yellow-200 font-medium">Transferencia de ${formatMoney(financials.total)} MXN</p>
+              <p>{BANK_INFO.bank} · CLABE {BANK_INFO.clabe}</p>
               <p className="text-slate-300 text-xs mt-1">
-                Para que tu pedido inicie, envía el comprobante de transferencia por WhatsApp.
+                Envía el comprobante por WhatsApp con el folio incluido. Aquí podrás ver cuándo lo reciba el personal.
               </p>
               <button
                 type="button"
@@ -303,7 +309,8 @@ function OrderCard({ order, onCancelled }) {
 const STATUS_FILTER_OPTIONS = [
   { value: "all",             label: "Todos" },
   { value: "pending_payment", label: "Pendiente de pago" },
-  { value: "paid",            label: "Empezando trabajo" },
+  { value: "paid",            label: "Pago verificado" },
+  { value: "in_progress", label: "En producción" },
   { value: "ready",           label: "Listo para recoger" },
   { value: "cancelled",       label: "Cancelado" },
 ];

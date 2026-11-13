@@ -409,7 +409,7 @@ export default function CartOverlay({
                     {cartTotal.sum === 0
                       ? "Precio a cotizar"
                       : cartTotal.hasUnknown
-                        ? "Total parcial estimado"
+                        ? "Importe de los servicios con precio"
                         : "Total estimado"}
                   </p>
                   {cartTotal.sum === 0 && (
@@ -419,7 +419,7 @@ export default function CartOverlay({
                   )}
                   {cartTotal.sum > 0 && cartTotal.hasUnknown && (
                     <p className="text-[10px] mt-0.5" style={{ color: "#9AA6B2" }}>
-                      * Algunos servicios se cotizan en sucursal.
+                      Los servicios por cotizar se sumarán después de que apruebes su precio por WhatsApp.
                     </p>
                   )}
                 </div>

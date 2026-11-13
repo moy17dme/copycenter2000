@@ -53,7 +53,7 @@ function money(value: unknown) {
 function orderTotal(order: any) {
   const pricing = order?.pricing_summary || order?.pricing || {};
   const direct = Number(
-    order?.total_amount ??
+    order?.agreed_total ?? order?.total_amount ??
       order?.amount_total ??
       order?.order_total ??
       order?.total ??
@@ -97,10 +97,17 @@ function itemLines(order: any) {
   });
 }
 
+function priceSummary(order: any) {
+  const total = orderTotal(order);
+  if (order?.pricing_summary?.hasUnknownTotal && order?.agreed_total == null) {
+    return `Importe conocido: ${money(total || 0)}. Total por cotizar`;
+  }
+  return total ? `Total: ${money(total)}` : "Total por cotizar";
+}
+
 function buildMessage(order: any, eventType: NotifyEventType) {
   const title = EVENT_LABELS[eventType];
   const shortId = shortOrderId(order);
-  const total = orderTotal(order);
   const lines = [
     `*${title}*`,
     "",
@@ -110,7 +117,7 @@ function buildMessage(order: any, eventType: NotifyEventType) {
     order?.customer_email ? `Correo: ${order.customer_email}` : "",
     `Estado: ${order?.status || "sin estado"}`,
     `Pago: ${order?.payment_method || "sin metodo"} / ${order?.payment_status || "sin estado"}`,
-    total ? `Total: ${money(total)}` : "Total: por cotizar",
+    priceSummary(order),
     `Fecha: ${createdAtLabel(order)}`,
     "",
     "Servicios:",
@@ -138,7 +145,7 @@ function buildEmailHtml(order: any, eventType: NotifyEventType, text: string) {
       <p><strong>Correo:</strong> ${escapeHtml(order?.customer_email || "No registrado")}</p>
       <p><strong>Estado:</strong> ${escapeHtml(order?.status || "sin estado")}</p>
       <p><strong>Pago:</strong> ${escapeHtml(order?.payment_method || "sin metodo")} / ${escapeHtml(order?.payment_status || "sin estado")}</p>
-      <p><strong>Total:</strong> ${escapeHtml(orderTotal(order) ? money(orderTotal(order)) : "por cotizar")}</p>
+      <p>${escapeHtml(priceSummary(order))}</p>
       <p><strong>Fecha:</strong> ${escapeHtml(createdAtLabel(order))}</p>
       <h3>Servicios</h3>
       <ul>${rows}</ul>
